@@ -1,0 +1,66 @@
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+}
+
+.info {
+  color: var(--blue-700);
+  background: var(--blue-100);
+  border-color: color-mix(in oklch, var(--blue-700) 30%, var(--blue-100));
+}
+
+.success {
+  color: var(--green-900);
+  background: var(--green-50);
+  border-color: color-mix(in oklch, var(--green-700) 32%, var(--green-50));
+}
+
+.warning {
+  color: var(--amber-700);
+  background: var(--amber-100);
+  border-color: color-mix(in oklch, var(--amber-700) 34%, var(--amber-100));
+}
+
+.error {
+  color: var(--red-700);
+  background: var(--red-100);
+  border-color: color-mix(in oklch, var(--red-700) 32%, var(--red-100));
+}
+
+.icon {
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+}
+
+.content {
+  min-width: 0;
+}
+
+.title {
+  color: currentColor;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.body {
+  max-width: 72ch;
+  color: var(--ink-secondary);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.title + .body {
+  margin-top: var(--space-1);
+}
+
+.body > :first-child {
+  margin-top: 0;
+}
+
+.body > :last-child {
+  margin-bottom: 0;
+}

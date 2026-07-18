@@ -1,0 +1,14 @@
+.page {
+  padding-block: var(--space-16);
+}
+
+.code {
+  margin-bottom: var(--space-3);
+  color: var(--green-700);
+  font-size: 1rem;
+  font-weight: 750;
+}
+
+.page p:not(.code) {
+  max-width: 55ch;
+}

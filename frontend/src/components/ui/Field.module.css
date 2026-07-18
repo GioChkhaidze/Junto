@@ -1,0 +1,108 @@
+.field {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.required {
+  color: var(--red-700);
+}
+
+.control {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.65rem var(--space-3);
+  color: var(--ink);
+  background: var(--white);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  line-height: 1.45;
+  transition:
+    border-color 170ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 170ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.control::placeholder {
+  color: var(--ink-muted);
+  opacity: 1;
+}
+
+.control:hover:not(:disabled) {
+  border-color: var(--green-700);
+}
+
+.control:disabled {
+  color: var(--ink-muted);
+  background: var(--surface-subtle);
+  border-color: var(--line);
+  cursor: not-allowed;
+}
+
+.controlInvalid,
+.controlInvalid:hover:not(:disabled) {
+  border-color: var(--red-700);
+}
+
+.textarea {
+  min-height: 8.5rem;
+  resize: vertical;
+}
+
+.selectWrap {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.select {
+  padding-right: 2.75rem;
+  appearance: none;
+}
+
+.selectIcon {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  color: var(--ink-secondary);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.select:disabled + .selectIcon {
+  color: var(--ink-muted);
+}
+
+.hint,
+.error {
+  max-width: 72ch;
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.hint {
+  color: var(--ink-secondary);
+}
+
+.error {
+  color: var(--red-700);
+  font-weight: 550;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .control {
+    transition: none;
+  }
+}

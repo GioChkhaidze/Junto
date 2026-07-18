@@ -1,0 +1,33 @@
+.group {
+  display: flex;
+  width: var(--skeleton-width);
+  max-width: 100%;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.line {
+  display: block;
+  width: 100%;
+  height: var(--skeleton-height);
+  background: var(--surface-pressed);
+  border-radius: 4px;
+  animation: pulse 1.4s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    opacity: 0.58;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line {
+    animation: none;
+    opacity: 0.78;
+  }
+}

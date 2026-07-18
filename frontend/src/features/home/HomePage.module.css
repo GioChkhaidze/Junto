@@ -1,0 +1,197 @@
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(22rem, 0.85fr);
+  gap: clamp(3rem, 7vw, 7rem);
+  align-items: center;
+  min-height: calc(100vh - 9rem);
+}
+
+.introduction {
+  padding-block: var(--space-10);
+}
+
+.introduction h1 {
+  max-width: 13ch;
+  margin-bottom: var(--space-6);
+  color: var(--green-950);
+  font-size: 3.35rem;
+  letter-spacing: -0.04em;
+}
+
+.lede {
+  max-width: 60ch;
+  margin-bottom: var(--space-10);
+  color: var(--ink-secondary);
+  font-size: 1.16rem;
+  line-height: 1.65;
+}
+
+.process {
+  display: flex;
+  gap: var(--space-8);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--line);
+}
+
+.process div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.process strong {
+  color: var(--green-800);
+  font-size: 0.95rem;
+}
+
+.process span {
+  color: var(--ink-secondary);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.entry {
+  padding: var(--space-8);
+  background: var(--white);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-panel);
+}
+
+.entry > h2 {
+  margin-bottom: var(--space-8);
+  font-size: 1.35rem;
+}
+
+.hostAction {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.hostAction h3 {
+  margin: 0 0 var(--space-1);
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+.hostAction p {
+  max-width: 29ch;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.primaryLink {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  color: var(--white);
+  background: var(--green-800);
+  border-radius: var(--radius-control);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: background 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.primaryLink:hover {
+  color: var(--white);
+  background: var(--green-950);
+}
+
+.rule {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-8) 0 var(--space-6);
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+}
+
+.rule::before,
+.rule::after {
+  height: 1px;
+  background: var(--line);
+  content: "";
+  flex: 1;
+}
+
+.joinForm > label {
+  display: block;
+  margin-bottom: var(--space-2);
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 650;
+}
+
+.joinRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.joinRow > :first-child {
+  min-width: 0;
+  flex: 1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hint {
+  margin: var(--space-2) 0 0;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  .introduction {
+    padding-block: var(--space-6);
+  }
+
+  .introduction h1 {
+    max-width: 16ch;
+    font-size: 2.55rem;
+  }
+
+  .entry {
+    max-width: 42rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .introduction h1 {
+    font-size: 2.15rem;
+  }
+
+  .process {
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .entry {
+    padding: var(--space-6) var(--space-5);
+  }
+
+  .hostAction {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .primaryLink {
+    justify-content: center;
+  }
+
+  .joinRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
