@@ -1,6 +1,6 @@
 .button {
   display: inline-flex;
-  min-height: 2.625rem;
+  min-height: 2.75rem;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
@@ -83,7 +83,7 @@
 }
 
 .compact {
-  min-height: 2.25rem;
+  min-height: 2.75rem;
   padding: 0.45rem var(--space-3);
   font-size: 0.925rem;
 }

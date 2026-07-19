@@ -69,7 +69,7 @@ The authoring surface is a sequential workspace, not a dashboard of cards:
 4. final review and room creation;
 5. invite code and participant lobby.
 
-Questions use a proper multiline editor with explicit labels, expected-time input, duplicate/delete/reorder actions, character count, and validation beside the field.
+Questions use a proper multiline editor with explicit labels, coverage-unit editing, reorder/delete actions, character count, and validation beside the field. One room-wide duration controls the questionnaire; Junto does not invent separate per-question timers.
 
 ### Participant questionnaire
 
@@ -84,7 +84,7 @@ Questions use a proper multiline editor with explicit labels, expected-time inpu
 
 - A participant sees only their group and member names.
 - A host sees every group in a readable roster view.
-- Analysis and optimization are separate visible stages even while their services are placeholders.
+- While placeholder grouping runs, show one honest processing state. Do not imply that semantic analysis or optimization has run until those services exist.
 
 ## Explicit bans
 

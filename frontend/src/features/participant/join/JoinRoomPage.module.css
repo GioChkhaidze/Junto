@@ -1,0 +1,59 @@
+.joinPage {
+  max-width: 34rem;
+  margin-inline: auto;
+}
+
+.header {
+  padding-bottom: var(--space-8);
+  margin-bottom: var(--space-8);
+  border-bottom: 1px solid var(--line);
+}
+
+.inviteLine {
+  margin-bottom: var(--space-2);
+  color: var(--green-800);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.header h1 {
+  margin-bottom: var(--space-3);
+  font-size: 2.1rem;
+  overflow-wrap: anywhere;
+}
+
+.header p:last-child {
+  margin: 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.disclosure {
+  padding: var(--space-4);
+  background: var(--surface-subtle);
+  border-radius: var(--radius-control);
+}
+
+.disclosure p {
+  margin: 0;
+  color: var(--ink-secondary);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.codeLine {
+  margin-top: var(--space-8);
+  color: var(--ink-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.codeLine strong {
+  margin-left: var(--space-1);
+  color: var(--ink-secondary);
+  letter-spacing: 0.08em;
+}

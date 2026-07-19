@@ -22,11 +22,6 @@ export function formatCountdown(totalSeconds: number): string {
   return `${minutes}:${String(remainder).padStart(2, "0")}`;
 }
 
-export function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean).slice(0, 2);
-  return parts.map((part) => part[0]?.toUpperCase() ?? "").join("") || "?";
-}
-
 export function normalizeJoinCode(value: string): string {
   return value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
 }

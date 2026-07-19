@@ -3,14 +3,19 @@ export type IsoDateTime = string;
 
 export type RoomStatus =
   | "draft"
-  | "open"
+  | "lobby"
+  | "answering"
   | "analyzing"
-  | "ready"
   | "published"
   | "failed";
 
 export type GroupingPolicy = "teach" | "explore";
-export type AnalysisPhase = "semantic" | "grouping";
+export type AnalysisPhase =
+  | "not_started"
+  | "analyzing_responses"
+  | "forming_groups"
+  | "complete"
+  | "failed";
 export type GenerationMode = "placeholder" | "engine";
 
 export interface GroupSize {
@@ -24,7 +29,7 @@ export interface GroupSize {
  * prototype is being brought up, so an older response remains consumable.
  */
 export interface ActivityTiming {
-  durationSeconds?: number;
+  durationMinutes?: number;
   serverTime?: IsoDateTime;
   startedAt?: IsoDateTime | null;
   deadlineAt?: IsoDateTime | null;
@@ -33,18 +38,23 @@ export interface ActivityTiming {
 }
 
 export type KnownRoomAction =
-  | "edit"
-  | "open"
-  | "join"
-  | "start"
+  | "editRoom"
+  | "editQuestions"
+  | "uploadMaterials"
+  | "openLobby"
+  | "startActivity"
   | "answer"
   | "submit"
-  | "analyze"
-  | "optimize"
-  | "publish"
+  | "startAnalysis"
+  | "viewProgress"
+  | "viewAnalysisProgress"
   | "viewGroups"
   | "viewMyGroup"
-  | "removeParticipant";
+  | "removeParticipant"
+  | "waitForStart"
+  | "waitForAnalysis"
+  | "waitForGroups"
+  | "viewFailure";
 
 /**
  * The server is the authority for permitted actions. Keeping the string

@@ -1,55 +1,27 @@
-import type { EntityId, GenerationMode, GroupingPolicy } from "./common";
-
-export type SolverStatus = "optimal" | "feasible";
-export type FullCoverageStatus = "feasible" | "infeasible" | "unknown";
+import type { EntityId, GroupingPolicy, IsoDateTime } from "./common";
 
 export interface GroupMember {
   participantId: EntityId;
   displayName: string;
 }
 
-export interface GroupUnit {
-  unitId: EntityId;
-  text: string;
-  covered: boolean;
-  carriers: EntityId[];
-}
-
-export interface GroupFamily {
-  familyId: EntityId;
-  label: string;
-  members: EntityId[];
-}
-
-export interface GroupAnswer {
-  participantId: EntityId;
-  text: string;
-}
-
-export interface GroupQuestionView {
-  questionId: EntityId;
-  prompt: string;
-  units: GroupUnit[];
-  families: GroupFamily[];
-  answers?: GroupAnswer[];
-}
-
 export interface GroupView {
   id: EntityId;
   members: GroupMember[];
-  questions: GroupQuestionView[];
 }
 
 export interface HostGroupsResponse {
-  generationMode: GenerationMode;
+  generationMode: "placeholder";
   policy?: GroupingPolicy;
-  solverStatus?: SolverStatus;
-  fullCoverageStatus?: FullCoverageStatus;
+  trigger?: string;
+  generatedAt?: IsoDateTime;
   groups: GroupView[];
 }
 
 export interface MyGroupResponse {
-  generationMode: GenerationMode;
+  generationMode: "placeholder";
   policy?: GroupingPolicy;
+  trigger?: string;
+  generatedAt?: IsoDateTime;
   group: GroupView;
 }

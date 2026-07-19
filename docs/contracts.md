@@ -1,449 +1,269 @@
 # Application contracts
 
-This document is the canonical contract for domain terminology, room state, persistence, stored artifacts, and HTTP behavior. Once implementation exists, Alembic migrations and generated OpenAPI schemas become executable counterparts to this document.
+## Scope
+
+This document is the contract for the implemented first slice. FastAPI's Pydantic models are the runtime wire authority; TypeScript interfaces in `frontend/src/domain/` mirror those models for the browser.
+
+The future semantic and optimization artifact contract is specified separately in [engine.md](engine.md). No response family, coverage assignment, solver status, or optimality field exists in the current runtime output.
 
 ## Terminology
 
 | Term | Meaning |
 |---|---|
-| Room | One question set, one participant set, and one live grouping run |
-| Host | A signed session authorized to control one room |
-| Participant | A room-local display name and opaque ID |
-| Coverage unit | A host-approved, question-local element that should be available inside groups |
-| Response family | A question-local primary method, reasoning pattern, or position |
-| Analysis result | Per-question families and per-participant unit coverage |
-| Grouping result | The selected policy, solver truth status, and participant partition |
+| Room | One question set and one live run |
+| Host | The signed session grant that controls one room |
+| Participant | A room-local identity with a display name |
+| Coverage unit | A host-approved idea or perspective relevant to one question |
+| Cohort | The immutable participant ID set captured at activity start |
+| Answer | One participant's current text for one question |
+| Submission | The irreversible finalization of that participant's answer set |
+| Placeholder group | A capacity-valid partition produced without reading answer meaning |
 
-Canonical field names are `coverage_units` in PostgreSQL and `coveredUnitIds` in JSON. Do not introduce correctness-specific field names.
-
-A response family has no coverage-unit set. Coverage belongs only to an individual participant-question answer and is never inferred from family membership.
-
-API and stored-artifact JSON use `camelCase`. Database columns use `snake_case`. UUIDs are serialized as strings, timestamps as RFC 3339 UTC strings, and unknown fields are rejected on mutation payloads.
+Coverage belongs to an individual answer only in the future semantic artifact. A response family will never own or imply coverage units.
 
 ## Room state machine
 
 ```text
-                 ┌────────────────────────────┐
-                 │                            │
-draft → open → analyzing → ready → published │
-                  │          │                │
-                  └→ failed ─┘                │
-                         retry → analyzing ───┘
-
-ready → analyzing → ready   # full rerun or policy-only optimization
+draft --open--> lobby --start--> answering --claim--> analyzing --success--> published
+                                                                  \--error----> failed
 ```
 
-`published` is terminal in the MVP.
+| State | Meaning | Allowed mutations |
+|---|---|---|
+| `draft` | Host is authoring | room settings, questions, coverage units, materials, open lobby |
+| `lobby` | Invite accepts participants | join, remove participant, start activity |
+| `answering` | Frozen cohort is timed | own-answer save, final submit, host early finish |
+| `analyzing` | One grouping task owns the room | none from browser callers |
+| `published` | Complete group result is visible by role | read only |
+| `failed` | Group formation ended without a result | read only in this slice |
 
-| From | Command | To | Preconditions |
-|---|---|---|---|
-| `draft` | Open room | `open` | At least one question; every question has 1–8 units; size bounds valid |
-| `open` | Start analysis | `analyzing` | Feasible group count exists; atomic claim succeeds |
-| `analyzing` | Complete analysis | `ready` | Valid analysis and grouping artifacts committed |
-| `analyzing` | Fail analysis | `failed` | Error recorded; partial artifacts not exposed |
-| `ready` | Rerun analysis | `analyzing` | Host capability; existing artifacts replaceable |
-| `ready` | Switch policy | `analyzing` | Analysis artifact exists; optimizer-only mode |
-| `ready` | Publish | `published` | Grouping result validates against current participants |
-| `failed` | Retry full analysis | `analyzing` | Host grant; atomic claim succeeds |
-| `failed` | Retry optimization | `analyzing` | Host grant; valid analysis artifact exists |
+The first slice has no `open` or `ready` state and no separate publish command. A successful placeholder grouping moves directly from `analyzing` to `published`.
 
-Mutation rules:
+`analysisPhase` is one of `not_started`, `analyzing_responses`, `forming_groups`, `complete`, or `failed`. In the placeholder slice these are lifecycle markers only: `analyzing_responses` does not mean a model inspected the responses, and `forming_groups` does not mean OR-Tools ran.
 
-- `draft`: host may edit room and question content; participants cannot join.
-- `open`: participants may join and upsert their own answers; room settings and question content are immutable.
-- `analyzing`: joins and writes are rejected.
-- `ready`: host may inspect, rerun, switch policy, or publish; participants wait.
-- `published`: participants may read only their own group; all inputs and grouping are immutable.
-- `failed`: only host diagnostics and retry are available.
+### Transition conditions
 
-### Freeze and artifact transactions
+- `draft -> lobby`: at least one question exists and every question has at least one coverage unit.
+- `lobby -> answering`: at least one participant exists and the current count can be partitioned within the configured minimum and maximum group size.
+- `answering -> analyzing`: all frozen participants submit, the server deadline is due, or the host calls the early-finish endpoint.
+- `analyzing -> published`: one complete placeholder partition was committed.
+- `analyzing -> failed`: grouping raised an error; no result is exposed.
 
-Joining and response writes take a shared lock on the room row, verify `status = 'open'`, and then insert or update in the same transaction. Starting analysis takes the conflicting room-row lock, validates the participant count and capacity range, clears `last_error`, and changes the status to `analyzing` in that transaction. It therefore waits for already-started writes and rejects every later write, producing one complete frozen snapshot.
+The lobby transition freezes authoring. The answering transition freezes the cohort, `startedAt`, and `deadlineAt`. A final submission freezes that participant's answers.
 
-Invalid participant count or capacity returns `409` and leaves the room `open`.
+## Domain invariants
 
-Full analysis writes `analysis_result`, `grouping_result`, clears `last_error`, and changes the room to `ready` in one final transaction. Optimizer-only work preserves `analysis_result` and atomically replaces `grouping_result`. Failure changes the room to `failed` with a sanitized `last_error`; a partially produced new artifact is never committed or returned. Existing artifacts are hidden from room APIs while status is `analyzing` or `failed`.
+### Room
 
-Only `ready` can publish. Publication validates the partition against the frozen participants and changes status to `published` in one transaction. Published inputs and the partition are immutable.
+- title length: 1-120 characters;
+- duration: 1-180 minutes;
+- policy: `teach` or `explore`;
+- group sizes: each 2-8 and `minimum <= preferred <= maximum`;
+- question count: 1-8 before opening;
+- join codes are generated by the server, normalized to uppercase, and unique within the running repository.
 
-## PostgreSQL schema
+The policy is stored for forward compatibility. The current placeholder produces the same join-order partition for either policy and makes no policy-quality claim.
 
-Use PostgreSQL UUID generation, `timestamptz`, database checks, and cascade deletion for room-local data.
+### Question and coverage units
 
-### `rooms`
+- prompt length: 1-4,000 characters;
+- optional inline `referenceMaterial`: at most 8,000 characters;
+- coverage units: at most eight, with 1-300 characters each;
+- every opened question has at least one unit;
+- question positions are contiguous and server-maintained.
 
-```text
-id                    uuid primary key default gen_random_uuid()
-join_code             text unique not null
-title                 text not null
-policy                text not null check (policy in ('teach', 'explore'))
-minimum_group_size    smallint not null
-preferred_group_size  smallint not null
-maximum_group_size    smallint not null
-status                text not null
-analysis_result       jsonb null
-grouping_result       jsonb null
-last_error            text null
-created_at            timestamptz not null default now()
-updated_at            timestamptz not null default now()
-```
+New units receive server-owned IDs. A question update may retain an existing ID or omit an ID to create a unit. Duplicate or unknown retained IDs are rejected. Deleted IDs are not reassigned deliberately.
 
-Checks:
-
-```text
-minimum_group_size >= 2
-minimum_group_size <= preferred_group_size
-preferred_group_size <= maximum_group_size
-maximum_group_size <= 8
-status in ('draft', 'open', 'analyzing', 'ready', 'published', 'failed')
-join_code = upper(join_code)
-```
-
-`analysis_result` and `grouping_result` are replaceable derived artifacts. Rerunning semantic analysis replaces both. Policy-only optimization preserves `analysis_result` and replaces `grouping_result`.
-
-### `questions`
-
-```text
-id                  uuid primary key default gen_random_uuid()
-room_id             uuid not null references rooms(id) on delete cascade
-position            integer not null
-prompt              text not null
-reference_material  text null
-coverage_units      jsonb not null default '[]'::jsonb
-
-unique(room_id, position)
-unique(id, room_id)
-```
-
-`coverage_units` must validate as an ordered array of 1–8 units before opening. The model returns text; the server assigns opaque IDs.
-
-Add a database check that `jsonb_typeof(coverage_units) = 'array'`; Pydantic owns deeper item-shape validation. `reference_material` is optional, host-only semantic context. It may contain a rubric or answer key and is never returned by participant endpoints. Participant-visible reading material belongs in `prompt` for the MVP.
-
-Coverage-unit IDs are question-local. Editing unit text preserves its ID, deleted IDs are not reused within the current draft, and accepting a newly generated list may replace the full list while the room remains `draft`. Opening freezes the approved IDs.
-
-### `participants`
-
-```text
-id            uuid primary key default gen_random_uuid()
-room_id       uuid not null references rooms(id) on delete cascade
-display_name  text not null
-joined_at     timestamptz not null default now()
-
-unique(id, room_id)
-index(room_id)
-```
-
-Display names need not be unique. The UI may append a short visual suffix when duplicates exist.
-
-### `responses`
-
-```text
-room_id         uuid not null references rooms(id) on delete cascade
-participant_id  uuid not null
-question_id     uuid not null
-text            text not null
-updated_at      timestamptz not null default now()
-
-primary key(participant_id, question_id)
-foreign key(participant_id, room_id)
-  references participants(id, room_id) on delete cascade
-foreign key(question_id, room_id)
-  references questions(id, room_id) on delete cascade
-index(room_id)
-```
-
-The composite foreign keys prevent cross-room responses. A blank answer has no row. The application adds a null family and empty coverage locally when assembling the complete participant-question matrix.
-
-## Stored JSON
-
-### Coverage units
-
-```json
-[
-  {
-    "id": "u1",
-    "text": "Defines the subproblem represented by each state"
-  },
-  {
-    "id": "u2",
-    "text": "Explains how the recurrence combines smaller states"
-  }
-]
-```
-
-Production IDs are opaque and generated by the application. The short IDs above are documentation fixtures.
-
-### Analysis result
+Example create command:
 
 ```json
 {
-  "schemaVersion": 1,
-  "model": "pinned-model-name",
-  "questions": [
-    {
-      "questionId": "q1",
-      "families": [
-        {
-          "id": "f1",
-          "label": "Top-down memoization"
-        },
-        {
-          "id": "f2",
-          "label": "Bottom-up tabulation"
-        }
-      ],
-      "assignments": [
-        {
-          "participantId": "p1",
-          "familyId": "f1",
-          "coveredUnitIds": ["u1", "u2"]
-        },
-        {
-          "participantId": "p2",
-          "familyId": null,
-          "coveredUnitIds": []
-        }
-      ]
-    }
+  "position": 0,
+  "prompt": "Which tradeoff matters most in this design?",
+  "referenceMaterial": null,
+  "coverageUnits": [
+    { "text": "Names the primary user need" },
+    { "text": "Explains one material tradeoff" }
   ]
 }
 ```
 
-The stored artifact contains one assignment for every participant and question, including locally created empty assignments for unanswered questions. It is the server-side merge of two separately validated model results: per-answer coverage and per-answer family membership. Transient coverage evidence is deliberately absent from the stored artifact. This split does not change `schemaVersion` because the persisted shape is unchanged.
+### Reference attachments
 
-Unit and family IDs are question-local. The application, never the model, creates persistent IDs. Every non-empty submitted answer appears exactly once in each applicable model output, and both outputs must contain the same expected participant-ID set before the application merges them. The application adds unanswered entries. An all-empty question skips both provider calls and produces no families plus empty assignments for every participant.
+Attachments are room-level and draft-only.
 
-Family objects contain only an ID and label; they never contain unit IDs. Only a final participant assignment contains both independent dimensions, `familyId` and `coveredUnitIds`. Transient provider DTOs and evidence are specified in [engine.md](engine.md#response-compilation), not persisted here.
+- extensions: `.txt`, `.md`, `.pdf`, `.docx`;
+- maximum: eight files per room;
+- maximum upload size: 5 MiB per file;
+- multipart request size is bounded before framework upload spooling;
+- PDF page count and DOCX expanded archive size are bounded before full text extraction;
+- maximum extracted text: 100,000 characters per file;
+- `.txt` and `.md` must decode as UTF-8;
+- extraction must produce non-empty readable text.
 
-### Grouping result
+The upload response exposes metadata, including extracted character count, but never the extracted text. The current memory adapter retains extracted text and metadata, not original file bytes.
+
+### Participant and answers
+
+- display name length: 1-80 characters;
+- answer length: 0-1,500 characters;
+- normalized blank text deletes the current answer;
+- only a member of the frozen cohort may answer;
+- only that participant's session grant may write the answer;
+- no answer may change after final submission or after the deadline.
+
+Unanswered questions are represented by absent responses, not fake empty records.
+
+## Time and progress
+
+The server returns ISO 8601 UTC timestamps and a projection-time `serverTime`. `remainingSeconds` is the ceiling of `deadlineAt - serverTime`, never below zero. The browser may animate between polls but must resynchronize from server fields.
+
+Host progress contains:
+
+- `participantCount`;
+- `submittedParticipantCount`;
+- answered/stored response count;
+- submitted response count;
+- `possibleResponseCount = participantCount * questionCount`.
+
+Participant progress contains only that participant's submitted state, answer count, and question count. Progress values do not imply semantic quality.
+
+## Sessions, authorization, and errors
+
+`GET /api/session` initializes a signed, HTTP-only, same-site session and returns:
 
 ```json
 {
-  "schemaVersion": 1,
-  "policy": "teach",
-  "solverStatus": "optimal",
-  "fullCoverageStatus": "feasible",
-  "groups": [
-    {
-      "id": "g1",
-      "participantIds": ["p1", "p4", "p8", "p12"]
-    }
-  ]
+  "csrfToken": "opaque-value",
+  "hostRoomIds": [],
+  "participantRoomIds": []
 }
 ```
 
-`solverStatus` is:
+Every mutation requires the returned value in `X-CSRF-Token`. Creating a room adds a host grant to the signed cookie. Joining adds a participant grant. A random browser-session nonce makes repeated join requests idempotent inside one room. The cookie contains identifiers and grants only.
 
-```text
-optimal   optimality proven for every completed objective
-feasible  valid assignment found without complete optimality proof
-```
+Development creates a random signing secret at process startup. Production mode refuses to start without a supplied session secret of at least 32 characters and defaults cookies to HTTPS-only.
 
-`fullCoverageStatus` is:
+Possessing a room UUID or join code does not authorize host or participant projections. A missing or wrong grant returns a caller-safe `404` rather than revealing whether the protected room exists. An invite-code lookup succeeds only while the room is in `lobby`.
 
-```text
-feasible    a complete-coverage witness exists
-infeasible  infeasibility was proven
-unknown     solve limit expired without a witness or proof
-```
+Successful JSON uses camelCase field names. UUIDs are strings, timestamps are ISO 8601 strings, unknown input fields are rejected, and incoming strings are trimmed.
 
-A timeout is never stored as `infeasible`. If a later fallback solve finds a complete-coverage assignment, that assignment is a witness and status becomes `feasible`.
-
-Do not duplicate per-group coverage, missing units, unit carriers, or represented families in `grouping_result`. Derive them from the participant partition, question units, and `analysis_result`.
-
-## Browser routes
-
-The Vite application owns these routes:
-
-```text
-/
-/create
-/host/:roomId
-/join/:joinCode
-/room/:roomId
-```
-
-Direct navigation to any browser route returns the compiled application shell. The React router selects the page after loading caller-appropriate state from `/api`.
-
-## API conventions
-
-- All endpoints are same-origin under `/api`.
-- Mutations accept and return JSON unless no response body is needed.
-- State-changing requests require the signed session and `X-CSRF-Token` matching the session value.
-- Protected room resources return `404` when the record is absent or the caller lacks the required room grant, avoiding unnecessary room disclosure.
-- `403` is reserved for failed CSRF or origin validation. The accountless API does not issue a `401` login challenge.
-- State conflicts return `409` with a stable code.
-- Validation failures return `422`.
-- Accepted background work returns `202`.
-- Rate limits return `429`.
-
-Error shape:
+Domain and validation errors share one envelope:
 
 ```json
 {
   "error": {
-    "code": "ROOM_NOT_OPEN",
-    "message": "Answers can only be changed while the room is open.",
+    "code": "GROUP_SIZE_INFEASIBLE",
+    "message": "The current participant count cannot satisfy the configured group sizes.",
     "details": {}
   }
 }
 ```
 
-Messages are safe for users. Provider responses, stack traces, session contents, answer text, and reference material are never included in public errors.
+Status meaning:
 
-## API data shapes
+- `403`: missing or invalid CSRF token;
+- `404`: unavailable public invite, missing resource, or missing room grant;
+- `409`: valid command in the wrong state or infeasible current capacity;
+- `422`: malformed input, unsupported material, extraction failure, or violated bounds.
 
-These are the stable JSON shapes the first implementation must expose. Generated OpenAPI becomes the executable detail, but it must remain compatible with these fields and visibility rules.
+## HTTP surface
 
-`GET /api/session` returns the CSRF value needed for mutation headers and the bounded room IDs used to route the current browser:
+### Session and health
+
+| Method | Path | Access | Result |
+|---|---|---|---|
+| `GET` | `/api/health` | public | `{ "status": "ok" }` |
+| `GET` | `/api/session` | session | CSRF token and current grant room IDs |
+
+### Host authoring and lifecycle
+
+| Method | Path | State | Result |
+|---|---|---|---|
+| `POST` | `/api/rooms` | new session | create draft and host grant |
+| `GET` | `/api/rooms/{roomId}` | host | full host projection |
+| `PATCH` | `/api/rooms/{roomId}` | `draft` | update title, policy, group size, or duration |
+| `POST` | `/api/rooms/{roomId}/questions` | `draft` | add question |
+| `PATCH` | `/api/rooms/{roomId}/questions/{questionId}` | `draft` | edit or move question and units |
+| `DELETE` | `/api/rooms/{roomId}/questions/{questionId}` | `draft` | delete and close the position gap |
+| `POST` | `/api/rooms/{roomId}/materials` | `draft` | multipart upload and extraction |
+| `DELETE` | `/api/rooms/{roomId}/materials/{materialId}` | `draft` | remove attachment |
+| `POST` | `/api/rooms/{roomId}/open` | `draft` | enter invite lobby |
+| `POST` | `/api/rooms/{roomId}/start` | `lobby` | freeze cohort and start deadline |
+| `DELETE` | `/api/rooms/{roomId}/participants/{participantId}` | `lobby` | remove participant |
+| `POST` | `/api/rooms/{roomId}/analysis` | `answering` | finish early and claim grouping; returns `202` |
+| `GET` | `/api/rooms/{roomId}/groups` | published host | all groups |
+
+### Participant flow
+
+| Method | Path | Access/state | Result |
+|---|---|---|---|
+| `GET` | `/api/join/{joinCode}` | public `lobby` | title, state, duration, question count |
+| `POST` | `/api/join/{joinCode}` | public `lobby` | participant grant and room identity |
+| `GET` | `/api/rooms/{roomId}/participant` | participant | own room projection and own answers |
+| `PUT` | `/api/rooms/{roomId}/responses/{questionId}` | own `answering` | save receipt and new answer count |
+| `POST` | `/api/rooms/{roomId}/submit` | own `answering` | idempotent final submission receipt |
+| `GET` | `/api/rooms/{roomId}/my-group` | published participant | only the caller's group |
+
+### Shared polling
+
+| Method | Path | Projection |
+|---|---|---|
+| `GET` | `/api/rooms/{roomId}/status` | host progress when host-granted; own progress when participant-granted |
+
+The client should poll only non-terminal room views and stop when the required published result is loaded. Answer writes remain ordinary requests, not polling or realtime messages.
+
+## Core command shapes
+
+Create room:
 
 ```json
 {
-  "csrfToken": "random-session-value",
-  "hostRoomIds": ["room-uuid"],
-  "participantRoomIds": ["room-uuid"]
-}
-```
-
-### Room commands
-
-Create-room request:
-
-```json
-{
-  "title": "Dynamic programming review",
+  "title": "Reasoning workshop",
   "policy": "teach",
   "groupSize": {
     "minimum": 3,
     "preferred": 4,
     "maximum": 5
-  }
+  },
+  "durationMinutes": 20
 }
 ```
 
-Create-room response (`201`):
+Save answer and receipt:
 
 ```json
-{
-  "roomId": "room-uuid",
-  "joinCode": "J7KM4P",
-  "status": "draft"
-}
-```
-
-`PATCH /api/rooms/{roomId}` accepts any non-empty subset of `title`, `policy`, and `groupSize`. Question creation and update use:
-
-```json
-{
-  "position": 0,
-  "prompt": "Explain when dynamic programming is useful.",
-  "referenceMaterial": "Host-only rubric or null.",
-  "coverageUnits": [
-    {
-      "text": "Identifies overlapping subproblems"
-    }
-  ]
-}
-```
-
-For question mutations, an existing unit includes its current `id`; a newly typed unit omits `id`, and the server assigns one. Supplying an unknown ID is rejected. Omitting a previously stored unit deletes it. The endpoint returns the saved question with canonical IDs, so the browser never invents persistent identifiers.
-
-`POST .../coverage-generation` returns `{"coverageUnits": [{"text": "..."}]}` with no IDs. It does not persist or approve the candidates; the host saves the accepted list through the question update endpoint, where canonical IDs are assigned. No response artifact exists while this replacement is allowed.
-
-The host room projection contains `id`, `joinCode`, `title`, `policy`, `groupSize`, `status`, ordered `questions`, `progress`, `allowedActions`, and nullable `lastError`. Host questions include `referenceMaterial` and `coverageUnits`. `progress` contains `participantCount`, `submittedResponseCount`, and `possibleResponseCount`.
-
-### Participant command shapes
-
-Join-code lookup returns only:
-
-```json
-{
-  "title": "Dynamic programming review",
-  "status": "open"
-}
-```
-
-Unknown and non-open join codes both return `404`; the public route does not reveal another room state.
-
-Join request and response:
-
-```json
-{
-  "displayName": "Maya"
-}
+{ "text": "My current reasoning..." }
 ```
 
 ```json
 {
-  "roomId": "room-uuid",
-  "participantId": "participant-uuid",
-  "displayName": "Maya"
+  "questionId": "question-uuid",
+  "text": "My current reasoning...",
+  "savedAt": "2026-07-18T10:30:00Z",
+  "answeredQuestionCount": 2
 }
 ```
 
-If the current signed session already has a valid participant grant for the room, repeating the join returns that participant, ignores a replacement display name, and creates no duplicate. Display names are fixed for the MVP; a host can remove the participant before they rejoin under a corrected name.
+Final submission returns `submitted`, `submittedAt`, status, answered and total question counts, and whether this request claimed analysis. Repeating a completed submission returns the existing finalization without starting a second task.
 
-The participant room projection contains `roomId`, `title`, `status`, ordered questions, the caller's own answers, and permitted actions. Before publication a participant question contains only `id`, `position`, `prompt`, and nullable `answer`; it never contains `referenceMaterial` or `coverageUnits`.
+## Group projection
 
-Answer writes use `{"text": "..."}` and return `204`. Empty normalized text deletes the row.
-
-### Status and analysis commands
-
-The compact status projection always contains `status` and `allowedActions`. Host status also contains the three progress counts. Participant status contains `answeredQuestionCount` and `questionCount`. It does not return analysis or grouping artifacts.
-
-Full analysis accepts no body. Optimizer-only execution accepts:
+The current result is deliberately small:
 
 ```json
 {
-  "policy": "explore"
-}
-```
-
-Both return `202` with `{"status": "analyzing"}` after the atomic state claim.
-
-### Group projections
-
-The host group response contains the stored top-level policy and truth statuses plus derived group views:
-
-```json
-{
+  "generationMode": "placeholder",
   "policy": "teach",
-  "solverStatus": "optimal",
-  "fullCoverageStatus": "feasible",
+  "trigger": "all_submitted",
+  "generatedAt": "2026-07-18T10:31:00Z",
   "groups": [
     {
       "id": "g1",
       "members": [
         {
-          "participantId": "p1",
+          "participantId": "participant-uuid",
           "displayName": "Maya"
-        }
-      ],
-      "questions": [
-        {
-          "questionId": "q1",
-          "prompt": "Explain when dynamic programming is useful.",
-          "units": [
-            {
-              "unitId": "u1",
-              "text": "Identifies overlapping subproblems",
-              "covered": true,
-              "carriers": ["p1"]
-            }
-          ],
-          "families": [
-            {
-              "familyId": "f1",
-              "label": "Top-down memoization",
-              "members": ["p1"]
-            }
-          ],
-          "answers": [
-            {
-              "participantId": "p1",
-              "text": "..."
-            }
-          ]
         }
       ]
     }
@@ -451,63 +271,36 @@ The host group response contains the stored top-level policy and truth statuses 
 }
 ```
 
-The participant `my-group` response uses the same members, units, carriers, and families for only the caller's group. It includes opaque IDs for those group members so carrier and family references resolve, and the UI maps them to display names. It omits `answers`, host diagnostics, and every other group.
+`trigger` is `all_submitted`, `deadline`, or `host`. A participant `my-group` projection omits all other groups and returns one `group` object. It does not contain answer text, coverage units, response families, solver status, coverage reports, or optimality language.
 
-## API surface
+## Placeholder grouping guarantees
 
-### Session
+For a cohort accepted at activity start, the default grouping service:
 
-| Method | Path | Caller | Purpose |
-|---|---|---|---|
-| `GET` | `/api/session` | Anyone | Return CSRF token and current room grants needed by the UI |
+1. sorts participants by join time and UUID tie-breaker;
+2. chooses balanced capacities within minimum and maximum bounds;
+3. minimizes total distance from preferred size, then size spread, then group count;
+4. slices the stable order into numbered groups.
 
-### Host authoring
+It guarantees exactly-once membership and capacity validity. It does not read responses or coverage units and does not guarantee diversity, coverage, a policy objective, semantic quality, or mathematical optimality beyond its small capacity calculation.
 
-| Method | Path | State | Purpose |
-|---|---|---|---|
-| `POST` | `/api/rooms` | — | Create a draft room and grant host access |
-| `GET` | `/api/rooms/{roomId}` | Any host-visible state | Return host view of room, questions, counts, and permitted actions |
-| `PATCH` | `/api/rooms/{roomId}` | `draft` | Update title, policy, and group-size bounds |
-| `POST` | `/api/rooms/{roomId}/questions` | `draft` | Add a question |
-| `PATCH` | `/api/rooms/{roomId}/questions/{questionId}` | `draft` | Update prompt, reference material, position, or units |
-| `DELETE` | `/api/rooms/{roomId}/questions/{questionId}` | `draft` | Delete a question and compact positions |
-| `POST` | `/api/rooms/{roomId}/questions/{questionId}/coverage-generation` | `draft` | Return unpersisted candidate units |
-| `POST` | `/api/rooms/{roomId}/open` | `draft` | Approve current units and open joining |
+## Role projection matrix
 
-### Participant collection
+| Data | Public invite | Participant | Host |
+|---|:---:|:---:|:---:|
+| Title, duration, question count | yes | yes | yes |
+| Question prompts during collection | no | yes | yes |
+| Coverage units | no | no | yes |
+| Material metadata | no | no | yes |
+| Extracted material text | no | no | no API field |
+| Caller answer text | no | yes | not in status/group projections |
+| Other answer text | no | no | no current API field |
+| Lobby roster and progress | no | no | yes |
+| All published groups | no | no | yes |
+| Caller's published group | no | yes | included in all groups |
 
-| Method | Path | Caller/state | Purpose |
-|---|---|---|---|
-| `GET` | `/api/join/{joinCode}` | Anyone, `open` | Return public room title and joinability |
-| `POST` | `/api/join/{joinCode}` | Anyone, `open` | Create participant and grant participant access |
-| `GET` | `/api/rooms/{roomId}/participant` | Participant | Return questions and own answers while open, otherwise current participant state |
-| `PUT` | `/api/rooms/{roomId}/responses/{questionId}` | Participant, `open` | Upsert or delete the caller's answer |
-| `DELETE` | `/api/rooms/{roomId}/participants/{participantId}` | Host, `open` | Remove one participant and their responses |
+## Persistence contract
 
-An empty normalized answer deletes the response row.
+The implemented `RoomRepository` protocol exposes add, read by ID, read by join code, and an aggregate transaction. Its memory adapter stores rooms, questions, attachments, participants, responses, timing, frozen cohorts, and placeholder groups only for the lifetime of one process.
 
-### Status, analysis, and publication
-
-| Method | Path | Caller | Purpose |
-|---|---|---|---|
-| `GET` | `/api/rooms/{roomId}/status` | Host or participant | Compact status and caller-appropriate counts/actions |
-| `POST` | `/api/rooms/{roomId}/analysis` | Host, `open`, `ready`, or `failed` | Atomically start full analysis; freeze inputs when open; return `202` |
-| `POST` | `/api/rooms/{roomId}/optimization` | Host, `ready`, or `failed` with analysis | Switch policy and optimize from saved analysis; return `202` |
-| `GET` | `/api/rooms/{roomId}/groups` | Host, `ready` or `published` | Derive host review diagnostics and raw-answer audit data |
-| `POST` | `/api/rooms/{roomId}/publish` | Host, `ready` | Publish the current grouping |
-| `GET` | `/api/rooms/{roomId}/my-group` | Participant, `published` | Return only the caller's group and derived agenda |
-
-## Response privacy matrix
-
-| Data | Host | Participant before publish | Participant after publish |
-|---|---:|---:|---:|
-| Room title and question prompts | Yes | Yes | Yes |
-| Host reference material | Yes | No | No |
-| Approved coverage units | Yes | No | Own group agenda only |
-| Participant names | Yes | No | Own group only |
-| Raw answers | Yes | Own only | Own only |
-| Analysis families and coverage | Yes | No | Own group agenda only |
-| Full grouping | Yes | No | Own group only |
-| Host diagnostics and errors | Yes | No | No |
-
-Both model calls receive the question, opaque participant IDs, and non-empty answer text, never display names, cookie data, join codes, group constraints, or tentative groups. Only coverage classification receives optional reference material and approved units. Family clustering receives neither coverage input nor coverage output.
+There is no current PostgreSQL schema, migration, JSON artifact table, or restart recovery contract. The planned PostgreSQL adapter must preserve these API and state guarantees before it replaces memory. Database normalization decisions belong to that implementation PR and must account for room-level extracted materials rather than copying the obsolete pre-upload schema.

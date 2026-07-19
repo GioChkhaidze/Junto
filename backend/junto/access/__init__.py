@@ -1,0 +1,2 @@
+"""Room-scoped capability access."""
+

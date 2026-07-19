@@ -106,7 +106,7 @@ p {
 }
 
 :focus-visible {
-  outline: 3px solid color-mix(in oklch, var(--focus) 55%, transparent);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
 }
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from math import ceil, floor
 
-from junto.domain.entities import Group, GroupingResult, Room
+from junto.domain.entities import Group, GroupingResult, GroupSize, Room
 from junto.domain.errors import conflict
 
 
@@ -42,10 +42,10 @@ class DeterministicPlaceholderGroupingService(GroupingService):
         )
 
 
-def balanced_capacities(participant_count: int, bounds: object) -> tuple[int, ...]:
-    minimum = int(getattr(bounds, "minimum"))
-    preferred = int(getattr(bounds, "preferred"))
-    maximum = int(getattr(bounds, "maximum"))
+def balanced_capacities(participant_count: int, bounds: GroupSize) -> tuple[int, ...]:
+    minimum = bounds.minimum
+    preferred = bounds.preferred
+    maximum = bounds.maximum
     if participant_count <= 0:
         raise conflict("EMPTY_COHORT", "At least one participant is required to form groups.")
 
@@ -71,4 +71,3 @@ def balanced_capacities(participant_count: int, bounds: object) -> tuple[int, ..
             "The current participant count cannot satisfy the configured group sizes.",
         )
     return min(candidates, key=lambda item: item[0])[1]
-

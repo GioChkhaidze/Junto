@@ -30,10 +30,13 @@
   display: flex;
   gap: var(--space-8);
   padding-top: var(--space-6);
+  padding-inline-start: 0;
+  margin: 0;
   border-top: 1px solid var(--line);
+  list-style: none;
 }
 
-.process div {
+.process li {
   display: flex;
   flex: 1;
   flex-direction: column;

@@ -19,25 +19,25 @@ export function HomePage() {
     <AppShell wide quietHeader>
       <div className={styles.layout}>
         <section className={styles.introduction} aria-labelledby="home-title">
-          <h1 id="home-title">Better discussions start with what everyone knows.</h1>
+          <h1 id="home-title">A clear path from questions to discussion groups.</h1>
           <p className={styles.lede}>
-            Junto reads the ideas across a room’s responses, then forms groups whose members
-            bring useful knowledge and different approaches to the same table.
+            Junto runs a timed question activity from invitation to group roster. This build uses
+            deterministic placeholder grouping while the response-aware engine is still being implemented.
           </p>
-          <div className={styles.process} aria-label="How Junto works">
-            <div>
-              <strong>Ask</strong>
-              <span>Share a short set of questions with the room.</span>
-            </div>
-            <div>
-              <strong>Understand</strong>
-              <span>Junto maps the ideas present in each response.</span>
-            </div>
-            <div>
-              <strong>Discuss</strong>
-              <span>Everyone receives a group built for the conversation.</span>
-            </div>
-          </div>
+          <ol className={styles.process} aria-label="How Junto works">
+            <li>
+              <strong>Prepare</strong>
+              <span>Write the questions, coverage goals, and shared response time.</span>
+            </li>
+            <li>
+              <strong>Respond</strong>
+              <span>Participants answer one question at a time and submit when finished.</span>
+            </li>
+            <li>
+              <strong>Group</strong>
+              <span>When everyone submits or time ends, Junto releases the room roster.</span>
+            </li>
+          </ol>
         </section>
 
         <section className={styles.entry} aria-labelledby="entry-title">

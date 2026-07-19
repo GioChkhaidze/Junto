@@ -52,7 +52,7 @@ export function ConnectionBanner({ online }: { online: boolean }) {
   return (
     <div className={styles.connectionBanner} role="status">
       <Icon name="warning" size={18} />
-      You’re offline. Your current answer stays in this browser until the connection returns.
+      You’re offline. Reconnect before leaving this question so Junto can save your changes.
     </div>
   );
 }

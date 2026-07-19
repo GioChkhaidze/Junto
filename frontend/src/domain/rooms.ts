@@ -25,25 +25,28 @@ export interface CoverageUnitInput {
   text: string;
 }
 
-export interface GeneratedCoverageUnit {
-  text: string;
-}
-
 export interface HostQuestion {
   id: EntityId;
   position: number;
   prompt: string;
   referenceMaterial: string | null;
   coverageUnits: CoverageUnit[];
-  expectedTimeMinutes?: number | null;
+}
+
+export interface ReferenceAttachment {
+  id: EntityId;
+  fileName: string;
+  mediaType: string;
+  sizeBytes: number;
+  extractedCharacterCount: number;
+  uploadedAt: IsoDateTime;
 }
 
 export interface QuestionMutation {
   position: number;
   prompt: string;
-  referenceMaterial: string | null;
+  referenceMaterial?: string | null;
   coverageUnits: CoverageUnitInput[];
-  expectedTimeMinutes?: number | null;
 }
 
 export interface ParticipantQuestion {
@@ -51,20 +54,20 @@ export interface ParticipantQuestion {
   position: number;
   prompt: string;
   answer: string | null;
-  expectedTimeMinutes?: number | null;
 }
 
 export interface RoomProgress {
   participantCount: number;
+  submittedParticipantCount: number;
+  answeredResponseCount: number;
   submittedResponseCount: number;
   possibleResponseCount: number;
-  submittedParticipantCount?: number;
 }
 
 export interface ParticipantSummary {
   participantId: EntityId;
   displayName: string;
-  submittedAt?: IsoDateTime | null;
+  submittedAt: IsoDateTime | null;
 }
 
 export interface HostRoom extends ActivityTiming {
@@ -75,19 +78,19 @@ export interface HostRoom extends ActivityTiming {
   groupSize: GroupSize;
   status: RoomStatus;
   questions: HostQuestion[];
+  materials: ReferenceAttachment[];
   progress: RoomProgress;
   allowedActions: RoomAction[];
   lastError: string | null;
-  participants?: ParticipantSummary[];
-  analysisPhase?: AnalysisPhase | null;
-  generationMode?: "placeholder";
+  participants: ParticipantSummary[];
+  analysisPhase: AnalysisPhase;
 }
 
 export interface CreateRoomRequest {
   title: string;
   policy: GroupingPolicy;
   groupSize: GroupSize;
-  durationSeconds?: number;
+  durationMinutes: number;
 }
 
 export interface CreateRoomResponse {
@@ -100,27 +103,18 @@ export interface UpdateRoomRequest {
   title?: string;
   policy?: GroupingPolicy;
   groupSize?: GroupSize;
-  durationSeconds?: number;
+  durationMinutes?: number;
 }
 
-export interface CoverageGenerationResponse {
-  coverageUnits: GeneratedCoverageUnit[];
-}
+export type OpenRoomResponse = HostRoom;
 
-export interface OpenRoomResponse extends ActivityTiming {
-  roomId?: EntityId;
-  joinCode?: string;
-  status: RoomStatus;
-}
-
-export interface StartActivityResponse extends ActivityTiming {
-  status: RoomStatus;
-}
+export type StartActivityResponse = HostRoom;
 
 export interface PublicJoinRoom {
   title: string;
-  status: RoomStatus;
-  durationSeconds?: number;
+  status: "lobby";
+  durationMinutes: number;
+  questionCount: number;
 }
 
 export interface JoinRoomRequest {
@@ -137,12 +131,18 @@ export interface ParticipantRoom extends ActivityTiming {
   roomId: EntityId;
   title: string;
   status: RoomStatus;
+  participant: {
+    participantId: EntityId;
+    displayName: string;
+    submittedAt: IsoDateTime | null;
+  };
   questions: ParticipantQuestion[];
+  answeredQuestionCount: number;
+  questionCount: number;
   allowedActions: RoomAction[];
-  submittedAt?: IsoDateTime | null;
-  submitted?: boolean;
-  analysisPhase?: AnalysisPhase | null;
-  generationMode?: "placeholder";
+  submittedAt: IsoDateTime | null;
+  submitted: boolean;
+  analysisPhase: AnalysisPhase;
 }
 
 export interface SaveAnswerRequest {
@@ -154,11 +154,15 @@ export interface SaveAnswerReceipt {
   questionId: EntityId;
   text: string;
   savedAt: IsoDateTime;
+  answeredQuestionCount: number;
 }
 
 export interface SubmitResponsesResponse extends ActivityTiming {
   status: RoomStatus;
-  submittedAt?: IsoDateTime;
+  submittedAt: IsoDateTime;
+  answeredQuestionCount: number;
+  questionCount: number;
+  analysisStarted: boolean;
 }
 
 export interface RoomStatusProjection extends ActivityTiming {
@@ -166,23 +170,21 @@ export interface RoomStatusProjection extends ActivityTiming {
   allowedActions: RoomAction[];
   participantCount?: number;
   submittedResponseCount?: number;
+  answeredResponseCount?: number;
   possibleResponseCount?: number;
   submittedParticipantCount?: number;
   answeredQuestionCount?: number;
   questionCount?: number;
   submittedAt?: IsoDateTime | null;
   submitted?: boolean;
-  analysisPhase?: AnalysisPhase | null;
-  generationMode?: "placeholder";
+  analysisPhase: AnalysisPhase;
 }
 
 export interface StartAnalysisResponse {
   status: "analyzing";
-  phase?: AnalysisPhase;
-  generationMode?: "placeholder";
+  analysisPhase: AnalysisPhase;
 }
 
 export interface ReferenceMaterialUploadResponse {
-  referenceMaterial: string;
-  fileName?: string;
+  material: ReferenceAttachment;
 }

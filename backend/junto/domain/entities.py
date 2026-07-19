@@ -8,7 +8,8 @@ from uuid import UUID
 
 class RoomStatus(StrEnum):
     DRAFT = "draft"
-    OPEN = "open"
+    LOBBY = "lobby"
+    ANSWERING = "answering"
     ANALYZING = "analyzing"
     PUBLISHED = "published"
     FAILED = "failed"
@@ -64,6 +65,7 @@ class Participant:
     id: UUID
     display_name: str
     joined_at: datetime
+    session_nonce: str
     submitted_at: datetime | None = None
 
 
@@ -73,6 +75,14 @@ class Response:
     question_id: UUID
     text: str
     updated_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class AnswerSaveResult:
+    question_id: UUID
+    text: str
+    saved_at: datetime
+    answered_question_count: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,5 +125,4 @@ class Room:
 
     @property
     def activity_started(self) -> bool:
-        return self.started_at is not None
-
+        return self.status not in {RoomStatus.DRAFT, RoomStatus.LOBBY}

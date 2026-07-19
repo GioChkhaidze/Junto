@@ -2,219 +2,166 @@
 
 ## Product definition
 
-Junto is an accountless, room-based system for forming live discussion groups from submitted answers.
+Junto is an accountless, room-based website for forming live discussion groups from submitted answers.
 
-Any person can host a room: a professor running a class activity, a student organizing a study session, or a facilitator collecting ideas. Participants join with a code, answer the room's questions, and receive a group after Junto analyzes the response set.
+Any person can host a room: an instructor running a class activity, a student organizing a study session, or a facilitator collecting ideas. A participant joins with a code and room-scoped display name, completes a timed questionnaire, and receives a group.
 
-Junto's core promise is:
+The intended product promise is:
 
-> Form valid groups that collectively contain the strongest feasible coverage of every question's host-approved ideas.
+> Form valid groups with the strongest feasible coverage of every question's host-approved ideas and productive perspectives.
 
-When complete coverage is proven feasible, every group receives it. When complete coverage is impossible or cannot be proven within the solve limit, Junto returns the strongest valid assignment found and identifies missing units without claiming completeness.
-
-Junto optimizes group composition. It does not claim that a discussion occurred successfully or that learning was achieved.
+The current first slice proves the complete room workflow, access model, timing, answer collection, and group delivery. Its grouping is a deterministic capacity-valid placeholder. It does not yet interpret answers or fulfill the coverage promise.
 
 ## Problem
 
-Open-ended answers contain information that random grouping ignores. One participant may supply a definition, another a reasoning step, another a piece of evidence, and another a different approach or position. A useful discussion group should collectively contain as much of that question-relevant material as possible.
+Random grouping ignores what participants actually know or argue. One answer may supply a definition, another a reasoning step, another evidence, and another a competing position. A useful discussion group should collectively contain as much question-relevant material as possible while respecting group size.
 
-A host can perform this grouping manually, but reading a full response set while satisfying group-size constraints is too slow during a live activity.
+Manually reading a complete response set and satisfying those constraints is slow during a live activity. Junto is designed to make that composition step fast, explicit, and auditable.
 
-Junto separates the work:
-
-1. a language model independently classifies per-answer coverage and clusters answers into response families;
-2. a deterministic optimizer partitions participants from that artifact.
-
-The model interprets text. The optimizer enforces group size, coverage, and policy objectives.
-
-## Actors
+## Roles and access
 
 ### Host
 
-The person who creates one room. The host can:
+Host is a capability for one room, not a permanent account type. The person who creates a room can:
 
-- edit questions, reference material, coverage units, policy, and group-size bounds while the room is a draft;
-- open the room and share its join code;
-- see participation and submission progress and remove an unwanted participant while open;
-- freeze responses and start analysis;
-- review diagnostics, switch policy without additional model calls, and publish one grouping.
-
-Host is a room-scoped capability, not a permanent user role.
+- prepare its material, timing, questions, coverage units, policy, and group-size bounds;
+- open an invite lobby and share its code or URL;
+- see the lobby roster and remove accidental participants before the activity starts;
+- start the shared timer, monitor progress, and finish collection early;
+- see every published group and every member.
 
 ### Participant
 
-A person who joins one room with a display name. A participant can:
+A participant exists only inside one room. They can:
 
-- submit and edit their own answers while the room is open;
-- wait for analysis and publication;
+- join an available lobby with a display name;
+- retrieve and edit only their own answers while collection is active;
+- submit once and wait for the result;
 - retrieve only the published group containing their participant ID.
 
-A participant has no global profile or cross-room identity.
+There are no profiles, passwords, email addresses, OAuth providers, teacher accounts, or cross-room participant identities.
 
-Junto is accountless and pseudonymous, not fully anonymous: it stores room-local display names and answers, and answer text is processed through the OpenAI API. Participants must see that disclosure before joining and should not submit sensitive personal information.
+## Coverage units
 
-## Core concepts
+Coverage units are the concepts, reasoning steps, evidence, arguments, objections, perspectives, or other elements that should be represented inside each group.
 
-### Coverage units
+Examples differ by subject:
 
-Coverage units are small, host-approved elements that matter to a question's intended discussion. They may represent:
+- math or programming: state definition, recurrence, base case, or complexity;
+- philosophy: position, supporting argument, objection, counterargument, or implication;
+- history: evidence, interpretation, competing explanation, or limitation;
+- design: user need, approach, tradeoff, or risk.
 
-- concepts or reasoning steps;
-- evidence or interpretations;
-- arguments, objections, or implications;
-- perspectives or competing explanations;
-- design needs, mechanisms, tradeoffs, or risks.
+For an objectively graded question, a host can encode correctness in the units. For an open-ended question, units describe relevant conceptual or argumentative coverage without requiring one conclusion.
 
-For correctness-sensitive questions, a unit may encode an objectively valid fact, formula, or reasoning step. For open-ended questions, units represent relevant coverage without prescribing one correct conclusion.
+Every question must have at least one host-approved coverage unit before the room can enter the lobby. The current placeholder stores and validates these units but does not classify answers against them. That classification belongs to the future semantic engine.
 
-Coverage units are generated from the question and optional reference material, then edited or accepted by the host. Opening the room is the final approval boundary.
+## Reference material
 
-Reference material is host-only semantic context and may contain a rubric or answer key. Anything participants need to read belongs in the question prompt.
+Reference material is optional, room-level context for authoring and future semantic analysis. The authoring flow accepts UTF-8 text, Markdown, PDF, and DOCX files and extracts readable text on the server. Upload metadata is visible to the host; participants receive only question prompts.
 
-### Response families
+Material participants need in order to answer should therefore be written into the prompt. Uploaded material should not contain secrets or sensitive personal data.
 
-A response family is a question-local label for a primary method, reasoning pattern, or position. Families capture approach diversity independently of coverage.
-
-Two responses may share a family while covering different units. Two responses may cover the same units through different families.
-
-A family itself has no coverage units. Coverage is attached only to an individual answer and must never be copied from, averaged across, or inferred from family membership. A null-family answer may still cover units.
-
-Every positive coverage judgment must cite exact supporting text from that answer for server validation. This makes the judgment auditable, but a matching quote alone does not prove that the model interpreted the answer correctly.
-
-### Grouping policies
-
-Both policies optimize coverage first.
-
-**Teach Each Other** favors groups whose available units can be represented across more members without overloading one contributor.
-
-**Explore Different Approaches** favors groups containing more distinct non-null response families after coverage is fixed.
-
-The host selects one policy. Switching policy reuses the stored semantic artifact and replaces only the grouping result.
-
-## Primary workflow
+## First-slice workflow
 
 ```text
-draft
-  Create room
-  Add questions and optional reference material
-  Generate, edit, and approve coverage units
-      │
-      ▼
-open
-  Share join code
-  Participants join and answer
-      │
-      ▼
-analyzing
-  Freeze joins and responses
-  Classify coverage and cluster families independently
-  Optimize the selected policy
-      │
-      ▼
-ready
-  Review groups and diagnostics
-  Optionally switch policy
-      │
-      ▼
-published
-  Participants receive their discussion groups
+draft -> lobby -> answering -> analyzing -> published
+                                      \-> failed
 ```
 
-Failure during analysis moves the room to `failed`, from which the host may retry.
+### 1. Author
 
-## Required experience
+The host completes a focused sequence:
 
-### Host experience
+1. optionally upload room reference material;
+2. set the room title, shared duration, policy, and group-size bounds;
+3. write one to eight questions and one to eight coverage units for each;
+4. review the activity and create its invite.
 
-1. Create a room without registration.
-2. Configure title, policy, and group sizes.
-3. Add questions and optional reference material.
-4. Generate and edit coverage units.
-5. Open the room and share a join code or QR code.
-6. Watch participant and response counts update.
-7. Remove an accidental or unwanted participant before analysis if needed.
-8. Generate groups.
-9. Review group membership, coverage, missing units, carriers, families, and original answers.
-10. Switch policy without recompiling responses if desired.
-11. Publish.
+Draft authoring is the only editable configuration state.
 
-### Participant experience
+### 2. Gather
 
-1. Join with a code and room-scoped display name.
-2. Submit answers from a responsive web page.
-3. Wait while the host analyzes and reviews.
-4. Receive group members, a per-question coverage checklist, unit carriers, represented approaches, and any missing-unit warning.
+Opening the room creates the invite lobby. Participants follow the URL or enter the join code, provide a display name, and wait. The host sees the roster.
 
-## MVP operating envelope
+Starting the activity freezes that exact participant cohort. New participants cannot join and existing members cannot be removed afterward. Start is rejected if the cohort cannot be divided within the configured group-size bounds.
 
-| Limit | Default |
+### 3. Answer
+
+The server records one shared start time and deadline. Each participant sees one question per page, with Previous and Next controls and a numbered question navigator showing answered state.
+
+Moving between questions saves the current response before navigation. The final page summarizes completion and requires an explicit final submission. Blank text removes the stored response; unanswered questions are allowed.
+
+After final submission, that participant's answers are immutable. Collection closes when every frozen participant submits, the server deadline expires, or the host ends it early.
+
+### 4. Form and release groups
+
+The room enters `analyzing`, then the current placeholder divides the frozen cohort into balanced groups near the preferred size while respecting minimum and maximum size. It uses stable join order, not answer content.
+
+Groups are released automatically. The host room shows all groups and members. A participant room shows only that participant's group.
+
+The interface must not call this placeholder output semantic, coverage-aware, AI-generated, optimized, optimal, or evidence that learning improved.
+
+## Current operating limits
+
+| Input | Limit |
 |---|---:|
-| Questions per room | 1–8 |
-| Participants per room | 4–60 |
+| Questions per room | 1-8 |
+| Coverage units per question | 1-8 before opening |
+| Participants per room | 60 |
 | Answer length | 1,500 characters |
-| Coverage units per question | 1–8 |
-| Group size | 2–8 |
-| Main demo | 5 questions, 24 participants |
+| Display name | 80 characters |
+| Room title | 120 characters |
+| Activity duration | 1-180 minutes |
+| Group size bounds | 2-8 |
+| Uploaded files per room | 8 |
+| Uploaded file size | 5 MiB each |
+| Extracted text | 100,000 characters per file |
 
-These limits are configurable safety boundaries, not permanent product claims.
+Supported file extensions are `.txt`, `.md`, `.pdf`, and `.docx`. Text files must be UTF-8. Legacy `.doc`, RTF, image-only documents, unreadable files, and unsupported types are rejected.
 
-## Product guarantees
+## Current guarantees
 
-Given a validated semantic artifact, Junto guarantees:
+Within one running FastAPI process, the first slice guarantees:
 
-- every participant appears in exactly one group;
-- every group satisfies its fixed capacity;
-- complete coverage is enforced when a solver witness proves it feasible;
-- missing coverage is reported rather than silently generated;
-- policy objectives run only after the achieved higher-priority coverage values are fixed;
-- a time-limited result is described as the best assignment found within the solve limit, not as proven optimal;
-- published diagnostics are derived from the stored partition and semantic artifact.
+- one room follows only the documented state transitions;
+- the participant roster is frozen exactly once when the activity starts;
+- the server owns start time, deadline, remaining time, and allowed actions;
+- a submitted participant cannot change answers;
+- no response is accepted after collection closes;
+- every published participant appears in exactly one group;
+- every placeholder group respects the configured minimum and maximum size;
+- no partial groups are visible before `published`;
+- host and participant projections enforce room-scoped access;
+- a participant cannot enumerate other groups or retrieve other participants' answers;
+- reference files are parsed as real content rather than represented by cosmetic upload records.
 
-Junto does not guarantee:
+The first slice does not guarantee durability across a process restart, semantic correctness, coverage quality, policy-specific grouping, optimality, teaching ability, participation quality, or improved learning outcomes.
 
-- that every model judgment is semantically correct;
-- that a participant can teach every unit detected in their response;
-- that group members will participate effectively;
-- that learning outcomes will improve.
+## Future semantic and optimization engine
 
-## MVP boundaries
+The planned engine will replace only the grouping seam:
 
-Included:
+1. the OpenAI API will classify each answer's covered unit IDs and independently cluster question-local response families;
+2. server validation will reject malformed or unsupported judgments;
+3. OR-Tools CP-SAT will form capacity-valid groups, prioritizing coverage before policy-specific objectives.
 
-- accountless room creation and joining;
-- question authoring and optional reference material;
-- coverage-unit generation and host approval;
-- answer collection;
-- independent per-answer coverage classification and response-family clustering;
-- both grouping policies;
-- host review and publication;
-- participant discussion agenda;
-- two subject fixtures and one deployed demo.
+Coverage will remain attached only to individual answers. A response family will represent a primary approach or position and will never own, grant, or imply coverage units. The model will interpret text but will never directly choose groups.
 
-Deferred:
+That engine is specified in [engine.md](engine.md) and deliberately not implemented in this slice.
 
-- permanent accounts and cross-device room recovery;
-- reusable question libraries;
-- Canvas, Kahoot, or institutional integrations;
-- durable queues and separate workers;
-- realtime presence, chat, or collaborative editing;
-- cross-room analytics and normalized semantic tables;
-- versioned analysis runs;
-- custom model training or vector databases;
-- post-discussion assessment.
+## First-slice acceptance
 
-## Product acceptance
+The prototype slice is accepted when:
 
-The MVP is complete when:
+- a fresh browser can create and host a room without registration;
+- three or more browser sessions can complete the lobby, timed questionnaire, submission, waiting, and group-result flow;
+- desktop and narrow-screen layouts preserve the one-question-per-page interaction;
+- navigation waits for a save result and exposes save failure honestly;
+- the deadline and all-submitted paths each start grouping once;
+- infeasible group sizes prevent activity start with a clear error;
+- host-only, participant-only, cross-room, CSRF, validation, and post-submit mutations are rejected;
+- automated backend tests, frontend tests, type checking, and production build pass;
+- documentation and UI label the grouping result as a placeholder wherever technical provenance is shown.
 
-- any person can complete the host flow without an account;
-- participants can join and answer without accounts;
-- room-scoped access prevents cross-room and cross-participant data access;
-- host-approved coverage units compile into validated per-response coverage, independently of validated response families;
-- group-size constraints are never violated;
-- full coverage is enforced whenever a witness proves it feasible;
-- partial coverage and unknown feasibility are represented honestly;
-- policy switching reuses semantic analysis;
-- host and participant screens derive consistent diagnostics;
-- the five-question, twenty-four-participant fixture completes within the configured analysis budget;
-- the same contracts work for dynamic-programming and philosophy fixtures.
+OpenAI quality evaluation, OR-Tools invariants, PostgreSQL durability, deployment hardening, and evidence for improved learning are later acceptance gates, not hidden requirements of this first slice.

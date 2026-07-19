@@ -1,5 +1,4 @@
 import type {
-  CoverageGenerationResponse,
   CreateRoomRequest,
   CreateRoomResponse,
   EntityId,
@@ -82,16 +81,6 @@ export function deleteQuestion(
   );
 }
 
-export function generateCoverageUnits(
-  roomId: EntityId,
-  questionId: EntityId,
-): Promise<CoverageGenerationResponse> {
-  return apiRequest<CoverageGenerationResponse>(
-    `${roomPath(roomId)}/questions/${pathSegment(questionId)}/coverage-generation`,
-    { method: "POST" },
-  );
-}
-
 export function uploadReferenceMaterial(
   roomId: EntityId,
   file: File,
@@ -99,8 +88,18 @@ export function uploadReferenceMaterial(
   const formData = new FormData();
   formData.set("file", file);
   return apiRequest<ReferenceMaterialUploadResponse>(
-    `${roomPath(roomId)}/reference-material`,
+    `${roomPath(roomId)}/materials`,
     { method: "POST", formData },
+  );
+}
+
+export function deleteReferenceMaterial(
+  roomId: EntityId,
+  materialId: EntityId,
+): Promise<void> {
+  return apiRequest<void>(
+    `${roomPath(roomId)}/materials/${pathSegment(materialId)}`,
+    { method: "DELETE" },
   );
 }
 
@@ -189,10 +188,6 @@ export function getGroups(
   signal?: AbortSignal,
 ): Promise<HostGroupsResponse> {
   return apiRequest<HostGroupsResponse>(`${roomPath(roomId)}/groups`, { signal });
-}
-
-export function publishGroups(roomId: EntityId): Promise<void> {
-  return apiRequest<void>(`${roomPath(roomId)}/publish`, { method: "POST" });
 }
 
 export function getMyGroup(

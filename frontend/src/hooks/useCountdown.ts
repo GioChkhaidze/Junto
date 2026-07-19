@@ -1,11 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 
-export function useCountdown(deadline?: string | null): number | null {
+export function useCountdown(
+  deadline?: string | null,
+  serverTime?: string | null,
+  remainingSeconds?: number | null,
+): number | null {
   const deadlineMs = useMemo(() => {
+    if (typeof remainingSeconds === "number" && Number.isFinite(remainingSeconds)) {
+      return Date.now() + Math.max(0, remainingSeconds) * 1000;
+    }
     if (!deadline) return null;
     const parsed = Date.parse(deadline);
-    return Number.isFinite(parsed) ? parsed : null;
-  }, [deadline]);
+    if (!Number.isFinite(parsed)) return null;
+    if (serverTime) {
+      const serverNow = Date.parse(serverTime);
+      if (Number.isFinite(serverNow)) return Date.now() + Math.max(0, parsed - serverNow);
+    }
+    return parsed;
+  }, [deadline, remainingSeconds, serverTime]);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {

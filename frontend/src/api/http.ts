@@ -144,17 +144,18 @@ async function fetchSession(): Promise<SessionDto> {
 }
 
 export function getSession(options: { refresh?: boolean } = {}): Promise<SessionDto> {
-  if (options.refresh || sessionPromise === undefined) {
-    const pendingSession = fetchSession();
-    sessionPromise = pendingSession;
-    void pendingSession.catch(() => {
-      if (sessionPromise === pendingSession) {
-        sessionPromise = undefined;
-      }
-    });
+  if (!options.refresh && sessionPromise !== undefined) {
+    return sessionPromise;
   }
 
-  return sessionPromise;
+  const pendingSession = fetchSession();
+  sessionPromise = pendingSession;
+  void pendingSession.catch(() => {
+    if (sessionPromise === pendingSession) {
+      sessionPromise = undefined;
+    }
+  });
+  return pendingSession;
 }
 
 export function invalidateSession(): void {

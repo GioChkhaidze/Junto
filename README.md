@@ -1,79 +1,107 @@
 # Junto
 
-Junto is an accountless, room-based web application that forms live discussion groups from submitted answers.
+Junto is an accountless, room-based website for turning individual answers into live discussion groups.
 
-Its core promise is:
+The product goal is to form valid groups with the strongest feasible coverage of each question's host-approved ideas. The current repository implements the complete room experience and a clearly labelled deterministic grouping placeholder. It does **not** yet analyze answer meaning or optimize coverage.
 
-> Form valid groups that collectively contain the strongest feasible coverage of every question's host-approved ideas.
+## Current status
 
-Within a bounded solve, Junto distinguishes proven full coverage from infeasible or still-unknown cases and labels time-limited output as the best valid assignment found—not as a proof of optimality.
+The first end-to-end slice is implemented:
 
-A language model independently classifies per-answer coverage and clusters response families. The server validates and merges those results; a deterministic CP-SAT optimizer then forms capacity-valid groups, prioritizing coverage before the selected grouping policy.
+- a host creates a timed room, optionally uploads reference material, writes questions, and defines coverage units;
+- participants join with a code and room-scoped display name;
+- starting the activity freezes the participant roster and starts one server-owned deadline;
+- participants answer one question at a time, autosave between questions, review, and submit once;
+- all submissions, the deadline, or an early host finish starts the analysis transition;
+- a deterministic placeholder forms balanced, capacity-valid groups and releases them automatically;
+- the host can see every group, while each participant can retrieve only their own.
 
-## Status
+This is a development prototype, not a production deployment. Rooms, uploaded material, answers, and groups live in an in-memory repository and are lost whenever the FastAPI process restarts.
 
-The product and engineering contracts are ready for implementation. Application code has not been scaffolded yet.
-
-## Planned stack
+## Runtime
 
 ```text
 React + TypeScript + Vite + Tailwind
-                  │
-                  ▼
-                FastAPI
-        ├── PostgreSQL
-        ├── OpenAI Responses API
-        └── OR-Tools CP-SAT
+                 |
+                 v
+              FastAPI
+       + signed room sessions
+       + Pydantic API schemas
+       + reference text extraction
+       + in-memory repository
+       + deterministic grouping seam
 ```
 
-Vite is a build-time tool. FastAPI serves the compiled frontend and JSON API from one application container. PostgreSQL is the only persistent service.
+Vite serves the frontend during development and proxies `/api` to FastAPI. A production-style build can be served by FastAPI from `frontend/dist`.
+
+Planned next adapters are PostgreSQL for durable storage, the OpenAI API for semantic compilation, and OR-Tools CP-SAT for coverage-first grouping. None is wired into the current slice.
+
+## Run locally
+
+Use Python 3.12 or newer and Node.js 20.19 or newer.
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.lock
+.\.venv\Scripts\python.exe -m uvicorn junto.main:app --reload --port 8000
+```
+
+In another terminal:
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+Open `http://localhost:5173`.
+
+Local development generates a fresh process-local signing secret automatically. For any HTTPS
+deployment, set `JUNTO_ENV=production` and provide a random `JUNTO_SESSION_SECRET` of at least 32
+characters; startup fails rather than using a public fallback. See [.env.example](.env.example).
+
+## Verify
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m pytest
+.\.venv\Scripts\python.exe -m ruff check junto tests
+.\.venv\Scripts\python.exe -m mypy junto
+```
+
+```powershell
+cd frontend
+npm run typecheck
+npm test
+npm run build
+```
+
+After `npm run build`, FastAPI detects and serves `frontend/dist` when the API starts from this repository.
 
 ## Documentation
 
 | Document | Purpose |
 |---|---|
-| [Product contract](docs/product.md) | Problem, promise, workflow, policies, scope, and acceptance criteria |
-| [Architecture](docs/architecture.md) | Runtime, component boundaries, access model, background work, deployment, and repository shape |
-| [Application contracts](docs/contracts.md) | Terminology, room states, database schema, stored JSON, browser routes, and API surface |
-| [Semantic and optimization engine](docs/engine.md) | Evidence-grounded coverage classification, independent family clustering, validation, feasibility, and policy objectives |
-| [Implementation and PR plan](docs/implementation-plan.md) | Ordered pull requests, dependencies, gates, tests, and demo checkpoints |
+| [Product contract](docs/product.md) | Current experience, concepts, guarantees, boundaries, and target outcome |
+| [Architecture](docs/architecture.md) | Implemented layers, runtime paths, replaceable seams, access, and persistence status |
+| [Application contracts](docs/contracts.md) | State machine, validation, API surface, projections, privacy, and placeholder guarantees |
+| [Semantic and optimization engine](docs/engine.md) | Future OpenAI and OR-Tools engine specification; not implemented yet |
+| [Implementation plan](docs/implementation-plan.md) | Current checkpoint and PR-sized path from prototype to the intended engine |
+| [Design system](DESIGN.md) | Visual and interaction source of truth |
 
-These files are canonical. Earlier exploratory proposals are retained under `docs/archive/` only for history and must not be used as implementation specifications.
+Earlier proposals under `docs/archive/` are historical context, not implementation specifications.
 
-## Product loop
+## Product principles
 
-```text
-Create room
-Add questions and optional reference material
-Generate and approve coverage units
-Open room
-Collect answers
-Analyze responses
-Optimize the selected policy
-Review and publish groups
-Discuss
-```
-
-## Non-negotiable decisions
-
-- Rooms are accountless and capability-scoped; there are no user profiles or institutional roles.
-- Coverage units are subject-agnostic and host-approved.
-- Coverage belongs to individual answers; response families never own or imply coverage units.
-- Coverage classification and family clustering are independent model calls joined only by opaque participant ID.
-- Coverage is optimized before response-family diversity or contributor distribution.
-- The model interprets text but never forms groups.
-- The optimizer receives only validated, discrete artifacts.
-- Only the selected grouping result is stored; switching policy reuses semantic analysis.
-- PostgreSQL contains four relational tables and room-local JSON artifacts.
-- Clients use ordinary HTTP and short polling; Junto has no realtime collaboration protocol.
-- Analysis is an intentionally non-durable in-process task for the hackathon build.
+- A host is an action within a room, not a permanent user role.
+- Access is accountless and room-scoped; there are no profiles, OAuth flows, or institutional identities.
+- Coverage units are subject-agnostic: concepts, steps, evidence, arguments, objections, perspectives, tradeoffs, or risks.
+- Coverage belongs to an individual answer. A future response family will never own or imply coverage.
+- The timer and allowed room actions come from the server.
+- Ordinary HTTP and short polling are sufficient; the product has no realtime collaboration protocol.
+- Placeholder output must never be presented as semantic, AI-generated, optimized, or evidence of learning.
 
 ## Visual direction
 
-[DESIGN.md](DESIGN.md) is the visual source of truth. Junto uses a white-first academic workspace, restrained green actions and state, conventional form controls, ruled rosters, and one quiet sans-serif family. It explicitly excludes chips, tag clouds, gradients, glass effects, decorative card grids, oversized marketing copy, and AI-branded interface language.
-
-The exploratory PNGs under `assets/mockups/` predate this direction and are retained only as historical artifacts. Do not implement their coral/purple palette, avatar chips, nested rounded cards, or decorative icon treatment.
-
-## Next step
-
-Begin with [PR 1 in the implementation plan](docs/implementation-plan.md#pr-1--application-foundation), then merge in dependency order. Every PR has a runnable acceptance gate; no PR should rely on an unimplemented future layer to demonstrate its own behavior.
+[DESIGN.md](DESIGN.md) defines Junto's white-first academic workspace, restrained green state and action color, conventional controls, ruled rosters, and quiet typography. Chips, tag clouds, gradients, glass effects, decorative card grids, oversized marketing copy, and AI-branded interface language are outside the design system.
