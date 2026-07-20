@@ -130,7 +130,7 @@ export function ParticipantRoomPage() {
       }
     },
     {
-      enabled: Boolean(room && room.status !== "published" && room.status !== "failed"),
+      enabled: Boolean(room && room.status !== "failed" && (room.status !== "published" || group === null)),
       intervalMs: room?.status === "analyzing" ? 1400 : 2000,
     },
   );
@@ -547,15 +547,13 @@ function ParticipantGroupView({ result, error }: { result: MyGroupResponse | nul
       <div className={styles.groupPage}>
         <header className={styles.groupHeader}>
           <div>
-            <p>Your discussion group</p>
             <h1>Meet your group</h1>
-            <span>Work through the agenda in order. The names beside each idea show who can help introduce it.</span>
           </div>
           <div className={styles.groupNumber}>Group {result.group.id.replace(/^g/i, "") || result.group.id}</div>
         </header>
 
         <section className={styles.membersSection} aria-labelledby="members-title">
-          <h2 id="members-title">Group members</h2>
+          <h2 id="members-title">Group members:</h2>
           <ul>
             {result.group.members.map((member) => (
               <li key={member.participantId}>
@@ -568,44 +566,47 @@ function ParticipantGroupView({ result, error }: { result: MyGroupResponse | nul
         <section className={styles.agenda} aria-labelledby="agenda-title">
           <div className={styles.agendaHeading}>
             <h2 id="agenda-title">Discussion agenda</h2>
-            <p>Coverage describes what appeared in submitted answers; it is not a grade.</p>
           </div>
           {result.group.questions.map((question) => (
-            <section key={question.questionId} aria-labelledby={`agenda-${question.questionId}`}>
-              <div className={styles.agendaQuestionHeading}>
-                <span>Question {question.position + 1}</span>
-                <h3 id={`agenda-${question.questionId}`}>{question.prompt}</h3>
-              </div>
-              <ol className={styles.agendaUnits}>
-                {question.units.map((unit) => (
-                  <li key={unit.id} data-covered={unit.covered}>
-                    <span aria-hidden="true">{unit.covered ? "✓" : "—"}</span>
-                    <div>
-                      <strong>{unit.text}</strong>
-                      <p>
-                        {unit.carriers.length
-                          ? `Ask ${unit.carriers.map((carrier) => carrier.displayName).join(" or ")} ` +
-                            "to introduce this idea."
-                          : "No submitted answer clearly covered this idea. Work it out together."}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-              {question.representedFamilies.length > 1 ? (
-                <div className={styles.agendaFamilies}>
-                  <h4>Approaches to compare</h4>
-                  <dl>
-                    {question.representedFamilies.map((family) => (
-                      <div key={family.id}>
-                        <dt>{family.label}</dt>
-                        <dd>{family.members.map((member) => member.displayName).join(", ")}</dd>
+            <details key={question.questionId} className={styles.agendaQuestionDisclosure}>
+              <summary className={styles.agendaQuestionRow}>
+                <span>
+                  <strong>Question {question.position + 1}:</strong> {question.prompt}
+                </span>
+                <small>{question.units.length} ideas</small>
+              </summary>
+              <div className={styles.agendaQuestionDetail}>
+                <ol className={styles.agendaUnits}>
+                  {question.units.map((unit) => (
+                    <li key={unit.id} data-covered={unit.covered}>
+                      <span aria-hidden="true">{unit.covered ? "✓" : "—"}</span>
+                      <div>
+                        <strong>{unit.text}</strong>
+                        <p>
+                          {unit.carriers.length
+                            ? `Ask ${unit.carriers.map((carrier) => carrier.displayName).join(" or ")} ` +
+                              "to introduce this idea."
+                            : "No submitted answer clearly covered this idea. Work it out together."}
+                        </p>
                       </div>
-                    ))}
-                  </dl>
-                </div>
-              ) : null}
-            </section>
+                    </li>
+                  ))}
+                </ol>
+                {question.representedFamilies.length > 1 ? (
+                  <div className={styles.agendaFamilies}>
+                    <h4>Approaches to compare</h4>
+                    <dl>
+                      {question.representedFamilies.map((family) => (
+                        <div key={family.id}>
+                          <dt>{family.label}</dt>
+                          <dd>{family.members.map((member) => member.displayName).join(", ")}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                ) : null}
+              </div>
+            </details>
           ))}
         </section>
       </div>
@@ -616,15 +617,13 @@ function ParticipantGroupView({ result, error }: { result: MyGroupResponse | nul
     <div className={styles.groupPage}>
       <header className={styles.groupHeader}>
         <div>
-          <p>Your discussion group</p>
           <h1>Meet your group</h1>
-          <span>Bring your response into the conversation and compare how each person approached the questions.</span>
         </div>
         <div className={styles.groupNumber}>Group {result.group.id.replace(/^g/i, "") || result.group.id}</div>
       </header>
 
       <section className={styles.membersSection} aria-labelledby="members-title">
-        <h2 id="members-title">Group members</h2>
+        <h2 id="members-title">Group members:</h2>
         <ul>
           {result.group.members.map((member) => (
             <li key={member.participantId}>
@@ -634,9 +633,8 @@ function ParticipantGroupView({ result, error }: { result: MyGroupResponse | nul
         </ul>
       </section>
 
-      <InlineNotice tone="info" title="Start the discussion">
-        Introduce yourselves, then take each question in order. Ask what evidence or reasoning led each person to their
-        answer.
+      <InlineNotice tone="info" title="Start">
+        Take each question in order and compare your reasoning.
       </InlineNotice>
     </div>
   );

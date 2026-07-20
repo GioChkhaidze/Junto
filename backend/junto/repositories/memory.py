@@ -61,30 +61,6 @@ class InMemoryRoomRepository:
       self._join_codes.pop(room.join_code, None)
       return True
 
-  def delete_expired(self, *, before: datetime, answering_before: datetime) -> int:
-    with self._lock:
-      expired = [
-        room_id
-        for room_id, room in self._rooms.items()
-        if room.updated_at < before
-        and (
-          room.status
-          in {
-            RoomStatus.DRAFT,
-            RoomStatus.LOBBY,
-            RoomStatus.PUBLISHED,
-            RoomStatus.FAILED,
-          }
-          or (
-            room.status == RoomStatus.ANSWERING and room.deadline_at is not None and room.deadline_at < answering_before
-          )
-        )
-      ]
-      for room_id in expired:
-        room = self._rooms.pop(room_id)
-        self._join_codes.pop(room.join_code, None)
-      return len(expired)
-
   def recover_stale_analyses(self, *, before: datetime, failed_at: datetime) -> int:
     recovered = 0
     with self._lock:

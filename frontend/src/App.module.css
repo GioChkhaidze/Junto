@@ -1,0 +1,9 @@
+.hostLoadingPanel {
+  max-width: 76rem;
+  min-height: 24rem;
+  padding: clamp(var(--space-6), 4vw, var(--space-12));
+  margin-inline: auto;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+}

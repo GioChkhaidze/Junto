@@ -21,6 +21,7 @@ from junto.access.sessions import (
   room_grants,
 )
 from junto.api.presenters import (
+  activity_summary_view,
   groups_view,
   host_room_view,
   host_status_view,
@@ -31,6 +32,7 @@ from junto.api.presenters import (
   question_view,
 )
 from junto.api.schemas import (
+  ActivityHistoryView,
   AnalysisAccepted,
   AnswerReceipt,
   AnswerWrite,
@@ -50,12 +52,14 @@ from junto.api.schemas import (
   QuestionView,
   RoomCreate,
   RoomCreated,
+  RoomDelete,
   RoomPatch,
   SessionView,
   StatusView,
   SubmissionView,
   SyntheticClassroomView,
   SyntheticCohortWrite,
+  SyntheticGenerationView,
   SyntheticResponsesResultView,
   SyntheticResponsesWrite,
 )
@@ -103,6 +107,22 @@ def build_router(
       csrfToken=csrf,
       hostRoomIds=hosts,
       participantRoomIds=participants,
+    )
+
+  @router.get("/activities", response_model=ActivityHistoryView)
+  def activity_history(request: Request) -> ActivityHistoryView:
+    host_room_ids, _ = room_grants(request)
+    service.run_maintenance()
+    rooms = []
+    for room_id in host_room_ids:
+      try:
+        rooms.append(service.get_room(room_id))
+      except DomainError as error:
+        if error.status_code != 404:
+          raise
+    rooms.sort(key=lambda room: (room.created_at, str(room.id)), reverse=True)
+    return ActivityHistoryView(
+      activities=[activity_summary_view(room) for room in rooms],
     )
 
   @router.post(
@@ -294,9 +314,9 @@ def build_router(
     status_code=status.HTTP_204_NO_CONTENT,
     dependencies=[Depends(require_csrf)],
   )
-  def delete_room(room_id: UUID, request: Request) -> Response:
+  def delete_room(room_id: UUID, payload: RoomDelete, request: Request) -> Response:
     require_host(request, room_id)
-    service.delete_room(room_id)
+    service.delete_room(room_id, confirmation_code=payload.confirmationCode)
     revoke_room_grant(request, room_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -540,6 +560,7 @@ def build_router(
   )
   def analyze(room_id: UUID, request: Request) -> AnalysisAccepted:
     require_host(request, room_id)
+    synthetic_classroom.require_analysis_ready(room_id)
     room = service.start_analysis(room_id)
     return AnalysisAccepted(status=room.status, analysisPhase=room.analysis_phase)
 
@@ -578,6 +599,7 @@ def to_group_size(value: GroupSizeDto) -> GroupSize:
 def _synthetic_classroom_view(
   projection: SyntheticClassroomProjection,
 ) -> SyntheticClassroomView:
+  generation = projection.generation
   return SyntheticClassroomView(
     enabled=projection.enabled,
     stage=projection.stage,
@@ -588,6 +610,22 @@ def _synthetic_classroom_view(
     canGenerate=projection.can_generate,
     patternedAvailable=projection.patterned_available,
     openRouterAvailable=projection.openrouter_available,
+    syntheticParticipantIds=list(projection.synthetic_participant_ids),
+    pendingSyntheticParticipantIds=list(projection.pending_synthetic_participant_ids),
+    generation=(
+      SyntheticGenerationView(
+        status=generation.status,
+        source=generation.source,
+        requestedParticipantCount=generation.requested_participant_count,
+        completedParticipantCount=generation.completed_participant_count,
+        failedParticipantCount=generation.failed_participant_count,
+        startedAt=generation.started_at,
+        finishedAt=generation.finished_at,
+        error=generation.error,
+      )
+      if generation is not None
+      else None
+    ),
   )
 
 

@@ -1,4 +1,5 @@
 import type {
+  ActivityHistory,
   AuthoringSuggestionRequest,
   AuthoringSuggestionResponse,
   ConfigureSyntheticCohortRequest,
@@ -40,6 +41,15 @@ export function suggestAuthoring(input: AuthoringSuggestionRequest, file?: File)
   formData.set("payload", JSON.stringify(input));
   if (file) formData.set("file", file);
   return apiRequest<AuthoringSuggestionResponse>("/api/authoring/suggestions", { method: "POST", formData });
+}
+
+export function getActivities(signal?: AbortSignal): Promise<ActivityHistory> {
+  return apiRequest<ActivityHistory>("/api/activities", { signal });
+}
+
+export async function deleteRoom(roomId: EntityId, confirmationCode: string): Promise<void> {
+  await apiRequest<void>(roomPath(roomId), { method: "DELETE", body: { confirmationCode } });
+  invalidateSession();
 }
 
 export async function createRoom(input: CreateRoomRequest): Promise<CreateRoomResponse> {
@@ -159,6 +169,7 @@ export function generateSyntheticResponses(
   return apiRequest<GenerateSyntheticResponsesResponse>(`${developmentRoomPath(roomId)}/synthetic-responses`, {
     method: "POST",
     body: input,
+    signal: AbortSignal.timeout(125_000),
   });
 }
 

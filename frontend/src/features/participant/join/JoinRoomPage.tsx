@@ -127,7 +127,7 @@ export function JoinRoomPage() {
 
                 <div className={styles.disclosure}>
                   <p>
-                    Junto stores your room name and answers for this activity.{" "}
+                    Junto stores your room name and answers until the host deletes this activity.{" "}
                     {room.analysisMode === "coverage_aware" ? coverageDisclosure : rosterOnlyDisclosure} Don’t include
                     sensitive personal information.
                   </p>

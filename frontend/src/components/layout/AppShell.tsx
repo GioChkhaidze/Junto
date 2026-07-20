@@ -11,6 +11,11 @@ interface AppShellProps {
   variant?: "default" | "authoring" | "host" | "public";
 }
 
+interface HeaderLinkProps {
+  children: ReactNode;
+  to: string;
+}
+
 export function AppShell({ children, context, actions, wide = false, variant = "default" }: AppShellProps) {
   const authoring = variant === "authoring";
   const host = variant === "host";
@@ -48,6 +53,14 @@ export function AppShell({ children, context, actions, wide = false, variant = "
         {children}
       </main>
     </div>
+  );
+}
+
+export function HeaderLink({ children, to }: HeaderLinkProps) {
+  return (
+    <Link className={styles.headerLink} to={to}>
+      {children}
+    </Link>
   );
 }
 

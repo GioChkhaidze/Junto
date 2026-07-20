@@ -1,0 +1,291 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "machine-learning-trm-latent-reasoning-and-cot",
+  "subject": "machine-learning",
+  "questionId": "66666666-6666-4666-8666-666666666666",
+  "questionPrompt": "How does TRM's separation of a current answer from a latent reasoning state change the way we should understand machine reasoning, and what advantages and limitations does this approach have compared with explicit chain-of-thought generation?",
+  "referenceMaterial": "TRM reinterprets one state as the current embedded solution y and the other as a latent state z. The model updates z from the input, current answer, and prior latent state, then uses z to revise y. Carrying both states lets z retain internal work without also storing the proposed solution. Unlike chain-of-thought, this process does not generate a token-by-token rationale. The paper describes explicit reasoning traces as costly, dependent on suitable reasoning data, and vulnerable to mistakes in the trace. The latent state is less inspectable, the experiments do not establish that it is human-like reasoning, and the supervised model produces a single deterministic answer.",
+  "coverageUnits": [
+    {
+      "id": "u_roles",
+      "text": "Explains that y is the current answer while z preserves internal information used to reach or revise that answer"
+    },
+    {
+      "id": "u_separation",
+      "text": "Explains that keeping y and z separate prevents the latent state from having to store both the solution and the work used to improve it"
+    },
+    {
+      "id": "u_no_trace",
+      "text": "Contrasts TRM's internal recursive refinement with explicit token-by-token chain-of-thought generation"
+    },
+    {
+      "id": "u_cot_costs",
+      "text": "Identifies chain-of-thought costs such as expensive generation, dependence on reasoning data, or errors in generated traces"
+    },
+    {
+      "id": "u_interpretability",
+      "text": "Recognizes that latent refinement is less interpretable and does not prove that the internal state is reasoning beyond the evaluated tasks"
+    },
+    {
+      "id": "u_output_scope",
+      "text": "Notes that TRM is supervised and produces one deterministic answer, limiting tasks with multiple valid or generative outputs"
+    }
+  ],
+  "participants": [
+    {
+      "participantId": "66666666-6666-4666-8666-666666666201",
+      "answer": "I would describe this as iterative latent reasoning in a functional sense: y is the current proposed answer, while z carries information used to reconstruct how that answer was reached and to revise it. If y were removed, z would have to hold both the solution and the work for improving it, so the separation gives each state one job. Unlike chain-of-thought, the recursive updates happen internally rather than as an autoregressive sequence of reasoning tokens. This avoids generating long traces, does not require labeled reasoning paths, and avoids depending on a possibly wrong written step. The cost is opacity: z is not a human-readable justification, and benchmark accuracy does not prove that it represents reasoning in a broader cognitive sense. TRM is also a supervised system that returns one deterministic answer, so it does not yet fit problems requiring several valid or freely generated outputs."
+    },
+    {
+      "participantId": "66666666-6666-4666-8666-666666666202",
+      "answer": "I would still call this iterative latent reasoning, just not a readable rationale: y is the model's current guess and z is an internal scratch state carried forward so the next recursion can improve that guess. Keeping them separate prevents the working state from also having to encode the whole answer. Because the improvement stays inside latent vectors, TRM does not emit a token-by-token chain-of-thought."
+    },
+    {
+      "participantId": "66666666-6666-4666-8666-666666666203",
+      "answer": "y is the current answer and z is a hidden chain-of-thought transcript that records each reasoning step before y changes. Because that transcript can be decoded and checked like ordinary chain-of-thought, TRM keeps CoT's interpretability while making it cheaper."
+    },
+    {
+      "participantId": "66666666-6666-4666-8666-666666666204",
+      "answer": "I would not call z reasoning on this evidence; it is better described as a hidden optimization state. Mechanically, y is the proposed answer and z retains internal information that can revise it; keeping them separate stops z from also serving as answer storage. The model refines y without printing a token-by-token rationale. That can avoid the cost, curated reasoning traces, and error propagation of explicit CoT, but the hidden state is harder to audit. The experiments show useful supervised optimization on fixed-answer puzzles, not that z has human-like reasoning content. Since TRM returns one deterministic answer, the design also says little about tasks with multiple defensible outputs."
+    },
+    {
+      "participantId": "66666666-6666-4666-8666-666666666205",
+      "answer": "As a supervised model, TRM produces one deterministic answer, which is awkward when several outputs are equally defensible."
+    },
+    {
+      "participantId": "66666666-6666-4666-8666-666666666206",
+      "answer": ""
+    }
+  ],
+  "expectedCoverage": {
+    "assignments": [
+      {
+        "participantId": "66666666-6666-4666-8666-666666666201",
+        "coveredUnitIds": [
+          "u_roles",
+          "u_separation",
+          "u_no_trace",
+          "u_cot_costs",
+          "u_interpretability",
+          "u_output_scope"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_roles",
+            "quotes": [
+              "y is the current proposed answer, while z carries information used to reconstruct how that answer was reached and to revise it"
+            ]
+          },
+          {
+            "unitId": "u_separation",
+            "quotes": [
+              "z would have to hold both the solution and the work for improving it"
+            ]
+          },
+          {
+            "unitId": "u_no_trace",
+            "quotes": [
+              "the recursive updates happen internally rather than as an autoregressive sequence of reasoning tokens"
+            ]
+          },
+          {
+            "unitId": "u_cot_costs",
+            "quotes": [
+              "This avoids generating long traces, does not require labeled reasoning paths, and avoids depending on a possibly wrong written step."
+            ]
+          },
+          {
+            "unitId": "u_interpretability",
+            "quotes": [
+              "z is not a human-readable justification",
+              "benchmark accuracy does not prove that it represents reasoning in a broader cognitive sense"
+            ]
+          },
+          {
+            "unitId": "u_output_scope",
+            "quotes": [
+              "a supervised system that returns one deterministic answer",
+              "problems requiring several valid or freely generated outputs"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "66666666-6666-4666-8666-666666666202",
+        "coveredUnitIds": [
+          "u_roles",
+          "u_separation",
+          "u_no_trace"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_roles",
+            "quotes": [
+              "y is the model's current guess and z is an internal scratch state carried forward so the next recursion can improve that guess"
+            ]
+          },
+          {
+            "unitId": "u_separation",
+            "quotes": [
+              "prevents the working state from also having to encode the whole answer"
+            ]
+          },
+          {
+            "unitId": "u_no_trace",
+            "quotes": [
+              "TRM does not emit a token-by-token chain-of-thought"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "66666666-6666-4666-8666-666666666203",
+        "coveredUnitIds": [],
+        "evidence": []
+      },
+      {
+        "participantId": "66666666-6666-4666-8666-666666666204",
+        "coveredUnitIds": [
+          "u_roles",
+          "u_separation",
+          "u_no_trace",
+          "u_cot_costs",
+          "u_interpretability",
+          "u_output_scope"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_roles",
+            "quotes": [
+              "y is the proposed answer and z retains internal information that can revise it"
+            ]
+          },
+          {
+            "unitId": "u_separation",
+            "quotes": [
+              "keeping them separate stops z from also serving as answer storage"
+            ]
+          },
+          {
+            "unitId": "u_no_trace",
+            "quotes": [
+              "The model refines y without printing a token-by-token rationale."
+            ]
+          },
+          {
+            "unitId": "u_cot_costs",
+            "quotes": [
+              "avoid the cost, curated reasoning traces, and error propagation of explicit CoT"
+            ]
+          },
+          {
+            "unitId": "u_interpretability",
+            "quotes": [
+              "the hidden state is harder to audit",
+              "not that z has human-like reasoning content"
+            ]
+          },
+          {
+            "unitId": "u_output_scope",
+            "quotes": [
+              "TRM returns one deterministic answer",
+              "tasks with multiple defensible outputs"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "66666666-6666-4666-8666-666666666205",
+        "coveredUnitIds": [
+          "u_output_scope"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_output_scope",
+            "quotes": [
+              "As a supervised model, TRM produces one deterministic answer",
+              "several outputs are equally defensible"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "expectedFamilies": {
+    "families": [
+      {
+        "label": "Latent iterative reasoning with caveats"
+      },
+      {
+        "label": "Latent state as readable chain-of-thought"
+      },
+      {
+        "label": "Optimization-state interpretation, not established reasoning"
+      }
+    ],
+    "assignments": [
+      {
+        "participantId": "66666666-6666-4666-8666-666666666201",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "66666666-6666-4666-8666-666666666202",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "66666666-6666-4666-8666-666666666203",
+        "familyIndex": 1
+      },
+      {
+        "participantId": "66666666-6666-4666-8666-666666666204",
+        "familyIndex": 2
+      },
+      {
+        "participantId": "66666666-6666-4666-8666-666666666205",
+        "familyIndex": null
+      }
+    ]
+  },
+  "expectedRelationships": {
+    "sameFamily": [
+      {
+        "participantIds": [
+          "66666666-6666-4666-8666-666666666201",
+          "66666666-6666-4666-8666-666666666202"
+        ],
+        "reason": "Both interpret the two-state design as latent iterative reasoning, although p2 covers only the basic mechanism."
+      }
+    ],
+    "differentFamily": [
+      {
+        "participantIds": [
+          "66666666-6666-4666-8666-666666666201",
+          "66666666-6666-4666-8666-666666666204"
+        ],
+        "reason": "They cover all six units but disagree on whether the latent state should be described as reasoning or only as an optimization state."
+      },
+      {
+        "participantIds": [
+          "66666666-6666-4666-8666-666666666201",
+          "66666666-6666-4666-8666-666666666203"
+        ],
+        "reason": "p1 treats z as opaque latent work, while p3 incorrectly treats it as a readable chain-of-thought transcript."
+      }
+    ],
+    "nullFamilyWithCoverage": [
+      "66666666-6666-4666-8666-666666666205"
+    ],
+    "emptyAnswerParticipantIds": [
+      "66666666-6666-4666-8666-666666666206"
+    ],
+    "validDisagreement": [
+      {
+        "participantIds": [
+          "66666666-6666-4666-8666-666666666201",
+          "66666666-6666-4666-8666-666666666204"
+        ],
+        "reason": "Both accurately describe the y-z mechanism and its tradeoffs; the family split records a defensible disagreement over what warrants the label reasoning."
+      }
+    ]
+  }
+}

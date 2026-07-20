@@ -288,6 +288,16 @@
   color: var(--ink-muted);
 }
 
+.waiting[data-state="generating"] {
+  color: var(--green-800);
+  font-weight: 700;
+}
+
+.waiting[data-state="retry"] {
+  color: var(--red-700);
+  font-weight: 700;
+}
+
 .rosterEmpty {
   padding: var(--space-8) 0;
   border-bottom: 1px solid var(--line);
@@ -443,279 +453,8 @@
   font-size: 0.76rem;
 }
 
-.groupsView {
-  max-width: 76rem;
-  padding: clamp(var(--space-6), 4vw, var(--space-12));
-  margin-inline: auto;
-  background: var(--white);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel);
-}
-
-.groupList {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  gap: var(--space-8) var(--space-10);
-}
-
-.groupList section {
-  min-width: 0;
-  padding: var(--space-6);
-  background: var(--green-50);
-  border: 1px solid color-mix(in oklch, var(--green-700) 18%, var(--line));
-  border-radius: var(--radius-panel);
-}
-
-.groupList ol {
-  padding: 0;
-  margin: 0;
-  list-style: none;
-  counter-reset: member;
-}
-
-.groupList li {
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--line);
-  color: var(--ink-secondary);
-  counter-increment: member;
-  overflow-wrap: anywhere;
-}
-
-.groupList li::before {
-  display: inline-block;
-  width: 1.75rem;
-  color: var(--ink-muted);
-  font-size: 0.75rem;
-  content: counter(member) ".";
-}
-
-.resultSummary {
-  padding: var(--space-6);
-  margin-bottom: var(--space-12);
-  background: var(--green-50);
-  border: 1px solid color-mix(in oklch, var(--green-700) 18%, var(--line));
-  border-radius: var(--radius-panel);
-}
-
-.resultSummary h2 {
-  margin-bottom: var(--space-2);
-  font-size: 1.05rem;
-}
-
-.resultSummary > p {
-  max-width: 76ch;
-  margin: 0 0 var(--space-6);
-  color: var(--ink-secondary);
-}
-
-.resultSummary dl {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-6);
-  margin: 0;
-}
-
-.resultSummary dl > div {
-  min-width: 0;
-}
-
-.resultSummary dt {
-  color: var(--ink-muted);
-  font-size: 0.78rem;
-}
-
-.resultSummary dd {
-  margin: var(--space-1) 0 0;
-  font-weight: 750;
-  overflow-wrap: anywhere;
-}
-
-.coverageGroupList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-16);
-}
-
-.coverageGroup {
-  min-width: 0;
-  padding-top: var(--space-2);
-}
-
-.groupMembers {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  padding: 0;
-  margin: 0 0 var(--space-8);
-  border-bottom: 1px solid var(--line);
-  list-style: none;
-}
-
-.groupMembers li {
-  min-width: 0;
-  padding: var(--space-3) var(--space-4) var(--space-3) 0;
-  color: var(--ink-secondary);
-  font-size: 0.88rem;
-  font-weight: 650;
-  overflow-wrap: anywhere;
-}
-
-.questionResults {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-8);
-}
-
-.questionResults > section {
-  padding-bottom: var(--space-8);
-  border-bottom: 1px solid var(--line);
-}
-
-.questionResultHeading {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-6);
-  margin-bottom: var(--space-5);
-}
-
-.questionResultHeading span {
-  display: block;
-  margin-bottom: var(--space-1);
-  color: var(--ink-muted);
-  font-size: 0.76rem;
-}
-
-.questionResultHeading h3 {
-  max-width: 64ch;
-  margin: 0;
-  font-size: 1rem;
-  line-height: 1.5;
-}
-
-.questionResultHeading > strong {
-  flex: 0 0 auto;
-  color: var(--green-800);
-  font-size: 0.78rem;
-}
-
-.coverageRows {
-  padding: 0;
-  margin: 0;
-  border-top: 1px solid var(--line);
-  list-style: none;
-}
-
-.coverageRows li {
-  display: grid;
-  grid-template-columns: 1.5rem minmax(0, 1fr);
-  gap: var(--space-2);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.coverageRows li > span {
-  color: var(--green-800);
-  font-weight: 800;
-}
-
-.coverageRows li[data-covered="false"] > span {
-  color: var(--amber-700);
-}
-
-.coverageRows li strong,
-.coverageRows li div > span {
-  display: block;
-}
-
-.coverageRows li strong {
-  font-size: 0.86rem;
-}
-
-.coverageRows li div > span {
-  margin-top: var(--space-1);
-  color: var(--ink-muted);
-  font-size: 0.78rem;
-}
-
-.familySummary {
-  padding: var(--space-5) 0 0;
-}
-
-.familySummary h4 {
-  margin-bottom: var(--space-2);
-  font-size: 0.86rem;
-}
-
-.familySummary dl {
-  margin: 0;
-  border-top: 1px solid var(--line);
-}
-
-.familySummary dl > div {
-  display: grid;
-  grid-template-columns: minmax(10rem, 0.6fr) minmax(0, 1fr);
-  gap: var(--space-4);
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 0.8rem;
-}
-
-.familySummary dt {
-  font-weight: 700;
-}
-
-.familySummary dd {
-  margin: 0;
-  color: var(--ink-muted);
-}
-
-.responseAudit {
-  margin-top: var(--space-5);
-  border-bottom: 1px solid var(--line);
-}
-
-.responseAudit summary {
-  min-height: 2.75rem;
-  padding: var(--space-3) 0;
-  color: var(--green-800);
-  font-size: 0.82rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.responseAudit article {
-  padding: var(--space-4) 0;
-  border-top: 1px solid var(--line);
-}
-
-.responseAudit article header {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.responseAudit article header span,
-.responseAudit article > p {
-  color: var(--ink-muted);
-  font-size: 0.76rem;
-}
-
-.responseAudit article > p {
-  margin: var(--space-2) 0;
-}
-
-.responseAudit blockquote {
-  padding-left: var(--space-4);
-  margin: 0;
-  border-left: 2px solid var(--line-strong);
-  color: var(--ink-secondary);
-  font-size: 0.86rem;
-  white-space: pre-wrap;
-}
-
 @media (max-width: 760px) {
-  .roomColumn,
-  .groupsView {
+  .roomColumn {
     padding: var(--space-6) var(--space-5);
   }
 
@@ -730,22 +469,6 @@
 
   .definitionList {
     grid-template-columns: 1fr;
-  }
-
-  .resultSummary dl {
-    grid-template-columns: 1fr;
-    gap: var(--space-4);
-  }
-
-  .questionResultHeading,
-  .responseAudit article header {
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  .familySummary dl > div {
-    grid-template-columns: 1fr;
-    gap: var(--space-1);
   }
 
   .inviteCodeRow {

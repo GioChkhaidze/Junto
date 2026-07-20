@@ -1,12 +1,32 @@
 {
   "schemaVersion": 1,
   "suiteId": "synthetic-classroom-challenges-v1",
+  "semanticAccuracyClaim": "none",
   "scenarios": [
     {
       "scenarioId": "math-induction-divisibility",
+      "activityTitle": "Induction and modular divisibility",
       "subject": "mathematics",
       "questionType": "proof",
       "questionPrompt": "Prove or refute: 7 divides 8^n - 1 for every positive integer n.",
+      "coverageUnits": [
+        {
+          "id": "u_math_claim",
+          "text": "Determines whether the universal divisibility claim is true"
+        },
+        {
+          "id": "u_math_base",
+          "text": "Establishes a valid base case or the equivalent initial congruence"
+        },
+        {
+          "id": "u_math_invariant",
+          "text": "Shows that powers of eight retain residue one modulo seven"
+        },
+        {
+          "id": "u_math_divisibility",
+          "text": "Connects the zero residue of 8^n - 1 to divisibility by seven"
+        }
+      ],
       "variants": [
         {
           "caseId": "complete-proof",
@@ -38,9 +58,32 @@
     },
     {
       "scenarioId": "statistics-screening-base-rate",
+      "activityTitle": "Screening tests and base rates",
       "subject": "statistics",
       "questionType": "quantitative-interpretation",
       "questionPrompt": "A rare condition affects 1% of people. A test is 95% sensitive and 90% specific. Explain why a positive result is not a 95% probability of having the condition.",
+      "coverageUnits": [
+        {
+          "id": "u_stats_conditionals",
+          "text": "Distinguishes sensitivity from the probability of disease after a positive result"
+        },
+        {
+          "id": "u_stats_prevalence",
+          "text": "Uses the one-percent prevalence as the prior or base rate"
+        },
+        {
+          "id": "u_stats_false_positives",
+          "text": "Derives the false-positive rate from ninety-percent specificity"
+        },
+        {
+          "id": "u_stats_comparison",
+          "text": "Compares expected true positives with expected false positives"
+        },
+        {
+          "id": "u_stats_posterior",
+          "text": "Computes or correctly characterizes the posterior probability after a positive result"
+        }
+      ],
       "variants": [
         {
           "caseId": "base-rate-table",
@@ -66,9 +109,32 @@
     },
     {
       "scenarioId": "physics-elevator-scale",
+      "activityTitle": "Elevator motion and scale readings",
       "subject": "physics",
       "questionType": "causal-mechanism",
       "questionPrompt": "A person stands on a scale in an elevator. Explain when the scale reads more than, less than, or equal to the person's usual weight.",
+      "coverageUnits": [
+        {
+          "id": "u_physics_normal_force",
+          "text": "Identifies the scale reading as the normal force"
+        },
+        {
+          "id": "u_physics_force_balance",
+          "text": "Relates normal force and weight to the direction of acceleration"
+        },
+        {
+          "id": "u_physics_upward",
+          "text": "Explains why upward acceleration produces a larger reading"
+        },
+        {
+          "id": "u_physics_downward",
+          "text": "Explains why downward acceleration produces a smaller reading"
+        },
+        {
+          "id": "u_physics_zero_acceleration",
+          "text": "Explains equality at zero acceleration, including constant nonzero velocity"
+        }
+      ],
       "variants": [
         {
           "caseId": "force-balance",
@@ -94,9 +160,32 @@
     },
     {
       "scenarioId": "biology-antibiotic-resistance",
+      "activityTitle": "Natural selection and antibiotic resistance",
       "subject": "biology",
       "questionType": "causal-explanation",
       "questionPrompt": "Explain how antibiotic use can increase antibiotic resistance in a bacterial population without bacteria intentionally adapting.",
+      "coverageUnits": [
+        {
+          "id": "u_biology_variation",
+          "text": "Identifies heritable resistance variation that exists or arises without directed need"
+        },
+        {
+          "id": "u_biology_selection",
+          "text": "Explains that antibiotics remove susceptible bacteria at a higher rate"
+        },
+        {
+          "id": "u_biology_reproduction",
+          "text": "Explains the reproductive advantage of resistant survivors"
+        },
+        {
+          "id": "u_biology_frequency",
+          "text": "Connects differential survival and reproduction to changing population frequencies"
+        },
+        {
+          "id": "u_biology_intention",
+          "text": "Explains why the population change does not require intentional adaptation"
+        }
+      ],
       "variants": [
         {
           "caseId": "selection-account",
@@ -122,9 +211,32 @@
     },
     {
       "scenarioId": "chemistry-buffer-dilution",
+      "activityTitle": "Buffer dilution: pH versus capacity",
       "subject": "chemistry",
       "questionType": "mechanism-and-limitation",
       "questionPrompt": "What happens to a buffer's pH and buffering capacity when it is diluted tenfold with water? Explain the distinction.",
+      "coverageUnits": [
+        {
+          "id": "u_chemistry_ratio",
+          "text": "Explains that ideal dilution preserves the conjugate-base to acid ratio"
+        },
+        {
+          "id": "u_chemistry_ph_relation",
+          "text": "Connects the concentration ratio to pH through the buffer equilibrium"
+        },
+        {
+          "id": "u_chemistry_ph_result",
+          "text": "Concludes that tenfold dilution causes little ideal pH change"
+        },
+        {
+          "id": "u_chemistry_concentrations",
+          "text": "Recognizes that the absolute concentrations of both buffer components fall"
+        },
+        {
+          "id": "u_chemistry_capacity",
+          "text": "Explains why lower component concentrations reduce buffering capacity"
+        }
+      ],
       "variants": [
         {
           "caseId": "ratio-capacity-distinction",
@@ -150,9 +262,32 @@
     },
     {
       "scenarioId": "economics-rent-control",
+      "activityTitle": "Rent ceilings and housing affordability",
       "subject": "economics",
       "questionType": "policy-tradeoff",
       "questionPrompt": "Evaluate a strict rent ceiling as a response to housing unaffordability. Include a benefit, a risk, and one design alternative or safeguard.",
+      "coverageUnits": [
+        {
+          "id": "u_economics_benefit",
+          "text": "Identifies a plausible affordability or housing-stability benefit"
+        },
+        {
+          "id": "u_economics_supply_risk",
+          "text": "Analyzes a risk to housing supply, maintenance, or allocation"
+        },
+        {
+          "id": "u_economics_distribution",
+          "text": "Considers how effects differ between protected tenants and people seeking housing"
+        },
+        {
+          "id": "u_economics_alternative",
+          "text": "Proposes a relevant policy alternative or safeguard"
+        },
+        {
+          "id": "u_economics_judgment",
+          "text": "Weighs the benefit and risk to reach a conditional policy judgment"
+        }
+      ],
       "variants": [
         {
           "caseId": "balanced-policy",
@@ -178,9 +313,28 @@
     },
     {
       "scenarioId": "literature-unreliable-narrator",
+      "activityTitle": "Unreliable narration and responsibility",
       "subject": "literature",
       "questionType": "interpretive-argument",
       "questionPrompt": "How can an unreliable narrator change the reader's interpretation of responsibility? State a reading, evidence to seek, and a plausible objection.",
+      "coverageUnits": [
+        {
+          "id": "u_literature_reading",
+          "text": "States an interpretation of how unreliability changes perceived responsibility"
+        },
+        {
+          "id": "u_literature_mechanism",
+          "text": "Explains how distortion, omission, or limited knowledge supports the interpretation"
+        },
+        {
+          "id": "u_literature_evidence",
+          "text": "Identifies textual evidence that could support the reading"
+        },
+        {
+          "id": "u_literature_objection",
+          "text": "Presents a plausible alternative explanation or objection"
+        }
+      ],
       "variants": [
         {
           "caseId": "interpretive-case",
@@ -206,9 +360,33 @@
     },
     {
       "scenarioId": "history-empire-collapse",
+      "activityTitle": "Triggers and structures in imperial collapse",
       "subject": "history",
       "questionType": "multi-causal-explanation",
       "questionPrompt": "Assess the claim that a single military defeat caused an empire's collapse. Distinguish trigger, structural conditions, evidence, and a competing explanation.",
+      "roomSourceContext": "The defeat destroyed much of the field army. Tax receipts and troop pay had declined for a decade, two succession disputes preceded the battle, and several provinces had withheld revenue. A drought overlapped the final years. The capital fell two years after the defeat, while some regions remained under successor rule.",
+      "coverageUnits": [
+        {
+          "id": "u_history_trigger",
+          "text": "Distinguishes the military defeat as a possible proximate trigger"
+        },
+        {
+          "id": "u_history_structure",
+          "text": "Identifies structural conditions that shaped the empire's ability to recover"
+        },
+        {
+          "id": "u_history_evidence",
+          "text": "Uses or proposes evidence that could connect the defeat to the collapse"
+        },
+        {
+          "id": "u_history_competitor",
+          "text": "Develops a credible competing or interacting explanation"
+        },
+        {
+          "id": "u_history_assessment",
+          "text": "Weighs chronology and multiple causes rather than treating sequence as sufficient proof"
+        }
+      ],
       "variants": [
         {
           "caseId": "multi-causal-account",
@@ -234,9 +412,32 @@
     },
     {
       "scenarioId": "philosophy-ai-proctoring",
+      "activityTitle": "Automated proctoring as a default",
       "subject": "philosophy",
       "questionType": "normative-argument",
       "questionPrompt": "Should a university use automated proctoring by default? Give a principle, an argument, an objection, and a response.",
+      "coverageUnits": [
+        {
+          "id": "u_philosophy_principle",
+          "text": "States a relevant normative principle"
+        },
+        {
+          "id": "u_philosophy_argument",
+          "text": "Applies the principle in an argument for a position on default use"
+        },
+        {
+          "id": "u_philosophy_objection",
+          "text": "Presents a serious objection to the chosen position"
+        },
+        {
+          "id": "u_philosophy_response",
+          "text": "Responds to the objection without ignoring its central concern"
+        },
+        {
+          "id": "u_philosophy_conditions",
+          "text": "Identifies safeguards, alternatives, or conditions that affect the judgment"
+        }
+      ],
       "variants": [
         {
           "caseId": "conditional-opposition",
@@ -262,9 +463,32 @@
     },
     {
       "scenarioId": "design-onboarding-budget",
+      "activityTitle": "One-week onboarding intervention",
       "subject": "product-design",
       "questionType": "design-tradeoff",
       "questionPrompt": "A team has one week to improve new-user activation. Choose a change, identify the user need, and discuss a tradeoff and a measurement risk.",
+      "coverageUnits": [
+        {
+          "id": "u_design_need",
+          "text": "Identifies a concrete new-user need or obstacle"
+        },
+        {
+          "id": "u_design_change",
+          "text": "Proposes a focused change feasible within one week"
+        },
+        {
+          "id": "u_design_tradeoff",
+          "text": "Explains a meaningful tradeoff introduced by the change"
+        },
+        {
+          "id": "u_design_measurement_risk",
+          "text": "Identifies how an activation metric could misrepresent user value"
+        },
+        {
+          "id": "u_design_validation",
+          "text": "Proposes a complementary measure or check for lasting value"
+        }
+      ],
       "variants": [
         {
           "caseId": "guided-checklist",
@@ -290,9 +514,32 @@
     },
     {
       "scenarioId": "software-security-token-storage",
+      "activityTitle": "Capability-token storage threat model",
       "subject": "software-security",
       "questionType": "threat-model",
       "questionPrompt": "Compare storing a room capability token in an HttpOnly cookie versus browser local storage. Name the main threat each choice changes and one remaining risk.",
+      "coverageUnits": [
+        {
+          "id": "u_security_cookie_xss",
+          "text": "Explains how HttpOnly changes direct token theft through injected JavaScript"
+        },
+        {
+          "id": "u_security_cookie_csrf",
+          "text": "Explains the CSRF exposure created by automatic cookie sending"
+        },
+        {
+          "id": "u_security_storage_xss",
+          "text": "Explains local storage exposure to scripts executing in the origin"
+        },
+        {
+          "id": "u_security_storage_sending",
+          "text": "Explains that local-storage tokens are not sent automatically with cross-site requests"
+        },
+        {
+          "id": "u_security_residual",
+          "text": "Names a material risk that remains after either storage choice"
+        }
+      ],
       "variants": [
         {
           "caseId": "cookie-tradeoff",
@@ -318,9 +565,32 @@
     },
     {
       "scenarioId": "media-causal-headline",
+      "activityTitle": "Causal claims in education headlines",
       "subject": "media-literacy",
       "questionType": "evidence-critique",
       "questionPrompt": "A headline says students who use tablets score higher, based on an observational survey. Evaluate the causal claim and propose stronger evidence.",
+      "coverageUnits": [
+        {
+          "id": "u_media_association",
+          "text": "Distinguishes an observed association from a demonstrated causal effect"
+        },
+        {
+          "id": "u_media_confounding",
+          "text": "Identifies plausible confounding or selection factors"
+        },
+        {
+          "id": "u_media_survey_limits",
+          "text": "Examines a relevant sampling or measurement limitation of the survey"
+        },
+        {
+          "id": "u_media_stronger_design",
+          "text": "Proposes a study design that would support stronger causal inference"
+        },
+        {
+          "id": "u_media_comparison",
+          "text": "Explains what the stronger design must compare, randomize, or control"
+        }
+      ],
       "variants": [
         {
           "caseId": "confounding-account",

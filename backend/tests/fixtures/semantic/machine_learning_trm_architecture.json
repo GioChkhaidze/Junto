@@ -1,0 +1,283 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "machine-learning-trm-architecture-evidence-limits",
+  "subject": "machine-learning",
+  "questionId": "55555555-5555-4555-8555-555555555555",
+  "questionPrompt": "How does TRM's 'less is more' design challenge the assumption that greater model size and architectural complexity lead to better reasoning, and how strongly do the paper's experiments support the authors' explanation for its performance?",
+  "referenceMaterial": "TRM simplifies HRM's pair of four-layer recurrent modules into one shared two-layer network that is reused during recursive refinement. On Sudoku-Extreme, reported ablations compare the main setup with separate networks, four layers, and a one-step gradient approximation. The paper also reports gains over HRM on Sudoku-Extreme, Maze-Hard, ARC-AGI-1, and ARC-AGI-2. It proposes reduced overfitting in scarce-data settings as part of the explanation, while leaving the advantage of recursion theoretically unresolved. The study relies heavily on augmentation, concentrates most architectural ablations on one benchmark, and does not establish a scaling law.",
+  "coverageUnits": [
+    {
+      "id": "u_architecture",
+      "text": "Explains that TRM replaces HRM's two four-layer networks and hierarchy with one recursively reused two-layer network"
+    },
+    {
+      "id": "u_ablation",
+      "text": "Uses the ablations to connect stronger Sudoku generalization with shallow depth, a shared network, and full-recursion backpropagation"
+    },
+    {
+      "id": "u_benchmarks",
+      "text": "Notes that TRM beats HRM across four reported benchmarks while the best architectural choice can depend on the task or context"
+    },
+    {
+      "id": "u_explanation",
+      "text": "Treats reduced overfitting on scarce data as a plausible explanation while recognizing that recursion's advantage lacks a settled theory"
+    },
+    {
+      "id": "u_limits",
+      "text": "Identifies limits such as heavy augmentation, mostly benchmark-specific ablations, or the absence of scaling laws"
+    }
+  ],
+  "participants": [
+    {
+      "participantId": "55555555-5555-4555-8555-555555555201",
+      "answer": "TRM does not prove that small models are generally smarter. It replaces HRM's two four-layer networks and hierarchy with a single shared two-layer network that repeatedly updates a latent state and an answer. On Sudoku-Extreme, the ablation drops from 87.4% for the main setup to 82.4% with separate networks, 79.5% with four layers, and 56.5% with one-step gradients, so sharing, shallow depth, and full-recursion backpropagation each have evidence. TRM also beats HRM on Sudoku-Extreme, Maze-Hard, ARC-AGI-1, and ARC-AGI-2, although the preferred architecture changes with the task and context. Taken together, these results give meaningful but regime-specific support to the authors' reduced-overfitting explanation for scarce-data tasks. They still do not explain why recursion generalizes better, and heavy augmentation, a mostly Sudoku-centered ablation, and no scaling law keep the broader 'less is more' slogan provisional."
+    },
+    {
+      "participantId": "55555555-5555-4555-8555-555555555202",
+      "answer": "The experiments give qualified support rather than a universal rule. TRM replaces HRM's hierarchical pair of four-layer modules with one recursively reused two-layer network, and its reported scores exceed HRM on all four tested benchmarks even though the preferred configuration varies by task. That makes the compact recurrent design credible in the paper's low-data setting, where fewer layers may overfit less, though it does not explain why recursive reuse helps or show that every reasoning problem benefits from a smaller model."
+    },
+    {
+      "participantId": "55555555-5555-4555-8555-555555555203",
+      "answer": "TRM shows that parameter count is what causes reasoning quality: replacing HRM's hierarchy of two four-layer networks with one recursively reused two-layer network removes overfitting, so smaller models will always generalize better than large ones. The benchmark wins prove the explanation, and the same two-layer design should be optimal for any task."
+    },
+    {
+      "participantId": "55555555-5555-4555-8555-555555555204",
+      "answer": "I read the results more narrowly: TRM discards HRM's two-network hierarchy for one recursively reused two-layer module and wins against HRM across the four reported benchmarks, but the preferred architecture still depends on the task or context. The Sudoku ablation favors sharing the network, using two layers, and backpropagating through a full recursion, yet those controls are not repeated comparably for every benchmark. Reduced overfitting remains a plausible hypothesis, but the experiments do not isolate it from competing explanations; they establish performance, not meaningful support for that causal account. Because the strongest ablation is task-specific, augmentation is heavy, and no scaling law maps model size to performance, 'less is more' is a useful result about this regime rather than a general law."
+    },
+    {
+      "participantId": "55555555-5555-4555-8555-555555555205",
+      "answer": "In the Sudoku ablation, using separate networks, four layers, or a one-step gradient approximation all scored below the shared shallow model with full-recursion backpropagation."
+    },
+    {
+      "participantId": "55555555-5555-4555-8555-555555555206",
+      "answer": ""
+    }
+  ],
+  "expectedCoverage": {
+    "assignments": [
+      {
+        "participantId": "55555555-5555-4555-8555-555555555201",
+        "coveredUnitIds": [
+          "u_architecture",
+          "u_ablation",
+          "u_benchmarks",
+          "u_explanation",
+          "u_limits"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_architecture",
+            "quotes": [
+              "It replaces HRM's two four-layer networks and hierarchy with a single shared two-layer network"
+            ]
+          },
+          {
+            "unitId": "u_ablation",
+            "quotes": [
+              "sharing, shallow depth, and full-recursion backpropagation each have evidence"
+            ]
+          },
+          {
+            "unitId": "u_benchmarks",
+            "quotes": [
+              "TRM also beats HRM on Sudoku-Extreme, Maze-Hard, ARC-AGI-1, and ARC-AGI-2",
+              "the preferred architecture changes with the task and context"
+            ]
+          },
+          {
+            "unitId": "u_explanation",
+            "quotes": [
+              "these results give meaningful but regime-specific support to the authors' reduced-overfitting explanation",
+              "They still do not explain why recursion generalizes better"
+            ]
+          },
+          {
+            "unitId": "u_limits",
+            "quotes": [
+              "heavy augmentation, a mostly Sudoku-centered ablation, and no scaling law"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "55555555-5555-4555-8555-555555555202",
+        "coveredUnitIds": [
+          "u_architecture",
+          "u_benchmarks",
+          "u_explanation"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_architecture",
+            "quotes": [
+              "TRM replaces HRM's hierarchical pair of four-layer modules with one recursively reused two-layer network"
+            ]
+          },
+          {
+            "unitId": "u_benchmarks",
+            "quotes": [
+              "its reported scores exceed HRM on all four tested benchmarks",
+              "the preferred configuration varies by task"
+            ]
+          },
+          {
+            "unitId": "u_explanation",
+            "quotes": [
+              "in the paper's low-data setting, where fewer layers may overfit less",
+              "it does not explain why recursive reuse helps"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "55555555-5555-4555-8555-555555555203",
+        "coveredUnitIds": [
+          "u_architecture"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_architecture",
+            "quotes": [
+              "replacing HRM's hierarchy of two four-layer networks with one recursively reused two-layer network"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "55555555-5555-4555-8555-555555555204",
+        "coveredUnitIds": [
+          "u_architecture",
+          "u_ablation",
+          "u_benchmarks",
+          "u_explanation",
+          "u_limits"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_architecture",
+            "quotes": [
+              "TRM discards HRM's two-network hierarchy for one recursively reused two-layer module"
+            ]
+          },
+          {
+            "unitId": "u_ablation",
+            "quotes": [
+              "The Sudoku ablation favors sharing the network, using two layers, and backpropagating through a full recursion"
+            ]
+          },
+          {
+            "unitId": "u_benchmarks",
+            "quotes": [
+              "wins against HRM across the four reported benchmarks",
+              "the preferred architecture still depends on the task or context"
+            ]
+          },
+          {
+            "unitId": "u_explanation",
+            "quotes": [
+              "Reduced overfitting remains a plausible hypothesis",
+              "the experiments do not isolate it from competing explanations"
+            ]
+          },
+          {
+            "unitId": "u_limits",
+            "quotes": [
+              "the strongest ablation is task-specific, augmentation is heavy, and no scaling law maps model size to performance"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "55555555-5555-4555-8555-555555555205",
+        "coveredUnitIds": [
+          "u_ablation"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_ablation",
+            "quotes": [
+              "using separate networks, four layers, or a one-step gradient approximation all scored below the shared shallow model with full-recursion backpropagation"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "expectedFamilies": {
+    "families": [
+      {
+        "label": "Regime-specific support for reduced-overfitting explanation"
+      },
+      {
+        "label": "Universal smaller-is-better interpretation"
+      },
+      {
+        "label": "Performance gains without causal support"
+      }
+    ],
+    "assignments": [
+      {
+        "participantId": "55555555-5555-4555-8555-555555555201",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "55555555-5555-4555-8555-555555555202",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "55555555-5555-4555-8555-555555555203",
+        "familyIndex": 1
+      },
+      {
+        "participantId": "55555555-5555-4555-8555-555555555204",
+        "familyIndex": 2
+      },
+      {
+        "participantId": "55555555-5555-4555-8555-555555555205",
+        "familyIndex": null
+      }
+    ]
+  },
+  "expectedRelationships": {
+    "sameFamily": [
+      {
+        "participantIds": [
+          "55555555-5555-4555-8555-555555555201",
+          "55555555-5555-4555-8555-555555555202"
+        ],
+        "reason": "Both give qualified, regime-specific support to the compact recurrent design and overfitting account."
+      }
+    ],
+    "differentFamily": [
+      {
+        "participantIds": [
+          "55555555-5555-4555-8555-555555555201",
+          "55555555-5555-4555-8555-555555555204"
+        ],
+        "reason": "They cover all five units but disagree on whether the experiments meaningfully support reduced overfitting as the causal explanation."
+      },
+      {
+        "participantIds": [
+          "55555555-5555-4555-8555-555555555201",
+          "55555555-5555-4555-8555-555555555203"
+        ],
+        "reason": "The qualified reading differs from p3's unsupported universal smaller-is-better conclusion."
+      }
+    ],
+    "nullFamilyWithCoverage": [
+      "55555555-5555-4555-8555-555555555205"
+    ],
+    "emptyAnswerParticipantIds": [
+      "55555555-5555-4555-8555-555555555206"
+    ],
+    "validDisagreement": [
+      {
+        "participantIds": [
+          "55555555-5555-4555-8555-555555555201",
+          "55555555-5555-4555-8555-555555555204"
+        ],
+        "reason": "Both interpretations use the architecture, ablation, cross-benchmark results, proposed explanation, and study limits accurately while weighting the general claim differently."
+      }
+    ]
+  }
+}

@@ -1,4 +1,19 @@
 {
+  "activitySuite": {
+    "activityCount": 12,
+    "coverageUnitCount": 58,
+    "coverageUnitCountViolations": 0,
+    "fieldViolations": [],
+    "maximumCoverageUnitsPerActivity": 5,
+    "minimumCoverageUnitsPerActivity": 4,
+    "oneQuestionActivityCount": 12,
+    "roomSourceContextCount": 1,
+    "semanticAccuracyClaim": "none",
+    "uniqueActivityTitleCount": 12,
+    "uniqueCoverageUnitIdCount": 58,
+    "uniqueCoverageUnitTextCount": 58,
+    "uniqueQuestionPromptCount": 12
+  },
   "challengeSuite": {
     "answerCount": 240,
     "answersOverLimit": 0,
@@ -17,6 +32,7 @@
       "reverse_conditional": 5,
       "substantive_answer": 137
     },
+    "diversityMeasure": "source answer templates; deterministic persona wrappers are excluded",
     "errorTendencyCounts": {
       "answer_adjacent_question": 2,
       "confuse_correlation": 2,
@@ -32,7 +48,7 @@
       "novice": 5,
       "proficient": 5
     },
-    "maximumAnswerCharacters": 1454,
+    "maximumAnswerCharacters": 1492,
     "missingRequiredCaseTags": [],
     "nonemptyAnswerCount": 235,
     "participationStyleCounts": {
@@ -41,7 +57,6 @@
       "sparse": 3
     },
     "personaCount": 20,
-    "providerCalls": 0,
     "questionTypes": [
       "causal-explanation",
       "causal-mechanism",
@@ -57,7 +72,9 @@
       "threat-model"
     ],
     "scenarioCount": 12,
-    "scoreType": "structural-only",
+    "semanticAccuracyClaim": "none",
+    "sourceAnswerDuplicationRatio": 0.7958,
+    "sourceAnswerTemplateCount": 49,
     "subjectCount": 12,
     "subjects": [
       "biology",
@@ -73,13 +90,24 @@
       "software-security",
       "statistics"
     ],
-    "uniqueAnswerTemplateCount": 49,
     "uniqueDisplayNameCount": 20,
     "uniquePersonaIdCount": 20
   },
   "checks": [
     {
       "id": "at-least-ten-subjects",
+      "status": "pass"
+    },
+    {
+      "id": "independent-one-question-activities",
+      "status": "pass"
+    },
+    {
+      "id": "coverage-units-per-activity",
+      "status": "pass"
+    },
+    {
+      "id": "unique-bounded-activity-fields",
       "status": "pass"
     },
     {
@@ -95,41 +123,50 @@
       "status": "pass"
     },
     {
-      "id": "scale-payload-limit",
+      "id": "verbatim-source-text-preserved",
       "status": "pass"
     },
     {
-      "id": "compiler-question-limit-exercised",
+      "id": "source-tags-preserved",
       "status": "pass"
     },
     {
-      "id": "zero-provider-calls",
+      "id": "assembled-payload-sizes-recorded",
+      "status": "pass"
+    },
+    {
+      "id": "eight-question-scale-case-included",
       "status": "pass"
     }
   ],
-  "generatedAt": "2026-07-20T10:21:28.954098+00:00",
+  "generatedAt": "2026-07-20T16:23:49.669836+00:00",
   "goldSuite": {
     "evaluatedByThisSuite": false,
-    "fixtureCount": 4,
+    "fixtureCount": 10,
     "labelSource": "separately reviewed fixture labels",
-    "nonemptyAnswerCount": 20,
+    "nonemptyAnswerCount": 55,
     "note": "Use evaluate_semantic.py for gold accuracy evaluation.",
-    "participantCount": 24,
+    "participantCount": 65,
     "relationshipCaseCounts": {
-      "differentFamily": 6,
-      "emptyAnswerParticipantIds": 4,
-      "nullFamilyWithCoverage": 4,
-      "sameFamily": 5,
-      "validDisagreement": 3
+      "differentFamily": 20,
+      "emptyAnswerParticipantIds": 10,
+      "nullFamilyWithCoverage": 9,
+      "sameFamily": 13,
+      "validDisagreement": 8
     },
     "subjects": [
+      "biology",
       "design",
       "history",
+      "literature",
+      "machine-learning",
+      "media literacy",
       "philosophy",
-      "programming"
+      "programming",
+      "statistics"
     ]
   },
-  "interpretation": "A pass establishes fixture diversity and structural safety at the tested sizes. It does not establish model classification accuracy or learning impact.",
+  "interpretation": "A pass establishes fixture diversity and assembly invariants at the tested sizes. It does not establish compiler or provider capacity, model classification accuracy, or learning impact.",
   "mode": "offline",
   "overallStatus": "pass",
   "scaleSuite": {
@@ -137,47 +174,52 @@
     "cases": [
       {
         "answerSlots": 5,
+        "assembledPayloadUtf8Bytes": 3190,
         "caseId": "small-room",
         "participantCount": 5,
         "questionCount": 1,
-        "uniqueParticipantIds": 5,
-        "utf8InputBytes": 2829,
-        "withinCompilerInputLimit": true
+        "sourceTextPreservationViolations": 0,
+        "tagPreservationViolations": 0,
+        "uniqueParticipantIds": 5
       },
       {
         "answerSlots": 40,
+        "assembledPayloadUtf8Bytes": 16231,
         "caseId": "typical-room",
         "participantCount": 10,
         "questionCount": 4,
-        "uniqueParticipantIds": 10,
-        "utf8InputBytes": 12452,
-        "withinCompilerInputLimit": true
+        "sourceTextPreservationViolations": 0,
+        "tagPreservationViolations": 0,
+        "uniqueParticipantIds": 10
       },
       {
         "answerSlots": 160,
+        "assembledPayloadUtf8Bytes": 58456,
         "caseId": "full-demo-room",
         "participantCount": 20,
         "questionCount": 8,
-        "uniqueParticipantIds": 20,
-        "utf8InputBytes": 42556,
-        "withinCompilerInputLimit": true
+        "sourceTextPreservationViolations": 0,
+        "tagPreservationViolations": 0,
+        "uniqueParticipantIds": 20
       },
       {
         "answerSlots": 160,
+        "assembledPayloadUtf8Bytes": 58456,
         "caseId": "alternate-full-room",
         "participantCount": 20,
         "questionCount": 8,
-        "uniqueParticipantIds": 20,
-        "utf8InputBytes": 42556,
-        "withinCompilerInputLimit": true
+        "sourceTextPreservationViolations": 0,
+        "tagPreservationViolations": 0,
+        "uniqueParticipantIds": 20
       }
     ],
-    "compilerInputLimitBytes": 240000,
+    "maximumAssembledPayloadUtf8Bytes": 58456,
     "maximumParticipantCount": 20,
     "maximumQuestionCount": 8,
-    "maximumUtf8InputBytes": 42556,
-    "payloadsOverCompilerLimit": 0,
-    "providerCalls": 0,
+    "measurementScope": "offline assembled stress payload; not a compiler or provider request",
+    "semanticAccuracyClaim": "none",
+    "sourceTextPreservationViolations": 0,
+    "tagPreservationViolations": 0,
     "totalAnswerSlots": 365
   },
   "schemaVersion": "1",

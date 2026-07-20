@@ -63,15 +63,20 @@ states a supporting consideration, safeguard, fact, or fragment without answerin
 question, even when that fragment is relevant.
 
 Put two answers in the same family when they give substantially the same central answer or use the
-same defining method, even if one is shorter or adds evidence, safeguards, caveats, or secondary
-considerations. Separate them when their conclusion, recommended action or default, causal
-weighting, or algorithmic strategy differs. Differences only in supporting rationales, evidence,
-safeguards, caveats, or completeness never create a new family; coverage units already preserve
-those differences.
-Shared keywords, evidence, or concerns alone are not enough. When uncertain, separate rather than
-merge. Ignore style, verbosity, confidence, identity, correctness, and how many coverage units an
-answer contains. Make every family label name the shared central response and its differentiator,
-not the broad topic.
+same defining method, even if one is shorter or adds evidence, safeguards, routine caveats, or
+secondary considerations. Separate them when their conclusion, recommended action or default,
+causal weighting, algorithmic strategy, or answer to an explicitly requested evaluative dimension
+differs. Evaluative dimensions include whether an interpretation is warranted, whether evidence
+supports an explanation, or which account is favored. Endorsing a claim and rejecting or
+withholding endorsement are different central responses when the question asks for that judgment.
+Differences only in supporting rationale, evidence, safeguards, routine caveats, or completeness do
+not create a new family when the bottom-line judgment is the same; coverage units preserve those
+differences.
+Shared keywords, evidence, or concerns alone are not enough. When the central stance is genuinely
+ambiguous, separate rather than merge, but do not turn a hedge, limitation, or difference in
+confidence into a new stance. Ignore style, verbosity, confidence, identity, correctness, and how
+many coverage units an answer contains. Make every family label name the shared central response
+and its differentiator, not the broad topic.
 
 Return every supplied participant ID exactly once, invent no IDs, declare no unused families, and
 return an empty family list when every assignment is null. Return only the structured result

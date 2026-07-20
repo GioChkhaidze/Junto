@@ -74,7 +74,7 @@ export interface GroupQuestionResult {
   fullyCovered: boolean;
   units: CoverageUnitResult[];
   representedFamilies: RepresentedFamily[];
-  responseAudit?: ResponseAudit[];
+  responseAudit: ResponseAudit[];
 }
 
 export interface CoverageGroupView extends GroupView {

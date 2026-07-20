@@ -144,12 +144,11 @@ def test_answer_and_status_rate_limits_return_retry_hints() -> None:
     participant.close()
 
 
-def test_retention_preserves_active_answering_room_until_deadline_and_grace() -> None:
+def test_maintenance_never_deletes_rooms() -> None:
   clock = ManualClock()
   app = create_app(
     app_settings=Settings(
       session_secret="test-session-secret",
-      room_retention_hours=1,
       analysis_stale_seconds=30,
     ),
     scheduler=CapturingScheduler(),
@@ -162,14 +161,8 @@ def test_retention_preserves_active_answering_room_until_deadline_and_grace() ->
   mutate(host, "POST", f"/api/rooms/{room_id}/start")
   repository = app.state.room_repository
 
-  clock.advance(hours=2)
-  _recovered, first_deleted = app.state.room_service.run_maintenance()
-  assert first_deleted == 0
+  clock.advance(days=365)
+  assert app.state.room_service.run_maintenance() == 0
   assert repository.get(UUID(room_id)) is not None
-
-  clock.advance(hours=2)
-  _recovered, second_deleted = app.state.room_service.run_maintenance()
-  assert second_deleted == 1
-  assert repository.get(UUID(room_id)) is None
   for participant in participants:
     participant.close()

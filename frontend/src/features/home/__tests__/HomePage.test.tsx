@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useParams } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -23,6 +23,11 @@ describe("HomePage", () => {
 
     const codeInput = screen.getByRole("textbox", { name: "Invite code" });
     const continueButton = screen.getByRole("button", { name: "Continue" });
+    const header = screen.getByRole("banner");
+    const main = screen.getByRole("main");
+    expect(within(header).getByRole("link", { name: "Activities" })).toHaveAttribute("href", "/activities");
+    expect(within(main).queryByRole("link", { name: "Activities" })).not.toBeInTheDocument();
+    expect(screen.queryByText("No account, email address, or installation required.")).not.toBeInTheDocument();
     expect(continueButton).toBeDisabled();
 
     await user.type(codeInput, " j7-km 4p! ");

@@ -1,0 +1,245 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "statistics-randomized-tutoring-interpretation",
+  "subject": "statistics",
+  "questionId": "77777777-7777-4777-8777-777777777777",
+  "questionPrompt": "A randomized trial reports that optional online tutoring raised mean exam scores by 4.2 points, with a 95% confidence interval from 1.1 to 7.3 and a two-sided p-value of 0.008. What do these results justify, and what important uncertainty remains?",
+  "referenceMaterial": "At the start of the semester, investigators randomly assigned 240 students in equal numbers to usual academic support or usual support plus online tutoring. Both groups took the same final exam. The published complete-case analysis estimated a 4.2-point difference in group means (95% confidence interval 1.1 to 7.3; two-sided p = 0.008). Final scores were missing for 12% of assigned tutoring students and 4% of control students, and the report included no sensitivity analysis for those missing outcomes. The protocol did not specify a minimum exam-score difference that educators would consider important.",
+  "coverageUnits": [
+    {
+      "id": "u_effect",
+      "text": "Interprets 4.2 points as an estimated difference between group means rather than every student's gain"
+    },
+    {
+      "id": "u_interval",
+      "text": "Interprets the confidence interval as a range of effect sizes compatible with the data and notes that it excludes zero"
+    },
+    {
+      "id": "u_p_value",
+      "text": "Interprets the p-value conditionally on a null effect rather than as the probability that the null is true"
+    },
+    {
+      "id": "u_causality",
+      "text": "Connects random assignment to a causal interpretation while respecting threats to the randomized comparison"
+    },
+    {
+      "id": "u_attrition",
+      "text": "Explains how differential missing outcomes could bias the complete-case estimate or calls for sensitivity analysis"
+    },
+    {
+      "id": "u_practical",
+      "text": "Distinguishes statistical evidence from educational importance, which needs a substantive threshold or context"
+    }
+  ],
+  "participants": [
+    {
+      "participantId": "77777777-7777-4777-8777-777777777201",
+      "answer": "The 4.2 points estimate a difference in the two group means; it does not say every tutored student gained 4.2 points. Under the analysis assumptions, effects from 1.1 to 7.3 points are reasonably compatible with the data, and that interval excludes zero. A p-value of 0.008 says that, if the true average effect were zero and the test assumptions held, a result at least this extreme would occur about 0.8% of the time; it is not a 0.8% probability that the null is true. Random assignment supports a causal interpretation, but losing 12% versus 4% can undo comparability if missingness relates to scores, so a sensitivity analysis is needed. Statistical significance alone does not establish educational importance, especially because no meaningful-difference threshold was set."
+    },
+    {
+      "participantId": "77777777-7777-4777-8777-777777777202",
+      "answer": "Because assignment was random, the 4.2-point mean difference can be interpreted causally for the trial population if loss to follow-up did not upset the comparison. The data are compatible with effects from 1.1 to 7.3, an interval that excludes zero, but the 12% versus 4% missing outcomes could bias the complete-case estimate."
+    },
+    {
+      "participantId": "77777777-7777-4777-8777-777777777203",
+      "answer": ""
+    },
+    {
+      "participantId": "77777777-7777-4777-8777-777777777204",
+      "answer": "Because assignment was random, the 4.2-point mean difference can be interpreted causally for the trial population if loss to follow-up did not upset the comparison. The data are compatible with effects from 1.1 to 7.3, an interval that excludes zero, but the 12% versus 4% missing outcomes could bias the complete-case estimate."
+    },
+    {
+      "participantId": "77777777-7777-4777-8777-777777777205",
+      "answer": "The 95% confidence interval excludes zero. On second thought, zero is between 1.1 and 7.3, so the effect is not statistically distinguishable from zero. The p-value is the probability that the null hypothesis is true, and the confidence interval means 95% of students gained between 1.1 and 7.3 points. Randomization, attrition, causal inference, and practical significance are headings I would use, but I cannot say what the trial justifies. Online tutors should add gamified badges."
+    }
+  ],
+  "expectedCoverage": {
+    "assignments": [
+      {
+        "participantId": "77777777-7777-4777-8777-777777777201",
+        "coveredUnitIds": [
+          "u_effect",
+          "u_interval",
+          "u_p_value",
+          "u_causality",
+          "u_attrition",
+          "u_practical"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_effect",
+            "quotes": [
+              "The 4.2 points estimate a difference in the two group means; it does not say every tutored student gained 4.2 points."
+            ]
+          },
+          {
+            "unitId": "u_interval",
+            "quotes": [
+              "effects from 1.1 to 7.3 points are reasonably compatible with the data, and that interval excludes zero"
+            ]
+          },
+          {
+            "unitId": "u_p_value",
+            "quotes": [
+              "if the true average effect were zero and the test assumptions held, a result at least this extreme would occur about 0.8% of the time",
+              "it is not a 0.8% probability that the null is true"
+            ]
+          },
+          {
+            "unitId": "u_causality",
+            "quotes": [
+              "Random assignment supports a causal interpretation, but losing 12% versus 4% can undo comparability if missingness relates to scores, so a sensitivity analysis is needed."
+            ]
+          },
+          {
+            "unitId": "u_attrition",
+            "quotes": [
+              "losing 12% versus 4% can undo comparability if missingness relates to scores, so a sensitivity analysis is needed"
+            ]
+          },
+          {
+            "unitId": "u_practical",
+            "quotes": [
+              "Statistical significance alone does not establish educational importance, especially because no meaningful-difference threshold was set."
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "77777777-7777-4777-8777-777777777202",
+        "coveredUnitIds": [
+          "u_effect",
+          "u_interval",
+          "u_causality",
+          "u_attrition"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_effect",
+            "quotes": [
+              "the 4.2-point mean difference"
+            ]
+          },
+          {
+            "unitId": "u_interval",
+            "quotes": [
+              "The data are compatible with effects from 1.1 to 7.3, an interval that excludes zero"
+            ]
+          },
+          {
+            "unitId": "u_causality",
+            "quotes": [
+              "Because assignment was random, the 4.2-point mean difference can be interpreted causally for the trial population if loss to follow-up did not upset the comparison."
+            ]
+          },
+          {
+            "unitId": "u_attrition",
+            "quotes": [
+              "the 12% versus 4% missing outcomes could bias the complete-case estimate"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "77777777-7777-4777-8777-777777777204",
+        "coveredUnitIds": [
+          "u_effect",
+          "u_interval",
+          "u_causality",
+          "u_attrition"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_effect",
+            "quotes": [
+              "the 4.2-point mean difference"
+            ]
+          },
+          {
+            "unitId": "u_interval",
+            "quotes": [
+              "The data are compatible with effects from 1.1 to 7.3, an interval that excludes zero"
+            ]
+          },
+          {
+            "unitId": "u_causality",
+            "quotes": [
+              "Because assignment was random, the 4.2-point mean difference can be interpreted causally for the trial population if loss to follow-up did not upset the comparison."
+            ]
+          },
+          {
+            "unitId": "u_attrition",
+            "quotes": [
+              "the 12% versus 4% missing outcomes could bias the complete-case estimate"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "77777777-7777-4777-8777-777777777205",
+        "coveredUnitIds": [],
+        "evidence": []
+      }
+    ]
+  },
+  "expectedFamilies": {
+    "families": [
+      {
+        "label": "Qualified randomized-trial inference"
+      },
+      {
+        "label": "No statistically distinguishable effect"
+      }
+    ],
+    "assignments": [
+      {
+        "participantId": "77777777-7777-4777-8777-777777777201",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "77777777-7777-4777-8777-777777777202",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "77777777-7777-4777-8777-777777777204",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "77777777-7777-4777-8777-777777777205",
+        "familyIndex": 1
+      }
+    ]
+  },
+  "expectedRelationships": {
+    "sameFamily": [
+      {
+        "participantIds": [
+          "77777777-7777-4777-8777-777777777201",
+          "77777777-7777-4777-8777-777777777202"
+        ],
+        "reason": "Both make a qualified randomized-trial inference; p2 addresses fewer statistical interpretations."
+      },
+      {
+        "participantIds": [
+          "77777777-7777-4777-8777-777777777202",
+          "77777777-7777-4777-8777-777777777204"
+        ],
+        "reason": "The two answers are exact duplicates and therefore must share a family."
+      }
+    ],
+    "differentFamily": [
+      {
+        "participantIds": [
+          "77777777-7777-4777-8777-777777777201",
+          "77777777-7777-4777-8777-777777777205"
+        ],
+        "reason": "One accepts a qualified positive trial inference; the other says the effect is not distinguishable and withholds any justified inference."
+      }
+    ],
+    "nullFamilyWithCoverage": [],
+    "emptyAnswerParticipantIds": [
+      "77777777-7777-4777-8777-777777777203"
+    ],
+    "validDisagreement": []
+  }
+}

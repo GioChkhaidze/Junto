@@ -385,7 +385,7 @@
 
 .groupPage {
   max-width: 72rem;
-  padding: clamp(var(--space-6), 4vw, var(--space-12));
+  padding: var(--space-8) clamp(var(--space-5), 4vw, var(--space-10)) var(--space-12);
   margin-inline: auto;
   background: var(--white);
   border: 1px solid var(--line);
@@ -396,30 +396,15 @@
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: var(--space-8);
-  padding-bottom: var(--space-10);
-  margin-bottom: var(--space-12);
-  border-bottom: 1px solid var(--line);
-}
-
-.groupHeader p {
-  margin-bottom: var(--space-2);
-  color: var(--green-800);
-  font-size: 0.84rem;
-  font-weight: 720;
+  gap: var(--space-6);
+  margin-bottom: var(--space-5);
 }
 
 .groupHeader h1 {
-  margin-bottom: var(--space-3);
-  font-size: clamp(2.5rem, 5vw, 3.75rem);
-  letter-spacing: -0.05em;
-  line-height: 1.02;
-}
-
-.groupHeader > div:first-child > span {
-  display: block;
-  max-width: 65ch;
-  color: var(--ink-secondary);
+  margin: 0;
+  font-size: 2rem;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
 }
 
 .groupHeader > div:first-child {
@@ -429,29 +414,33 @@
 .groupNumber {
   flex: 0 0 auto;
   max-width: 100%;
-  min-width: 8.5rem;
-  padding: var(--space-5) var(--space-6);
+  min-width: 6.5rem;
+  padding: var(--space-3) var(--space-4);
   color: var(--white);
   background: var(--green-950);
-  font-size: 1.05rem;
+  font-size: 0.9rem;
   font-weight: 750;
   text-align: center;
   overflow-wrap: anywhere;
 }
 
 .membersSection {
-  margin-bottom: var(--space-12);
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-8);
+  flex-wrap: wrap;
 }
 
 .membersSection h2 {
-  padding-bottom: var(--space-4);
-  border-bottom: 1px solid var(--line);
-  font-size: 1.15rem;
+  margin: 0;
+  font-size: 0.875rem;
 }
 
 .membersSection ul {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
   padding: 0;
   margin: 0;
   list-style: none;
@@ -460,76 +449,106 @@
 .membersSection li {
   display: flex;
   align-items: center;
-  min-height: 3.75rem;
-  padding: var(--space-4) var(--space-4) var(--space-4) 0;
-  border-bottom: 1px solid var(--line);
+}
+
+.membersSection li:not(:last-child)::after {
+  content: ",";
 }
 
 .membersSection li strong {
   min-width: 0;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   overflow-wrap: anywhere;
 }
 
-.agenda {
-  border-top: 1px solid var(--line);
-}
-
 .agendaHeading {
-  padding: var(--space-8) 0;
-  border-bottom: 1px solid var(--line);
+  padding-bottom: var(--space-4);
 }
 
 .agendaHeading h2 {
-  margin-bottom: var(--space-2);
-  font-size: 1.4rem;
+  margin: 0;
+  font-size: 1.15rem;
 }
 
-.agendaHeading p {
+.agenda {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.agendaQuestionDisclosure {
   margin: 0;
+}
+
+.agendaQuestionRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-6);
+  min-height: 2.75rem;
+  padding: var(--space-3) var(--space-4);
+  color: var(--ink);
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  list-style: none;
+  text-align: left;
+  transition:
+    color 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.agendaQuestionRow::-webkit-details-marker {
+  display: none;
+}
+
+.agendaQuestionRow:hover {
+  background: var(--surface-subtle);
+}
+
+.agendaQuestionDisclosure[open] .agendaQuestionRow {
+  color: var(--green-950);
+  background: var(--green-50);
+}
+
+.agendaQuestionRow:focus-visible {
+  outline: 0;
+  box-shadow: inset 3px 0 var(--green-700);
+}
+
+.agendaQuestionRow > span {
+  max-width: 90ch;
+  line-height: 1.5;
+}
+
+.agendaQuestionRow strong {
+  font-weight: 750;
+}
+
+.agendaQuestionRow small {
+  flex: 0 0 auto;
+  padding-top: 0.1rem;
   color: var(--ink-muted);
-  font-size: 0.82rem;
+  font-size: 0.76rem;
+  white-space: nowrap;
 }
 
-.agenda > section {
-  padding: var(--space-10) 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.agendaQuestionHeading {
-  max-width: 68ch;
-  margin-bottom: var(--space-5);
-}
-
-.agendaQuestionHeading span {
-  display: block;
-  margin-bottom: var(--space-1);
-  color: var(--green-800);
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.agendaQuestionHeading h3 {
-  margin: 0;
-  font-family: var(--font-editorial);
-  font-size: 1.35rem;
-  font-weight: 620;
-  line-height: 1.4;
+.agendaQuestionDetail {
+  padding: var(--space-5) var(--space-4) var(--space-6);
 }
 
 .agendaUnits {
+  display: grid;
+  gap: var(--space-4);
   padding: 0;
   margin: 0;
-  border-top: 1px solid var(--line);
   list-style: none;
 }
 
 .agendaUnits li {
   display: grid;
   grid-template-columns: 1.5rem minmax(0, 1fr);
-  gap: var(--space-2);
-  padding: var(--space-5) 0;
-  border-bottom: 1px solid var(--line);
+  gap: var(--space-4);
 }
 
 .agendaUnits li > span {
@@ -550,13 +569,15 @@
 }
 
 .agendaUnits strong {
-  font-size: 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 680;
+  line-height: 1.45;
 }
 
 .agendaUnits p {
   margin: var(--space-1) 0 0;
   color: var(--ink-muted);
-  font-size: 0.8rem;
+  font-size: 0.76rem;
 }
 
 .agendaFamilies {
@@ -569,16 +590,15 @@
 }
 
 .agendaFamilies dl {
+  display: grid;
+  gap: var(--space-3);
   margin: 0;
-  border-top: 1px solid var(--line);
 }
 
 .agendaFamilies dl > div {
   display: grid;
   grid-template-columns: minmax(11rem, 0.55fr) minmax(0, 1fr);
   gap: var(--space-4);
-  padding: var(--space-2) 0;
-  border-bottom: 1px solid var(--line);
   font-size: 0.8rem;
 }
 
@@ -688,6 +708,20 @@
 
   .groupNumber {
     width: 100%;
+  }
+
+  .agendaQuestionRow {
+    align-items: stretch;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .agendaQuestionRow small {
+    white-space: normal;
+  }
+
+  .agendaQuestionDetail {
+    padding: var(--space-5) var(--space-2) var(--space-6);
   }
 
   .agendaFamilies dl > div {

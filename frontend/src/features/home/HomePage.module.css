@@ -19,22 +19,17 @@
 
 .introductionInner {
   width: min(100%, 45rem);
-  padding: clamp(4rem, 8vw, 7.5rem) clamp(2rem, 6vw, 6.5rem);
+  padding-block: clamp(4rem, 8vw, 7.5rem);
+  padding-inline: clamp(2rem, 6vw, 6.5rem);
+  padding-bottom: calc(clamp(4rem, 8vw, 7.5rem) + var(--space-6));
   margin-left: auto;
 }
 
-.productLine {
-  margin-bottom: var(--space-5);
-  color: color-mix(in oklch, var(--white) 74%, transparent);
-  font-size: 0.84rem;
-  font-weight: 720;
-}
-
 .introduction h1 {
-  max-width: 12ch;
+  max-width: 15ch;
   margin-bottom: var(--space-6);
   color: var(--white);
-  font-size: clamp(2.8rem, 5vw, 4.65rem);
+  font-size: clamp(2.7rem, 4.7vw, 4.4rem);
   font-weight: 720;
   letter-spacing: -0.055em;
   line-height: 0.98;
@@ -52,9 +47,8 @@
   display: grid;
   gap: var(--space-6);
   max-width: 39rem;
-  padding: var(--space-8) 0 0;
+  padding: 0;
   margin: 0;
-  border-top: 1px solid color-mix(in oklch, var(--white) 22%, transparent);
   counter-reset: process;
   list-style: none;
 }
@@ -95,12 +89,13 @@
 }
 
 .entry {
+  align-items: flex-start;
   background: var(--white);
 }
 
 .entryInner {
   width: min(100%, 35rem);
-  padding: clamp(4rem, 8vw, 7.5rem) clamp(2rem, 6vw, 6.5rem);
+  padding: clamp(var(--space-16), 24vh, 19rem) clamp(2rem, 6vw, 6.5rem) var(--space-16);
 }
 
 .entryIntro {
@@ -197,20 +192,10 @@
   text-transform: uppercase;
 }
 
-.hint,
-.accountNote {
+.hint {
   color: var(--ink-muted);
   font-size: 0.78rem;
-}
-
-.hint {
   margin: var(--space-2) 0 0;
-}
-
-.accountNote {
-  padding-top: var(--space-6);
-  margin: var(--space-8) 0 0;
-  border-top: 1px solid var(--line);
 }
 
 @media (max-width: 940px) {
@@ -227,7 +212,7 @@
 
   .introduction h1 {
     max-width: 15ch;
-    font-size: clamp(2.65rem, 8vw, 4.25rem);
+    font-size: clamp(2.55rem, 7.5vw, 4rem);
   }
 
   .process {
@@ -247,7 +232,7 @@
   }
 
   .introduction h1 {
-    font-size: 2.7rem;
+    font-size: 2.55rem;
   }
 
   .lede {

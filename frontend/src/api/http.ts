@@ -33,6 +33,16 @@ interface Session {
 
 let sessionPromise: Promise<Session> | undefined;
 
+function cacheSession(pendingSession: Promise<Session>): Promise<Session> {
+  sessionPromise = pendingSession;
+  void pendingSession.catch(() => {
+    if (sessionPromise === pendingSession) {
+      sessionPromise = undefined;
+    }
+  });
+  return pendingSession;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -130,14 +140,28 @@ function getSession(options: { refresh?: boolean } = {}): Promise<Session> {
     return sessionPromise;
   }
 
-  const pendingSession = fetchSession();
-  sessionPromise = pendingSession;
-  void pendingSession.catch(() => {
-    if (sessionPromise === pendingSession) {
-      sessionPromise = undefined;
+  return cacheSession(fetchSession());
+}
+
+async function refreshSessionAfterCsrfFailure(staleToken: string): Promise<Session> {
+  while (true) {
+    const observedSession = sessionPromise;
+    if (observedSession !== undefined) {
+      try {
+        const currentSession = await observedSession;
+        if (currentSession.csrfToken !== staleToken) {
+          return currentSession;
+        }
+      } catch {
+        // A failed session request is replaced below.
+      }
+      if (sessionPromise !== observedSession) {
+        continue;
+      }
     }
-  });
-  return pendingSession;
+
+    return cacheSession(fetchSession());
+  }
 }
 
 export function invalidateSession(): void {
@@ -146,36 +170,46 @@ export function invalidateSession(): void {
 
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const method = options.method ?? "GET";
+  const safeMethod = SAFE_METHODS.has(method);
+  const requestPath = apiPath(path);
   if (options.body !== undefined && options.formData !== undefined) {
     throw new Error("An API request cannot contain both JSON and FormData.");
-  }
-
-  const headers = new Headers(options.headers);
-  headers.set("Accept", "application/json");
-
-  if (!SAFE_METHODS.has(method)) {
-    const session = await getSession();
-    headers.set("X-CSRF-Token", session.csrfToken);
   }
 
   let body: BodyInit | undefined;
   if (options.formData !== undefined) {
     body = options.formData;
   } else if (options.body !== undefined) {
-    headers.set("Content-Type", "application/json");
     body = JSON.stringify(options.body);
   }
 
-  const response = await fetch(apiPath(path), {
-    method,
-    credentials: "same-origin",
-    headers,
-    body,
-    signal: options.signal,
-  });
+  const send = async (session?: Session): Promise<Response> => {
+    const headers = new Headers(options.headers);
+    headers.set("Accept", "application/json");
+    if (options.body !== undefined) {
+      headers.set("Content-Type", "application/json");
+    }
+    if (session !== undefined) {
+      headers.set("X-CSRF-Token", session.csrfToken);
+    }
+
+    return fetch(requestPath, { method, credentials: "same-origin", headers, body, signal: options.signal });
+  };
+
+  let requestSession = safeMethod ? undefined : await getSession();
+  let response = await send(requestSession);
 
   if (!response.ok) {
-    throw await errorFromResponse(response);
+    const error = await errorFromResponse(response);
+    if (!safeMethod && requestSession !== undefined && error.code === "CSRF_INVALID") {
+      requestSession = await refreshSessionAfterCsrfFailure(requestSession.csrfToken);
+      response = await send(requestSession);
+      if (!response.ok) {
+        throw await errorFromResponse(response);
+      }
+    } else {
+      throw error;
+    }
   }
 
   if (response.status === 204 || response.status === 205) {

@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Button, Field, Select } from "../../../components/ui";
-import type { SyntheticClassroomProjection, SyntheticResponseSource } from "../../../domain";
+import type { SyntheticClassroomProjection } from "../../../domain";
 import styles from "./SyntheticClassroomSection.module.css";
 
 interface SyntheticClassroomSectionProps {
   projection: SyntheticClassroomProjection;
   working: boolean;
   onConfigure?: (targetSize: number) => Promise<void>;
-  onGenerate?: (source: SyntheticResponseSource) => Promise<void>;
+  onGenerate?: () => Promise<void>;
 }
+
+const openRouterDisclosure =
+  "OpenRouter receives the activity title, question prompts, anonymous behavioral profiles, and uploaded or pasted " +
+  "room-wide source text. Participant names and IDs, coverage units, and host-only notes are not sent.";
 
 function firstTarget(projection: SyntheticClassroomProjection): number {
   if (projection.targetSizes.includes(projection.syntheticParticipantCount)) {
@@ -24,25 +28,14 @@ export function SyntheticClassroomSection({
   onGenerate,
 }: SyntheticClassroomSectionProps) {
   const [targetSize, setTargetSize] = useState(() => firstTarget(projection));
-  const sources = useMemo<SyntheticResponseSource[]>(() => {
-    const available: SyntheticResponseSource[] = [];
-    if (projection.patternedAvailable) available.push("patterned");
-    if (projection.openRouterAvailable) available.push("openrouter");
-    return available;
-  }, [projection.openRouterAvailable, projection.patternedAvailable]);
-  const [source, setSource] = useState<SyntheticResponseSource>(() => sources[0] ?? "patterned");
+  const [generationStartedAt, setGenerationStartedAt] = useState<number | null>(null);
+  const generation = projection.generation;
 
   useEffect(() => {
     if (!projection.targetSizes.includes(targetSize)) {
       setTargetSize(firstTarget(projection));
     }
   }, [projection, targetSize]);
-
-  useEffect(() => {
-    if (!sources.includes(source) && sources[0]) {
-      setSource(sources[0]);
-    }
-  }, [source, sources]);
 
   if (
     !projection.enabled ||
@@ -54,17 +47,22 @@ export function SyntheticClassroomSection({
 
   function configure(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (targetSize > 0 && onConfigure) void onConfigure(targetSize);
+    if (targetSize > 0 && projection.openRouterAvailable && onConfigure) void onConfigure(targetSize);
   }
 
   function removeParticipants() {
     if (onConfigure) void onConfigure(0);
   }
 
-  function generate(event: FormEvent<HTMLFormElement>) {
+  async function generate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!sources.includes(source) || !onGenerate) return;
-    void onGenerate(source);
+    if (!projection.openRouterAvailable || !onGenerate) return;
+    setGenerationStartedAt(Date.now());
+    try {
+      await onGenerate();
+    } finally {
+      setGenerationStartedAt(null);
+    }
   }
 
   if (projection.stage === "lobby") {
@@ -77,6 +75,14 @@ export function SyntheticClassroomSection({
             Add a varied test roster now. These participants wait in the lobby and do not answer until you explicitly
             run them after the activity starts.
           </p>
+          {projection.openRouterAvailable ? <p className={styles.disclosure}>{openRouterDisclosure}</p> : null}
+          {!projection.openRouterAvailable ? (
+            <p className={styles.currentState} role="status">
+              {projection.syntheticParticipantCount > 0
+                ? "OpenRouter is not configured. Remove this simulated roster before starting the activity."
+                : "OpenRouter is not configured, so simulated participants cannot be added to this room."}
+            </p>
+          ) : null}
           {projection.syntheticParticipantCount > 0 ? (
             <p className={styles.currentState}>
               {projection.syntheticParticipantCount} simulated participants are in this room.
@@ -84,11 +90,23 @@ export function SyntheticClassroomSection({
           ) : null}
         </div>
         <form className={styles.controls} onSubmit={configure}>
-          <Field label="Simulated roster size" hint="Updating the total replaces only the simulated roster.">
+          <Field
+            label="Simulated roster size"
+            hint={
+              projection.openRouterAvailable
+                ? "Updating the total replaces only the simulated roster."
+                : "Configure OpenRouter before adding simulated participants."
+            }
+          >
             <Select
               value={targetSize || ""}
               onChange={(event) => setTargetSize(Number(event.currentTarget.value))}
-              disabled={working || !projection.canConfigure || projection.targetSizes.length === 0}
+              disabled={
+                working ||
+                !projection.canConfigure ||
+                !projection.openRouterAvailable ||
+                projection.targetSizes.length === 0
+              }
             >
               {projection.targetSizes.length === 0 ? <option value="">No feasible roster size</option> : null}
               {projection.targetSizes.map((size) => (
@@ -103,7 +121,7 @@ export function SyntheticClassroomSection({
             variant="secondary"
             loading={working}
             loadingLabel="Updating participants"
-            disabled={!projection.canConfigure || !onConfigure || targetSize === 0}
+            disabled={!projection.canConfigure || !projection.openRouterAvailable || !onConfigure || targetSize === 0}
           >
             {projection.syntheticParticipantCount > 0 ? "Update participants" : "Add participants"}
           </Button>
@@ -123,50 +141,51 @@ export function SyntheticClassroomSection({
   }
 
   const hasPendingParticipants = projection.pendingSyntheticParticipantCount > 0;
+  const isGenerating = generation?.status === "running" || generationStartedAt !== null;
   const responseState = hasPendingParticipants
-    ? `${projection.pendingSyntheticParticipantCount} of ${projection.syntheticParticipantCount} simulated ` +
-      "participants still need to answer."
+    ? `${projection.syntheticParticipantCount - projection.pendingSyntheticParticipantCount} of ` +
+      `${projection.syntheticParticipantCount} simulated participants have submitted.`
     : `All ${projection.syntheticParticipantCount} simulated participants have submitted.`;
-  const selectedDescription =
-    source === "openrouter"
-      ? "OpenRouter models answer as distinct student profiles. Completing the roster starts analysis."
-      : "Produces deterministic local fixtures for flow and load checks. It does not measure semantic accuracy.";
-
   return (
     <section className={styles.section} aria-labelledby="synthetic-classroom-title">
       <div className={styles.description}>
         <span>Development and demos</span>
         <h2 id="synthetic-classroom-title">Simulated responses</h2>
         <p>
-          Generate answers for the simulated participants and submit them together. Nothing runs until you use the
+          {openRouterDisclosure} Generated responses can be incomplete or mistaken. Nothing runs until you use the
           button.
         </p>
         <p className={styles.currentState}>{responseState}</p>
       </div>
-      {hasPendingParticipants && sources.length > 0 ? (
+      {hasPendingParticipants && projection.openRouterAvailable ? (
         <form className={styles.controls} onSubmit={generate}>
-          <Field label="Response source" hint={selectedDescription}>
-            <Select
-              value={source}
-              onChange={(event) => setSource(event.currentTarget.value as SyntheticResponseSource)}
-              disabled={working || !projection.canGenerate || !onGenerate}
-            >
-              {projection.patternedAvailable ? <option value="patterned">Patterned local responses</option> : null}
-              {projection.openRouterAvailable ? (
-                <option value="openrouter">OpenRouter generated responses</option>
-              ) : null}
-            </Select>
-          </Field>
+          <div className={styles.providerSummary}>
+            <h3>OpenRouter student simulation</h3>
+            <p>Responses are saved as students finish. When the complete roster submits, analysis starts.</p>
+          </div>
+          {generation?.status === "failed" && generation.error ? (
+            <p className={styles.generationError} role="alert">
+              {generation.error}
+            </p>
+          ) : null}
           <Button
             type="submit"
             variant="secondary"
-            loading={working}
+            loading={working || isGenerating}
             loadingLabel="Generating responses"
-            disabled={!projection.canGenerate || !onGenerate}
+            disabled={!projection.canGenerate || !onGenerate || isGenerating}
           >
-            {source === "openrouter" ? "Generate with OpenRouter and submit" : "Generate and submit responses"}
+            {generation?.status === "failed" ? "Retry remaining students" : "Generate with OpenRouter and submit"}
           </Button>
         </form>
+      ) : hasPendingParticipants ? (
+        <div className={styles.providerSummary} role="status">
+          <h3>Response generation unavailable</h3>
+          <p>
+            OpenRouter is not configured for this server. Simulated participants remain waiting; Junto will not submit
+            placeholder answers in their place.
+          </p>
+        </div>
       ) : null}
     </section>
   );

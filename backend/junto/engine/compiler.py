@@ -13,6 +13,7 @@ from uuid import UUID, uuid5
 
 from pydantic import BaseModel
 
+from junto.domain.limits import MAX_ANSWER_CHARACTERS
 from junto.engine.models import (
   QuestionSemanticArtifact,
   ResponseFamily,
@@ -43,6 +44,7 @@ from junto.engine.provider import (
 
 _LOG = logging.getLogger("junto.semantic.compiler")
 _FAMILY_NAMESPACE = UUID("6c3f2f63-cacc-5ee1-8267-4b0909c8dc16")
+_COVERAGE_BATCH_SIZE = 5
 T = TypeVar("T", bound=BaseModel)
 
 
@@ -76,7 +78,7 @@ class CompilerLimits:
   max_reference_characters: int = 100_000
   max_coverage_units: int = 8
   max_coverage_unit_characters: int = 300
-  max_answer_characters: int = 1_500
+  max_answer_characters: int = MAX_ANSWER_CHARACTERS
   # Applied to UTF-8 bytes, a conservative upper bound on BPE token count.
   max_provider_input_characters: int = 240_000
 
@@ -158,14 +160,16 @@ class SemanticCompiler:
     limits: CompilerLimits | None = None,
     max_concurrency: int = 4,
     request_limiter: ProviderRequestLimiter | None = None,
-    request_timeout_seconds: float = 45.0,
-    room_timeout_seconds: float = 180.0,
+    request_timeout_seconds: float = 90.0,
+    room_timeout_seconds: float = 240.0,
     transport_retry_delay_seconds: float = 0.2,
   ) -> None:
     if max_concurrency <= 0:
       raise ValueError("max_concurrency must be positive")
     if request_timeout_seconds <= 0 or room_timeout_seconds <= 0:
       raise ValueError("compiler timeouts must be positive")
+    if request_timeout_seconds > room_timeout_seconds:
+      raise ValueError("request timeout cannot exceed room timeout")
     if transport_retry_delay_seconds < 0:
       raise ValueError("transport_retry_delay_seconds cannot be negative")
     self._provider = provider
@@ -261,9 +265,10 @@ class SemanticCompiler:
       question_prompt=question.prompt,
       answers=non_empty,
     )
-    self._preflight_prompt_sizes(coverage_prompt, family_prompt)
+    coverage_prompts = _coverage_batch_prompts(coverage_prompt)
+    self._preflight_prompt_sizes(coverage_prompts, family_prompt)
 
-    coverage_task = asyncio.create_task(self._compile_coverage(coverage_prompt))
+    coverage_task = asyncio.create_task(self._compile_coverage(coverage_prompts))
     family_task = asyncio.create_task(self._compile_families(family_prompt))
     try:
       coverage, families = await asyncio.gather(coverage_task, family_task)
@@ -296,7 +301,30 @@ class SemanticCompiler:
       assignments=assignments,
     )
 
-  async def _compile_coverage(self, prompt: CoveragePrompt) -> _ValidatedCoverage:
+  async def _compile_coverage(
+    self,
+    prompts: tuple[CoveragePrompt, ...],
+  ) -> _ValidatedCoverage:
+    tasks = [asyncio.create_task(self._compile_coverage_batch(prompt)) for prompt in prompts]
+    try:
+      batches = await asyncio.gather(*tasks)
+    except BaseException:
+      for task in tasks:
+        if not task.done():
+          task.cancel()
+      await asyncio.gather(*tasks, return_exceptions=True)
+      raise
+    merged: dict[str, tuple[str, ...]] = {}
+    for batch in batches:
+      if set(merged) & set(batch.by_participant):
+        raise _invalid_output_error()
+      merged.update(batch.by_participant)
+    expected = {answer.participant_id for prompt in prompts for answer in prompt.answers}
+    if set(merged) != expected:
+      raise _invalid_output_error()
+    return _ValidatedCoverage(by_participant=merged)
+
+  async def _compile_coverage_batch(self, prompt: CoveragePrompt) -> _ValidatedCoverage:
     retry_state = _TransportRetryState()
     invalid_result: object
     validation_errors: tuple[str, ...]
@@ -475,12 +503,15 @@ class SemanticCompiler:
 
   def _preflight_prompt_sizes(
     self,
-    coverage_prompt: CoveragePrompt,
+    coverage_prompts: Sequence[CoveragePrompt],
     family_prompt: FamilyPrompt,
   ) -> None:
-    coverage_size = _message_bytes(coverage_messages(coverage_prompt)) + _schema_bytes(CoverageClassificationOutput)
+    coverage_sizes = (
+      _message_bytes(coverage_messages(prompt)) + _schema_bytes(CoverageClassificationOutput)
+      for prompt in coverage_prompts
+    )
     family_size = _message_bytes(family_messages(family_prompt)) + _schema_bytes(FamilyClusteringOutput)
-    if max(coverage_size, family_size) > self._limits.max_provider_input_characters:
+    if max(*coverage_sizes, family_size) > self._limits.max_provider_input_characters:
       raise SemanticCompilerError(
         "SEMANTIC_INPUT_TOO_LARGE",
         "This question contains too much text for one bounded analysis request.",
@@ -561,6 +592,19 @@ def _coverage_errors(
       if any(_normalize_line_endings(quote) not in normalized_answer for quote in evidence.quotes):
         errors.append(f"assignment[{index}] evidence must be a literal substring of its own answer")
   return tuple(errors[:40])
+
+
+def _coverage_batch_prompts(prompt: CoveragePrompt) -> tuple[CoveragePrompt, ...]:
+  return tuple(
+    CoveragePrompt(
+      question_id=prompt.question_id,
+      question_prompt=prompt.question_prompt,
+      reference_material=prompt.reference_material,
+      coverage_units=prompt.coverage_units,
+      answers=prompt.answers[offset : offset + _COVERAGE_BATCH_SIZE],
+    )
+    for offset in range(0, len(prompt.answers), _COVERAGE_BATCH_SIZE)
+  )
 
 
 def _validated_coverage(

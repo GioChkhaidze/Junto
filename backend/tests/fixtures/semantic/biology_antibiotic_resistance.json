@@ -1,0 +1,308 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "biology-antibiotic-resistance-ward-dynamics",
+  "subject": "biology",
+  "questionId": "88888888-8888-4888-8888-888888888888",
+  "questionPrompt": "Which process best explains the ward's antibiotic-resistance pattern: selection on existing variation, horizontal gene transfer, or an interaction of both? Use the observations, predict the effect of reducing fluoroquinolone use, and recommend a response.",
+  "referenceMaterial": "Ward surveillance sampled 40 Escherichia coli isolates before a fluoroquinolone treatment period and found five resistant isolates. After seven days of treatment, 31 of 40 sampled isolates were resistant. A whole-genome phylogeny placed resistant isolates in two well-separated chromosomal lineages, and both lineages carried a near-identical resistance plasmid. In drug-free competition cultures, plasmid-bearing bacteria grew about 8% more slowly than matched plasmid-free bacteria. Because the study used two cross-sectional samples rather than tracking individual cells or plasmids over time, it could not determine where or when transfer occurred.",
+  "coverageUnits": [
+    {
+      "id": "u_existing",
+      "text": "Uses resistance before treatment as evidence that relevant variation existed before antibiotic exposure"
+    },
+    {
+      "id": "u_selection",
+      "text": "Explains that treatment changes population frequencies through differential survival or reproduction rather than purposeful adaptation"
+    },
+    {
+      "id": "u_transfer",
+      "text": "Treats a shared plasmid across distinct lineages as evidence consistent with horizontal transfer without claiming the snapshots prove when it occurred"
+    },
+    {
+      "id": "u_cost",
+      "text": "Uses slower drug-free growth to predict selection against plasmid carriers after drug pressure falls while acknowledging persistence is possible"
+    },
+    {
+      "id": "u_stewardship",
+      "text": "Recommends reducing unnecessary fluoroquinolone exposure to weaken selection favoring resistance"
+    },
+    {
+      "id": "u_control",
+      "text": "Recommends infection-control action that limits transmission of resistant strains or plasmids"
+    }
+  ],
+  "participants": [
+    {
+      "participantId": "88888888-8888-4888-8888-888888888201",
+      "answer": "The 8% slower drug-free growth is evidence of a fitness cost, so plasmid-bearing bacteria may lose frequency when fluoroquinolone pressure is removed. The assay alone cannot show that the plasmid will disappear from the ward."
+    },
+    {
+      "participantId": "88888888-8888-4888-8888-888888888202",
+      "answer": "Horizontal transfer is the strongest explanation for finding a near-identical plasmid in two separated chromosomal lineages. That pattern is consistent with a mobile plasmid crossing lineages, although two snapshots cannot establish that transfer happened in this ward or during these seven days. Contact precautions, hand hygiene, and cleaning shared equipment would reduce opportunities for resistant bacteria and their plasmids to spread."
+    },
+    {
+      "participantId": "88888888-8888-4888-8888-888888888204",
+      "answer": "Selection on existing variation best explains the rapid frequency change. Five resistant isolates were present before treatment, so the bacteria did not become resistant because they sensed the drug. Fluoroquinolone treatment suppresses susceptible cells, allowing resistant descendants to form a larger fraction of the population. The ward should reduce unnecessary fluoroquinolone use; with less use, that advantage weakens. The measured drug-free growth cost predicts a decline in carriers, although not certain elimination."
+    },
+    {
+      "participantId": "88888888-8888-4888-8888-888888888205",
+      "answer": "Natural selection, horizontal gene transfer, plasmid fitness cost, antibiotic stewardship, and contact precautions are vocabulary from antibiotic resistance. The 31 of 40 result means fluoroquinolone created resistance in 77.5% of individual bacteria, and the shared plasmid proves every isolate was the same clone. I have not decided which mechanism best explains the ward pattern. Antibiotic packaging should use brighter labels."
+    },
+    {
+      "participantId": "88888888-8888-4888-8888-888888888203",
+      "answer": ""
+    },
+    {
+      "participantId": "88888888-8888-4888-8888-888888888206",
+      "answer": "The interaction account best fits all observations. Resistant bacteria already existed before dosing, and fluoroquinolone then favored their survival relative to susceptible cells. The same plasmid in distant chromosomal lineages is consistent with horizontal transfer, but the cross-sectional samples do not prove where or when it moved. Reducing unnecessary fluoroquinolone use would remove part of the selective advantage; because carriers grew 8% more slowly without drug, their frequency may fall, though continued transfer could preserve the plasmid. Stewardship should be paired with hand hygiene, contact precautions, and equipment cleaning to limit transmission."
+    },
+    {
+      "participantId": "88888888-8888-4888-8888-888888888207",
+      "answer": "Selection is the main explanation: five resistant isolates were already present, then the drug suppressed susceptible bacteria and resistant lineages became a larger share. The population frequency changed; individual bacteria did not decide to adapt."
+    }
+  ],
+  "expectedCoverage": {
+    "assignments": [
+      {
+        "participantId": "88888888-8888-4888-8888-888888888201",
+        "coveredUnitIds": [
+          "u_cost"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_cost",
+            "quotes": [
+              "plasmid-bearing bacteria may lose frequency when fluoroquinolone pressure is removed",
+              "The assay alone cannot show that the plasmid will disappear from the ward."
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888202",
+        "coveredUnitIds": [
+          "u_transfer",
+          "u_control"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_transfer",
+            "quotes": [
+              "finding a near-identical plasmid in two separated chromosomal lineages",
+              "That pattern is consistent with a mobile plasmid crossing lineages, although two snapshots cannot establish that transfer happened in this ward or during these seven days."
+            ]
+          },
+          {
+            "unitId": "u_control",
+            "quotes": [
+              "Contact precautions, hand hygiene, and cleaning shared equipment would reduce opportunities for resistant bacteria and their plasmids to spread."
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888204",
+        "coveredUnitIds": [
+          "u_existing",
+          "u_selection",
+          "u_cost",
+          "u_stewardship"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_existing",
+            "quotes": [
+              "Five resistant isolates were present before treatment"
+            ]
+          },
+          {
+            "unitId": "u_selection",
+            "quotes": [
+              "Fluoroquinolone treatment suppresses susceptible cells, allowing resistant descendants to form a larger fraction of the population."
+            ]
+          },
+          {
+            "unitId": "u_cost",
+            "quotes": [
+              "The measured drug-free growth cost predicts a decline in carriers, although not certain elimination"
+            ]
+          },
+          {
+            "unitId": "u_stewardship",
+            "quotes": [
+              "The ward should reduce unnecessary fluoroquinolone use; with less use, that advantage weakens."
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888205",
+        "coveredUnitIds": [],
+        "evidence": []
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888206",
+        "coveredUnitIds": [
+          "u_existing",
+          "u_selection",
+          "u_transfer",
+          "u_cost",
+          "u_stewardship",
+          "u_control"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_existing",
+            "quotes": [
+              "Resistant bacteria already existed before dosing"
+            ]
+          },
+          {
+            "unitId": "u_selection",
+            "quotes": [
+              "fluoroquinolone then favored their survival relative to susceptible cells"
+            ]
+          },
+          {
+            "unitId": "u_transfer",
+            "quotes": [
+              "The same plasmid in distant chromosomal lineages is consistent with horizontal transfer, but the cross-sectional samples do not prove where or when it moved."
+            ]
+          },
+          {
+            "unitId": "u_cost",
+            "quotes": [
+              "because carriers grew 8% more slowly without drug, their frequency may fall, though continued transfer could preserve the plasmid"
+            ]
+          },
+          {
+            "unitId": "u_stewardship",
+            "quotes": [
+              "Reducing unnecessary fluoroquinolone use would remove part of the selective advantage"
+            ]
+          },
+          {
+            "unitId": "u_control",
+            "quotes": [
+              "Stewardship should be paired with hand hygiene, contact precautions, and equipment cleaning to limit transmission."
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888207",
+        "coveredUnitIds": [
+          "u_existing",
+          "u_selection"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_existing",
+            "quotes": [
+              "five resistant isolates were already present"
+            ]
+          },
+          {
+            "unitId": "u_selection",
+            "quotes": [
+              "the drug suppressed susceptible bacteria and resistant lineages became a larger share",
+              "The population frequency changed; individual bacteria did not decide to adapt."
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "expectedFamilies": {
+    "families": [
+      {
+        "label": "Selection on existing variation"
+      },
+      {
+        "label": "Horizontal-transfer-first explanation"
+      },
+      {
+        "label": "Interaction of selection and transfer"
+      },
+      {
+        "label": "Withhold a mechanism choice"
+      }
+    ],
+    "assignments": [
+      {
+        "participantId": "88888888-8888-4888-8888-888888888201",
+        "familyIndex": null
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888202",
+        "familyIndex": 1
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888204",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888205",
+        "familyIndex": 3
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888206",
+        "familyIndex": 2
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888207",
+        "familyIndex": 0
+      }
+    ]
+  },
+  "expectedRelationships": {
+    "sameFamily": [
+      {
+        "participantIds": [
+          "88888888-8888-4888-8888-888888888204",
+          "88888888-8888-4888-8888-888888888207"
+        ],
+        "reason": "Both identify selection on resistance that predates treatment as the main explanation; p7 is much shorter."
+      }
+    ],
+    "differentFamily": [
+      {
+        "participantIds": [
+          "88888888-8888-4888-8888-888888888202",
+          "88888888-8888-4888-8888-888888888204"
+        ],
+        "reason": "They make horizontal transfer and selection, respectively, the primary explanation."
+      },
+      {
+        "participantIds": [
+          "88888888-8888-4888-8888-888888888204",
+          "88888888-8888-4888-8888-888888888206"
+        ],
+        "reason": "One gives selection primacy, while the other makes selection and transfer jointly central."
+      },
+      {
+        "participantIds": [
+          "88888888-8888-4888-8888-888888888204",
+          "88888888-8888-4888-8888-888888888205"
+        ],
+        "reason": "One makes selection the main explanation; the other explicitly withholds a mechanism choice."
+      }
+    ],
+    "nullFamilyWithCoverage": [
+      "88888888-8888-4888-8888-888888888201"
+    ],
+    "emptyAnswerParticipantIds": [
+      "88888888-8888-4888-8888-888888888203"
+    ],
+    "validDisagreement": [
+      {
+        "participantIds": [
+          "88888888-8888-4888-8888-888888888202",
+          "88888888-8888-4888-8888-888888888204",
+          "88888888-8888-4888-8888-888888888206"
+        ],
+        "reason": "The observations make all three causal emphases discussable; family labels preserve their weighting rather than treating shared biology terms as one answer."
+      }
+    ]
+  }
+}

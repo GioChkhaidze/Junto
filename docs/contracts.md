@@ -141,11 +141,13 @@ The structured response is:
 }
 ```
 
-The response always contains one valid prompt and one to eight valid units so the pair is coherent. The browser applies
-only the requested target. A successful response creates no room, grant, question, coverage unit, or stored model
+The response always contains one focused prompt and one to five valid units so the pair is coherent. Generated questions
+are limited to 32 words and 280 characters; generated units are atomic phrases limited to 10 words and 80 characters.
+The browser applies only the requested target. A successful response creates no room, grant, question, coverage unit, or stored model
 artifact; it becomes persistent only if the host later completes the ordinary create-activity workflow. The endpoint is
-available whenever `OPENAI_API_KEY` is configured; in development this is independent from the selected analysis engine.
-Without that credential it returns `AUTHORING_ASSIST_UNAVAILABLE`.
+available when either provider key is configured and is independent from the selected analysis engine. OpenRouter is
+preferred when both keys exist; direct OpenAI is the fallback. Without either credential it returns
+`AUTHORING_ASSIST_UNAVAILABLE`.
 
 ### Participants and answers
 
@@ -219,19 +221,36 @@ Common status meanings:
 Public failures and telemetry contain no answer text, reference text, cookies, join codes, API keys, provider output, or
 raw room identifiers.
 
+The browser may recover from `CSRF_INVALID` by fetching `/api/session` and retrying the rejected mutation exactly once.
+The failed CSRF dependency runs before the command handler, so this retry cannot duplicate an accepted mutation. Other
+`403` responses, including `ORIGIN_NOT_TRUSTED`, are never retried automatically.
+
 ### Development synthetic classroom
 
 - `GET /api/development/rooms/{roomId}/synthetic-classroom`
-  - Returns capability, stage, counts, feasible target sizes, and available response sources.
+  - Returns capability, stage, roster IDs, submission counts, generation progress, feasible target sizes, and available
+    response sources.
 - `PUT /api/development/rooms/{roomId}/synthetic-cohort`
   - Replaces the deterministic synthetic lobby roster with 0, 5, 10, or 20 participants.
 - `POST /api/development/rooms/{roomId}/synthetic-responses`
-  - Explicitly generates, validates, atomically saves, and submits every pending synthetic response.
+  - Explicitly generates the pending simulated students and validates, saves, and submits each completed student.
 
 The browser cannot supply model IDs. OpenRouter is offered only when a server key is configured and generation always
-requires an explicit host action. Completing the synthetic cohort starts the configured analysis automatically. A
-provider failure, malformed matrix, or crossed deadline commits no synthetic answer. Repeating a completed action
-performs no model call. The subsystem is available only in development.
+requires an explicit host action and explicit `source`. Coverage-aware rooms use the single server-owned full
+`google/gemini-2.5-flash` model. Patterned responses are flow-only placeholders accepted only when the room uses
+placeholder analysis and are not exposed in the normal host UI. Completing the synthetic cohort starts the configured
+analysis automatically. Each student's complete question set is one transaction. A provider failure preserves already
+completed students and leaves only unfinished students pending for an explicit retry; a malformed individual answer set
+commits nothing for that student. Repeating a completed action performs no model call. The subsystem is available only
+in development.
+
+OpenRouter synthetic input contains the title, ordered prompts, anonymous behavioral traits, and bounded room-wide
+uploaded or pasted source text. It excludes filenames, display names, persona labels, room IDs, participant and question
+IDs, host-only question notes/reference, coverage units, expected labels, response families, and group settings. Human
+participant pages still do not expose uploaded material. Junto sends one anonymous student per request, with at most
+five requests in flight. The prompt asks for answers no longer than 1,200 characters. Each response is only an ordered
+answer list with the exact question count. The wire schema tolerates a bounded overshoot; Junto trims any overshoot at a
+word or sentence boundary to the 1,500-character domain limit before that student's submission.
 
 ## HTTP surface
 
@@ -252,23 +271,24 @@ performs no model call. The subsystem is available only in development.
 
 ### Host
 
-| Method   | Path                                               | State/result                                |
-| -------- | -------------------------------------------------- | ------------------------------------------- |
-| `POST`   | `/api/rooms`                                       | create draft and host grant                 |
-| `GET`    | `/api/rooms/{roomId}`                              | full host projection                        |
-| `PATCH`  | `/api/rooms/{roomId}`                              | update draft settings                       |
-| `DELETE` | `/api/rooms/{roomId}`                              | cascade room deletion and revoke this grant |
-| `POST`   | `/api/rooms/{roomId}/questions`                    | add draft question                          |
-| `PATCH`  | `/api/rooms/{roomId}/questions/{questionId}`       | edit/reorder draft question and units       |
-| `DELETE` | `/api/rooms/{roomId}/questions/{questionId}`       | delete and close position gap               |
-| `POST`   | `/api/rooms/{roomId}/materials`                    | bounded upload and extraction               |
-| `DELETE` | `/api/rooms/{roomId}/materials/{materialId}`       | remove draft material                       |
-| `POST`   | `/api/rooms/{roomId}/open`                         | enter lobby                                 |
-| `POST`   | `/api/rooms/{roomId}/start`                        | freeze cohort and start deadline            |
-| `DELETE` | `/api/rooms/{roomId}/participants/{participantId}` | remove lobby participant                    |
-| `POST`   | `/api/rooms/{roomId}/analysis`                     | finish collection early; `202`              |
-| `POST`   | `/api/rooms/{roomId}/analysis/retry`               | claim bounded failed-room retry; `202`      |
-| `GET`    | `/api/rooms/{roomId}/groups`                       | all published groups and host diagnostics   |
+| Method   | Path                                               | State/result                              |
+| -------- | -------------------------------------------------- | ----------------------------------------- |
+| `POST`   | `/api/rooms`                                       | create draft and host grant               |
+| `GET`    | `/api/activities`                                  | summaries for this browser's host grants  |
+| `GET`    | `/api/rooms/{roomId}`                              | full host projection                      |
+| `PATCH`  | `/api/rooms/{roomId}`                              | update draft settings                     |
+| `DELETE` | `/api/rooms/{roomId}`                              | confirm invite code, cascade deletion     |
+| `POST`   | `/api/rooms/{roomId}/questions`                    | add draft question                        |
+| `PATCH`  | `/api/rooms/{roomId}/questions/{questionId}`       | edit/reorder draft question and units     |
+| `DELETE` | `/api/rooms/{roomId}/questions/{questionId}`       | delete and close position gap             |
+| `POST`   | `/api/rooms/{roomId}/materials`                    | bounded upload and extraction             |
+| `DELETE` | `/api/rooms/{roomId}/materials/{materialId}`       | remove draft material                     |
+| `POST`   | `/api/rooms/{roomId}/open`                         | enter lobby                               |
+| `POST`   | `/api/rooms/{roomId}/start`                        | freeze cohort and start deadline          |
+| `DELETE` | `/api/rooms/{roomId}/participants/{participantId}` | remove lobby participant                  |
+| `POST`   | `/api/rooms/{roomId}/analysis`                     | finish collection early; `202`            |
+| `POST`   | `/api/rooms/{roomId}/analysis/retry`               | claim bounded failed-room retry; `202`    |
+| `GET`    | `/api/rooms/{roomId}/groups`                       | all published groups and host diagnostics |
 
 ### Participant and shared polling
 
@@ -319,6 +339,17 @@ coverage, family, policy-quality, or solver claim.
 `unknown` means no proof was obtained within the time limit. `fallback` is still a capacity-valid deterministic
 partition, not a semantic optimum.
 
+### Activity history
+
+`GET /api/activities` returns newest-first summaries only for rooms whose host grant exists in the current signed
+browser session. Each summary contains the invite code, room state, created/published times, participant/question/group
+counts, generation mode, and aggregate coverage counts. Missing or manually deleted rooms are omitted. No answers,
+participant names, coverage-unit text, or activity-event records are returned.
+
+`DELETE /api/rooms/{roomId}` requires the signed host grant, CSRF validation, and `{"confirmationCode": "ABC123"}`. The
+code must match the room's invite code case-insensitively. A successful deletion cascades through the room aggregate and
+revokes the current session grant.
+
 ### Participant result
 
 The participant result includes `generationMode`, policy, generation time, complete-coverage status, and one group. Its
@@ -357,12 +388,13 @@ objective details, and provider evidence.
 Authoring-suggestion inputs and outputs are transient request data, not room projections. They are never available
 through invite, participant, or host read endpoints. Uploaded source bytes are extracted on the server and are not sent
 to the model provider; the extracted or pasted reference text, activity title, all current draft prompts/units, target,
-and target index are sent only when the creator explicitly invokes a suggestion.
+and target index are sent only when the creator explicitly invokes a suggestion. OpenRouter authoring requests deny
+provider data collection and require zero-data-retention routing; direct OpenAI fallback requests set `store=false`.
 
 ## Persistence and recovery contract
 
-`RoomRepository` supports add, read by ID/code, row-locked aggregate transaction, readiness, deletion, retention
-deletion, and stale-analysis recovery. Two adapters implement it:
+`RoomRepository` supports add, read by ID/code, row-locked aggregate transaction, readiness, manual deletion, and
+stale-analysis recovery. Two adapters implement it:
 
 - memory, for explicit development and isolated unit tests;
 - PostgreSQL, selected when `DATABASE_URL` is set and required in production.
@@ -371,7 +403,7 @@ PostgreSQL has `rooms`, `questions`, `coverage_units`, `reference_materials`, `p
 validated semantic and grouping artifacts are versioned JSONB values on the room. This keeps four core collaboration
 records while normalizing ordered units and extracted materials where referential constraints matter.
 
-Every mutation locks the room row and commits its aggregate atomically. Room deletion and retention cascade through
-children. Startup maintenance changes an old interrupted `analyzing` room to `failed`, clears partial artifact fields,
-and makes the bounded retry available. The system does not resume an in-flight model request after restart and must run
-as one web process until a durable job design exists.
+Every mutation locks the room row and commits its aggregate atomically. Manual room deletion cascades through children.
+Startup maintenance changes an old interrupted `analyzing` room to `failed`, clears partial artifact fields, and makes
+the bounded retry available. It never deletes a room. The system does not resume an in-flight model request after
+restart and must run as one web process until a durable job design exists.

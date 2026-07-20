@@ -16,8 +16,7 @@ Use two runs during rehearsal:
 1. **Recorded provider fixture:** deterministic, offline, and suitable for the end-to-end gate. It proves orchestration,
    validation, optimization, persistence, and role projections without pretending to be a live semantic evaluation.
 2. **Live provider review:** a separately labelled run using the configured OpenAI model. Review its coverage
-   disagreements in advance across both fixture questions. Never silently substitute the recorded artifact for a live
-   call.
+   disagreements for the chosen fixture activity. Never silently substitute the recorded artifact for a live call.
 
 The event demo should prefer the reviewed live run when the provider is healthy and use the recorded run as an
 explicitly named fallback.
@@ -28,7 +27,7 @@ Complete the [operations release checklist](operations.md#release-checklist), th
 
 - one fresh host browser and one fresh participant browser have no prior Junto cookies;
 - the join disclosure appears before the participant enters a name;
-- the room retention period is known;
+- the presenter knows how to delete the room after the demonstration;
 - the model attempt limits and solver timeout are fixed;
 - the reviewed fixture completes within the configured analysis timeout;
 - the host can explain missing coverage and model uncertainty without calling either a grade;
@@ -37,82 +36,47 @@ Complete the [operations release checklist](operations.md#release-checklist), th
 Avoid spending demo time on accounts, WebSockets, database internals, or infrastructure diagrams. The product is the
 transition from individual answers to a useful discussion agenda.
 
-## Reviewed room
+## Reviewed activities
 
-Use these settings:
+Each reviewed fixture is one independent, one-question activity. Keeping subjects in separate rooms prevents context
+leakage and makes a failed classification attributable to one prompt and answer set.
 
-| Setting    | Value                                   |
-| ---------- | --------------------------------------- |
-| Title      | Complementary reasoning workshop        |
-| Policy     | Teach each other                        |
-| Group size | Minimum 3, preferred 4, maximum 5       |
-| Time       | 20 minutes (shorten only for rehearsal) |
+- [Programming](../backend/tests/fixtures/semantic/programming_dynamic_programming.json): objective reasoning steps.
+- [Philosophy](../backend/tests/fixtures/semantic/philosophy_ai_proctoring.json): defensible opposing positions.
+- [History](../backend/tests/fixtures/semantic/history_western_rome.json): evidence and competing explanations.
+- [Design](../backend/tests/fixtures/semantic/design_budgeting_onboarding.json): needs, approaches, and tradeoffs.
+- [TRM architecture](../backend/tests/fixtures/semantic/machine_learning_trm_architecture.json): ablation evidence.
+- [TRM latent](../backend/tests/fixtures/semantic/machine_learning_trm_latent_reasoning.json): claims and limits.
+- [Biology](../backend/tests/fixtures/semantic/biology_antibiotic_resistance.json): selection and gene-transfer
+  accounts.
+- [Statistics](../backend/tests/fixtures/semantic/statistics_randomized_tutoring.json): qualified causal interpretation.
+- [Literature](../backend/tests/fixtures/semantic/literature_ledger_interpretation.json): competing textual readings.
+- [Media literacy](../backend/tests/fixtures/semantic/media_literacy_cooling_centers.json): source evaluation and
+  claims.
 
-Question 1:
-
-> A robot starts at cell 0 and must reach cell n on a line. It may move one or two cells at a time, and some cells are
-> blocked. Explain an algorithm that counts the valid routes and give its complexity.
-
-Reference material:
-
-> A complete dynamic-programming explanation should define the route-count state, establish the start state, prevent
-> blocked cells from receiving routes, relate each unblocked cell to the two preceding cells (or give the equivalent
-> forward propagation), and analyze runtime and storage.
-
-Coverage units:
-
-1. Defines a state as the number of valid routes that reach a particular cell.
-2. Establishes one route at the starting cell as the base case.
-3. Makes a blocked cell contribute zero routes.
-4. Combines the route counts from one-step and two-step predecessors, or propagates them forward equivalently.
-5. Explains that processing each cell once gives linear time and states the storage cost.
-
-Question 2:
-
-> Does a university have the moral right to require AI proctoring for remote examinations? Defend a position and address
-> the strongest competing considerations.
-
-Reference material:
-
-> The discussion should weigh academic integrity against privacy and autonomy, examine unequal burdens and false flags,
-> consider less intrusive alternatives, and address proportional safeguards. Multiple conclusions can be defensible when
-> they engage those considerations accurately.
-
-Coverage units:
-
-1. Explains a privacy or autonomy interest affected by remote monitoring.
-2. Articulates the university's academic-integrity justification.
-3. Addresses unequal accessibility, bias, or false-positive burdens.
-4. Considers a less intrusive way to verify learning or deter cheating.
-5. Identifies safeguards needed for proportionality, review, or appeal.
-
-These values come directly from the canonical
-[programming fixture](../backend/tests/fixtures/semantic/programming_dynamic_programming.json) and
-[philosophy fixture](../backend/tests/fixtures/semantic/philosophy_ai_proctoring.json). The loader reads those files at
-runtime; this guide does not define a second copy. The first question makes objective technical coverage visible. The
-second demonstrates that coverage is not a synonym for a correct conclusion: participants can defend opposing positions,
-belong to different response families, and still contribute relevant considerations.
+Use Teach each other, group sizes 3/4/5, and 20 minutes. The linked JSON remains the source of truth for each prompt,
+reference, coverage units, reviewed answers, and expected relations; this guide does not duplicate them.
 
 ## Two-presenter flow from fresh browsers
 
 Presenter A owns the host browser. Presenter B owns a fresh participant browser and narrates the participant experience.
 
-1. Presenter A opens `/create`, enters both reviewed prompts, reference passages, and coverage units exactly as written
-   above, sets the time and group sizes, and creates the invite.
+1. Presenter A chooses one reviewed fixture, opens `/create`, enters that prompt, reference, and coverage units, then
+   creates the invite.
 2. Presenter B opens `/join/{code}`, reads the data/model disclosure, enters a room-scoped name, and waits in the lobby.
 3. On a loopback rehearsal deployment, load the remaining reviewed cohort through normal HTTP:
 
    ```powershell
-   backend\.venv\Scripts\python.exe backend\scripts\load_demo.py --join-code INVITE_CODE --participants 11
+   backend\.venv\Scripts\python.exe backend\scripts\load_demo.py --join-code INVITE_CODE --participants 11 `
+     --fixture backend\tests\fixtures\semantic\programming_dynamic_programming.json
    ```
 
    The loader joins the lobby and waits. It does not touch the database or receive host access.
 
 4. Presenter A shows the frozen roster and starts once. The shared deadline is server-owned.
-5. The loader cycles the exact reviewed fixture responses. Presenter B answers one question per page, moves forward and
-   back to show save-before-navigation, checks the numbered completion markers, reviews, and submits. In recorded mode,
-   Presenter B must use exact answer text from the linked fixtures so the offline adapter can match it; in live mode
-   they may answer naturally.
+5. The loader cycles the exact reviewed fixture responses. Presenter B answers the question, reviews, and submits. In
+   recorded mode, Presenter B must use exact answer text from the linked fixture so the offline adapter can match it; in
+   live mode they may answer naturally.
 6. Presenter A ends collection only if the live participant has submitted. Explain the real stages without a fake
    percentage: coverage classification and family clustering are independent, then the optimizer uses the validated
    artifact.
@@ -128,21 +92,14 @@ event deployment keeps secure cookies and uses real participant browsers.
 
 ## Full automated rehearsal
 
-To read the two canonical JSON fixtures, create the room, join 12 participants, cycle their exact answers, submit, wait
-for analysis, and report the terminal state through the public API:
+Use the commands and data boundary in
+[Classroom fixture and load check](operations.md#classroom-fixture-and-load-check). The default suite creates one
+20-person activity per reviewed fixture. Reviewed responses are deterministic; OpenRouter responses are unreviewed
+generalization inputs and never become gold labels.
 
-```powershell
-backend\.venv\Scripts\python.exe backend\scripts\load_demo.py --participants 12 --wait-seconds 300
-```
-
-For the supported classroom polling envelope:
-
-```powershell
-backend\.venv\Scripts\python.exe backend\scripts\load_demo.py --participants 60 --poll-rounds 3 --wait-seconds 300
-```
-
-Success requires `status: published`, exactly-once membership, valid group capacities, diagnostics derived from the
-final partition, and no content-bearing logs. A fast response on one laptop is not a production load claim.
+Success requires every room to publish, exactly-once membership, valid capacities, and internally consistent coverage
+diagnostics; exact groups may differ. Run the 60-participant polling check separately and treat it as a demo-envelope
+check, not a production load claim.
 
 ## Honest failure language
 
@@ -162,6 +119,6 @@ to a participant, or describe the grouping as evidence that learning improved.
 
 ## Reset between rehearsals
 
-Create a new room instead of reusing a published fixture. Verify the prior room expires or is deleted under the
-configured retention rule. Clear each browser's Junto site data or use fresh profiles, and confirm that neither browser
-inherits host or participant access from the previous run.
+Create a new room instead of reusing a published fixture. Delete the prior room from Activities by confirming its invite
+code. Clear each browser's Junto site data or use fresh profiles, and confirm that neither browser inherits host or
+participant access from the previous run.

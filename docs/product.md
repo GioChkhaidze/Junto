@@ -73,7 +73,8 @@ The browser session that creates a room can:
 - start the shared timer, monitor submission progress, and finish collection early;
 - retry one failed analysis by default;
 - view every published group, coverage diagnostics, response families, and the answer audit for those groups;
-- delete the room.
+- reopen rooms while the same browser retains its signed host capability;
+- permanently delete a room by confirming its invite code.
 
 ### Participant
 
@@ -103,11 +104,15 @@ The host first receives an optional material step. UTF-8 text, Markdown, PDF, an
 server; original source bytes are not retained. The host then sets room timing and group bounds and writes one to eight
 questions with one to eight coverage units each.
 
-When reference material is present and the server has an OpenAI credential configured, a host may request a suggestion
-for one question prompt or one question's coverage units. This authoring capability is independent from the
-activity-analysis engine selected for development. The request includes the activity title, reference text, and the
-complete current question-and-unit draft so the suggestion can avoid repetition and stay coherent with the activity. The
-interface applies only the requested target, keeps the result editable, and asks the host to review it.
+When reference material and a configured provider credential are present, a host may request a suggestion for one
+question prompt or one question's coverage units. This authoring capability is independent from the activity-analysis
+engine. OpenRouter is preferred when configured; direct OpenAI is the fallback. The request includes the activity title,
+reference text, and complete current question-and-unit draft so the suggestion can avoid repetition and stay coherent.
+The interface applies only the requested target, keeps the result editable, and asks the host to review it.
+
+Generated questions contain one central task and are limited to 32 words and 280 characters. Generated coverage units
+are atomic phrases limited to 10 words and 80 characters, with no more than five returned for one question. These tighter
+limits apply to AI suggestions; hosts can still edit the draft through the ordinary authoring limits.
 
 This remains an authoring editor, not an automatic quiz generator. AI suggestions never open a room, persist a question
 by themselves, or become approved coverage units without the host continuing through review and creation. Hosts own the
@@ -148,16 +153,30 @@ data.
 The development-only placeholder mode skips semantic analysis and labels its capacity partition as `placeholder`. The
 recorded mode uses reviewed fixture outputs and the real optimizer for deterministic offline testing.
 
-Development hosts may add a deterministic set of 5, 10, or 20 simulated participants in the lobby. After starting, they
-explicitly choose either network-free patterned load responses or an OpenRouter run using the configured pinned model
-pool. No simulation runs automatically, and generated students are test actors rather than evidence that the semantic
-classifier is accurate.
+Development hosts may add a deterministic set of 5, 10, or 20 simulated participants in the lobby. Coverage-aware rooms
+offer an explicit OpenRouter action when configured. It uses the single server-owned full `google/gemini-2.5-flash`
+model. Its data boundary is defined in
+[Reference material and model disclosure](#reference-material-and-model-disclosure).
+
+Patterned responses are labelled flow-only placeholders. The normal host UI does not offer them, and the backend accepts
+them only with placeholder analysis. They contain no semantic-quality claim and are never a fallback for a
+coverage-aware run. No simulation runs automatically. Generated students are test actors, not gold answers or evidence
+that the semantic classifier is accurate.
+
+OpenRouter generation sends one anonymous student per request, runs at most five requests concurrently, and shows
+elapsed time while active. The server applies a two-minute deadline and the browser stops waiting shortly afterward. A
+timeout, provider failure, or malformed answer list saves no partial synthetic cohort; the host may retry the OpenRouter
+action. Success shows the source, model, participant count, and response count before analysis finishes.
 
 ### 5. Discuss
 
-The host sees all groups and enough evidence to audit the result: members, question coverage, missing units, eligible
-carriers, represented families, original group answers, solver status, feasibility status, and whether each reported
-objective was proven optimal.
+The host first sees each group as one compact roster line. Opening a group reveals its questions; opening a question
+reveals numbered coverage units, their short descriptions and carriers, plus a family-to-student map. The answer audit
+is an explicit third layer and refers to covered units by number so their full text is not repeated.
+
+The Activities page lists rooms created by the same signed browser session and links back to each room's current state
+or published grouping. It also provides manual deletion. This is not an account, cross-device history, or
+submission-event log.
 
 Each participant sees only their own group and a concise discussion agenda. Participants do not receive other groups or
 a raw-answer audit.
@@ -168,11 +187,18 @@ Room uploads and question-specific reference text provide context to the coverag
 through participant room projections. Material participants need to answer the question should therefore also appear in
 the prompt.
 
+When a host explicitly starts OpenRouter simulation, Junto sends the activity title, ordered prompts, anonymous
+behavioral traits, and bounded room-wide uploaded or pasted source text. It sends extracted text without upload
+filenames, display names, persona labels, room IDs, question IDs, or participant IDs. It also excludes host-only
+question notes/reference, coverage units, expected labels, family assignments, and group settings. This does not make
+source material visible on human participant pages.
+
 An authoring suggestion is a separate, host-initiated pre-room model call. For an uploaded file, Junto performs the same
 bounded server-side extraction and sends extracted text rather than original file bytes. It also sends the activity
 title and all current draft prompts and units. It sends no participant data because no participant flow is involved.
-Authoring requests use structured output, `store=false`, and no tools; suggestions are not stored until the host later
-creates the activity through the ordinary draft workflow.
+Authoring requests use structured output and no tools. OpenRouter requests deny provider data collection and require
+zero-data-retention routing; direct OpenAI fallback requests set `store=false`. Suggestions are not stored until the
+host later creates the activity through the ordinary draft workflow.
 
 In live OpenAI mode, question text, relevant reference text, coverage units, opaque participant IDs, and answer text are
 sent to the configured model provider. Display names, join codes, session data, group-size constraints, and tentative

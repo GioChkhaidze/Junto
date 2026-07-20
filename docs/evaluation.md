@@ -1,19 +1,22 @@
 # Semantic evaluation
 
-Junto evaluates coverage classification and response-family clustering against four reviewed synthetic fixtures:
-programming, philosophy, history, and design. The evaluator emits only fixture IDs, subject labels, counts, scores,
-latency, token usage, and sanitized error codes. It does not emit questions, reference material, answers, coverage-unit
-text, or evidence quotes.
+Junto evaluates coverage classification and response-family clustering against ten reviewed synthetic fixtures across
+biology, design, history, literature, machine learning, media literacy, philosophy, programming, and statistics.
+Lifecycle rehearsal creates one activity per fixture; it never combines their context or answers into one room. The
+evaluator emits only fixture IDs, subject labels, counts, scores, latency, token usage, and sanitized error codes. It
+does not emit questions, reference material, answers, coverage-unit text, or evidence quotes.
 
 ## Test suites and claims
 
 Keep these suites separate so a convenient generated answer cannot become its own answer key:
 
 - **Gold:** separately reviewed semantic fixtures establish coverage and family accuracy only against frozen labels.
-- **Challenge:** adversarial templates assigned to 20 varied personas test diverse, empty, hostile, and long inputs;
-  they do not establish semantic accuracy.
-- **Scale:** deterministic 5-, 10-, and 20-person payloads test identifier integrity, supported question counts, and
-  input-size headroom; they do not establish whether answers are correct.
+- **Reviewed lifecycle:** the same fixtures drive separate deterministic activities through room creation, simulated
+  identities, submission, analysis, optimization, and publication. This proves orchestration, not live generalization.
+- **Challenge:** 12 independent one-question activity specs assign adversarial variants to 20 varied personas; they test
+  diverse, empty, hostile, and long inputs but do not establish semantic accuracy.
+- **Scale:** deterministic 5-, 10-, and 20-person payloads test identity, source, and tag preservation and record
+  assembled payload sizes; they do not run provider or compiler preflight or establish whether answers are correct.
 
 Never generate an answer and a label with the same model, score one against the other, and call that accuracy. A new
 accuracy fixture enters the gold suite only after independent review records the expected coverage relations, family
@@ -36,7 +39,7 @@ For a manual OpenAI evaluation, supply a key and pin the model explicitly:
 ```powershell
 $env:OPENAI_API_KEY = "..."
 .\.venv\Scripts\python.exe scripts\evaluate_semantic.py --mode live `
-  --live-provider openai --model gpt-5.6-sol `
+  --live-provider openai --model gpt-5.6-luna --reasoning-effort high `
   --output output\semantic-live.json
 ```
 
@@ -45,13 +48,23 @@ For a manual OpenRouter evaluation:
 ```powershell
 $env:OPENROUTER_API_KEY = "..."
 .\.venv\Scripts\python.exe scripts\evaluate_semantic.py --mode live `
-  --live-provider openrouter --model a-reviewed-pinned-model-id `
+  --live-provider openrouter --model google/gemini-2.5-flash `
   --output output\semantic-openrouter-live.json
 ```
 
-Live mode never prints the API key or raw fixture text. CI must use recorded mode; live runs are manual because results
-may change with a model revision. Provider and model selection are explicit CLI arguments; only the provider secret is
-read from the environment.
+Repeat `--fixture PATH` to run selected files once each in sorted path order. Use the mutually exclusive
+`--fixtures DIRECTORY` option to discover every JSON fixture in one directory.
+
+For OpenAI evaluator runs, `--max-output-tokens` explicitly caps each structured response and defaults to 20,000 so a
+manual investigation can opt into more headroom. The application default is 8,000 per response. For either live
+provider, `--max-total-tokens` sets the evaluator's aggregate usage gate and defaults to 250,000. Token totals include
+every coverage batch, repair, retry that returned usage, and the cohort-wide family call.
+
+Live mode deterministically shuffles participants and replaces question, participant, and coverage-unit identifiers with
+opaque values before a provider call. `--seed` controls this blinding and defaults to `41`; the report records the seed
+but never the private identifier map or raw fixture text. Recorded mode bypasses blinding so it remains an exact fixture
+contract test. CI must use recorded mode; live runs are manual because results may change with a model revision.
+Provider and model selection are explicit CLI arguments; only the provider secret is read from the environment.
 
 ## Offline structural stress
 
@@ -69,12 +82,14 @@ To save a fresh machine-readable report:
 ```
 
 The command constructs no provider client and makes zero network calls. It checks 12 subjects and question types,
-assigns 240 challenge responses to 20 identities, and covers negation, plausible errors, semantic paraphrases,
-fragments, Spanish and Arabic text, prompt injection, empty and duplicate responses, and long answers.
+assigns 240 challenge responses from 49 source variants to 20 identities, and covers negation, plausible errors,
+semantic paraphrases, fragments, Spanish and Arabic text, prompt injection, empty and duplicate responses, and long
+answers. Each scenario has its own activity title, prompt, and four or five coverage units; an API test materializes
+each as a separate draft room.
 
-The scale matrix checks 365 answer slots across 5-by-1, 10-by-4, and two 20-by-8 classroom payloads. Its largest current
-serialized input is 42,556 UTF-8 bytes against the compiler's 240,000-byte preflight ceiling. The reviewed baseline is
-the committed [offline report](evidence/synthetic-stress-offline.json).
+The scale matrix checks 365 answer slots across 5-by-1, 10-by-4, and two 20-by-8 classroom payloads. Its largest
+assembled stress payload is 58,456 UTF-8 bytes. This is an offline serialization measurement, not a compiler or provider
+request. The reviewed baseline is the committed [offline report](evidence/synthetic-stress-offline.json).
 
 An offline pass means the corpus is diverse and structurally within tested limits. It reports
 `semanticAccuracyClaim: "none"` by design. Use the gold evaluator for accuracy metrics and preserve live outputs as
@@ -82,7 +97,8 @@ dated evidence rather than replacing fixture labels.
 
 ## Automated gates
 
-- **Schema and domain success — 1.00:** every fixture compiles after at most one bounded repair per branch.
+- **Schema and domain success — 1.00:** every fixture compiles after at most one repair per coverage batch and family
+  call.
 - **Assignment completeness — 1.00:** every frozen participant appears exactly once.
 - **Evidence literal integrity — 1.00:** every quote occurs in its answer and matches a covered unit.
 - **Family-unit matrix integrity — 1.00:** reviewed relationship cases retain their intended results.
@@ -92,7 +108,7 @@ dated evidence rather than replacing fixture labels.
   family.
 - **Latency within limit — 1.00:** every fixture finishes within `--max-fixture-latency-ms`, which defaults to 180,000
   milliseconds.
-- **Token usage within limit — pass:** live calls report usage and stay within the configured limit.
+- **Token usage within limit — pass:** live calls report usage and stay within `--max-total-tokens`.
 
 First-pass validity, repair calls, and the input/output/reasoning breakdown remain diagnostic. Change latency or token
 limits deliberately for the pinned model and expected classroom size; do not loosen semantic-quality gates to make a run
@@ -102,7 +118,7 @@ pass.
 
 The JSON report contains:
 
-- `mode`, `provider`, `model`, `generatedAt`, and `fixtureCount`;
+- `mode`, `provider`, `model`, `generatedAt`, `fixtureCount`, and the live-only `blindSeed`;
 - one fixture record with structural booleans, confusion counts, privacy-safe mismatch IDs, relationship checks,
   sanitized error code, and wall-clock latency;
 - aggregate coverage precision/recall, family F1, structural rates, repair count, latency percentiles, and provider
@@ -131,4 +147,6 @@ are failed or incomplete evidence, never successful fixtures.
 OpenRouter-generated students may feed challenge or scale runs, but not the gold suite until a person adjudicates them.
 Keep model IDs server-owned and pinned, deny provider data collection, require structured-output-capable routes, and
 trigger generation only through an explicit host action. Never start generation from page load or polling, and never
-save a partial synthetic cohort after a failed batch.
+save a partial synthetic cohort after a failed student request. A live generalization run may compare generated answers
+with the reviewed expectations afterward, but the generator never receives coverage units, expected labels, or family
+assignments, and its answers do not become gold automatically.

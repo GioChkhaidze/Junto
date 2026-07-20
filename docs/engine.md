@@ -6,11 +6,12 @@ The implemented engine converts one frozen room snapshot into one participant pa
 
 ```text
 question + reference + approved units + answers
-  -> coverage classification + transient evidence
+  -> deterministic batches of at most five
+  -> independent coverage + transient evidence
   -> coveredUnitIds per answer -------------------+
-                                                   +-> merge by opaque participant ID
-question + answers                                 |
-  -> independent family clustering                |
+                                                   +-> complete merge by opaque participant ID
+question + all non-empty answers                   |
+  -> one independent family clustering            |
   -> family per answer ----------------------------+
                   |
                   v
@@ -30,9 +31,10 @@ The live adapter uses the official OpenAI Python SDK, the Responses API, and Pyd
 Requests are stateless (`store=false`), use no tools or previous response, and pin an explicit configured model.
 `recorded` mode supplies reviewed responses through the same validation path without network access.
 
-The development-only OpenRouter adapter implements the same `SemanticProvider` contract through strict JSON-schema Chat
-Completions. It requires structured-output-capable routing, denies provider data collection, and uses a server-owned
-pinned model pool shared with synthetic students.
+The development-only OpenRouter semantic adapter implements the same `SemanticProvider` contract through strict
+JSON-schema Chat Completions. It requires structured-output-capable routing, denies provider data collection, and uses
+the single server-owned full `google/gemini-2.5-flash` model shared with authoring assistance and synthetic students.
+Authoring can use this strict transport independently from the selected analysis engine.
 
 ## Coverage units and families
 
@@ -60,8 +62,11 @@ only coverage relation is between one participant's answer and the approved unit
 
 ## Per-question semantic calls
 
-Each question with at least one non-empty answer runs two independent operations. The calls may run concurrently, while
-one process-wide limiter bounds provider requests across questions and compiler instances.
+Each question with at least one non-empty answer runs independent coverage classification and family clustering. The
+compiler splits coverage into deterministic participant-order batches of at most five answers because each judgment is
+answer-local. Family clustering remains one cohort-wide call because family membership depends on comparisons across the
+complete answer set. Calls may run concurrently, while one process-wide limiter bounds provider requests across batches,
+questions, branches, and compiler instances.
 
 ### Coverage classification
 
@@ -71,7 +76,7 @@ Input:
 question prompt
 relevant question and room reference text, when present
 approved coverage units with opaque IDs
-opaque participant IDs and non-empty answers
+at most five opaque participant IDs and non-empty answers
 ```
 
 Output schema:
@@ -145,18 +150,26 @@ Pydantic first enforces strict schemas with unknown fields forbidden. Domain val
 sets, known units, evidence integrity, family indices, label uniqueness, and used families independently for each
 branch.
 
-After both results pass, the compiler merges by `participantId`, never array position. It adds local empty assignments
-for unanswered participant-question pairs, orders units according to the host-approved list, and emits canonical family
-IDs. Every question artifact must contain the same frozen participant set.
+Every coverage batch must return its exact participant set. The compiler validates literal evidence inside that batch,
+then merges all disjoint batch results by `participantId`, never array position, and requires the complete non-empty
+participant set. It merges that coverage with the cohort-wide family result, adds local empty assignments for unanswered
+participant-question pairs, orders units according to the host-approved list, and emits canonical family IDs. Every
+question artifact must contain the same frozen participant set.
 
-Each branch has two bounded recovery mechanisms:
+Each coverage batch and the cohort-wide family call has two bounded recovery mechanisms:
 
 1. one transport retry total for timeout, rate limit, server error, or incomplete response;
 2. one stateless repair request after schema or domain failure.
 
-The transport allowance is shared by the initial and repair phases, so a branch makes at most three HTTP requests.
-Repair includes the original delimited input, sanitized validation errors, invalid structured result, and required
-schema; it revalidates from scratch. A second invalid result fails the room.
+The transport allowance is shared by the initial and repair phases, so one batch or family call makes at most three HTTP
+requests. A failed coverage batch is repaired or retried alone; successful sibling batches are never rerun. Repair
+includes the original delimited input, sanitized validation errors, invalid structured result, and required schema; it
+revalidates from scratch. A second invalid result fails the room and cancels outstanding sibling work.
+
+The application allows 90 seconds for one provider request and 240 seconds for the complete semantic room. The room
+deadline encloses all questions, branches, repairs, transport retries, and limiter waits, so a late retry cannot extend
+the run. The application caps every OpenAI structured response at 8,000 output tokens. Stale-analysis recovery starts
+after this deadline and the solver allowance.
 
 Provider refusal, permanent error, repeated transient failure, semantic input overflow, room timeout, and invalid output
 map to distinct internal outcomes and sanitized host messages. If either branch fails, no partial question or semantic
@@ -305,10 +318,12 @@ missing units, carriers, represented families, and coverage counts are not dupli
 
 ## Verification and quality boundary
 
-Automated semantic tests cover four reviewed subjects (programming, philosophy, history, and design), exact fixture
-remapping, branch independence, all-empty questions, strict IDs, evidence matching, bounded repair/retry,
-prompt-delimiter safety, request-size preflight, privacy-safe errors/logs, adapter parameters, provider outcomes, and
-process-wide concurrency.
+Automated semantic tests cover ten reviewed fixtures across biology, design, history, literature, machine learning,
+media literacy, philosophy, programming, and statistics, plus exact fixture remapping, branch independence, all-empty
+questions, deterministic coverage batching, strict IDs, evidence matching, bounded repair and retry, prompt-delimiter
+safety, request-size preflight, privacy-safe errors and logs, adapter parameters, provider outcomes, and process-wide
+concurrency. Lifecycle rehearsal runs each fixture as a separate activity with simulated room-local identities; it does
+not merge subject context or assert an exact group partition.
 
 Optimizer tests cover capacity selection, exactly-once membership, known-feasible and proven-infeasible fixtures,
 unknown/fallback truth labels, a brute-force coverage oracle, policy separation, lexicographic preservation, missing

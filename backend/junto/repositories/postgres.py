@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any, cast
 from uuid import UUID
 
-from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
@@ -75,26 +75,6 @@ class PostgresRoomRepository:
         session.execute(delete(RoomRecord).where(RoomRecord.id == room_id)),
       )
       return result.rowcount > 0
-
-  def delete_expired(self, *, before: datetime, answering_before: datetime) -> int:
-    with self._session_factory.begin() as session:
-      result = cast(
-        CursorResult[Any],
-        session.execute(
-          delete(RoomRecord).where(
-            RoomRecord.updated_at < before,
-            or_(
-              RoomRecord.status.in_(("draft", "lobby", "published", "failed")),
-              and_(
-                RoomRecord.status == "answering",
-                RoomRecord.deadline_at.is_not(None),
-                RoomRecord.deadline_at < answering_before,
-              ),
-            ),
-          )
-        ),
-      )
-      return result.rowcount
 
   def recover_stale_analyses(self, *, before: datetime, failed_at: datetime) -> int:
     with self._session_factory.begin() as session:

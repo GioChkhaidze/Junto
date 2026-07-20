@@ -80,6 +80,70 @@ def _load_fixture(path: Path) -> tuple[dict[str, Any], QuestionCompilationInput]
   return fixture, question
 
 
+def _write_duplicate_answer_fixture(
+  tmp_path: Path,
+  *,
+  conflicting_coverage: bool = False,
+  conflicting_family: bool = False,
+) -> Path:
+  first_id = "31000000-0000-4000-8000-000000000001"
+  second_id = "31000000-0000-4000-8000-000000000002"
+  answer = "The shared answer explicitly identifies the required idea."
+  second_units = [] if conflicting_coverage else ["fixture_unit"]
+  second_evidence = (
+    [] if conflicting_coverage else [{"unitId": "fixture_unit", "quotes": ["identifies the required idea"]}]
+  )
+  fixture = {
+    "questionId": "31000000-0000-4000-8000-000000000010",
+    "questionPrompt": "Explain the required idea.",
+    "referenceMaterial": None,
+    "coverageUnits": [{"id": "fixture_unit", "text": "Identifies the required idea"}],
+    "participants": [
+      {"participantId": first_id, "answer": answer},
+      {"participantId": second_id, "answer": answer},
+    ],
+    "expectedCoverage": {
+      "assignments": [
+        {
+          "participantId": first_id,
+          "coveredUnitIds": ["fixture_unit"],
+          "evidence": [{"unitId": "fixture_unit", "quotes": ["identifies the required idea"]}],
+        },
+        {
+          "participantId": second_id,
+          "coveredUnitIds": second_units,
+          "evidence": second_evidence,
+        },
+      ]
+    },
+    "expectedFamilies": {
+      "families": [{"label": "Shared position"}, {"label": "Conflicting position"}],
+      "assignments": [
+        {"participantId": first_id, "familyIndex": 0},
+        {"participantId": second_id, "familyIndex": 1 if conflicting_family else 0},
+      ],
+    },
+  }
+  path = tmp_path / "duplicate-answer.json"
+  path.write_text(json.dumps(fixture), encoding="utf-8")
+  return path
+
+
+def _duplicate_answer_runtime_question(participant_count: int = 4) -> QuestionCompilationInput:
+  participant_ids = tuple(UUID(f"32000000-0000-4000-8000-{index:012d}") for index in range(1, participant_count + 1))
+  answer = "The shared answer explicitly identifies the required idea."
+  return QuestionCompilationInput(
+    question_id=QUESTION_ID,
+    prompt="Explain the required idea.",
+    reference_material=None,
+    coverage_units=(CoverageUnitInput(id="runtime_unit", text="Identifies the required idea"),),
+    participant_ids=participant_ids,
+    answers=tuple(
+      SemanticAnswerInput(participant_id=participant_id, text=answer) for participant_id in participant_ids
+    ),
+  )
+
+
 @pytest.mark.parametrize("fixture_path", FIXTURE_PATHS, ids=lambda path: path.stem)
 def test_reviewed_subject_fixture_compiles_without_network(fixture_path: Path) -> None:
   fixture, question = _load_fixture(fixture_path)
@@ -127,9 +191,16 @@ def test_reviewed_subject_fixture_compiles_without_network(fixture_path: Path) -
     assert None not in family_ids
     assert len(family_ids) > 1
 
-  assert [call.branch for call in provider.calls] == ["coverage", "family"]
-  coverage_call, family_call = provider.calls
-  assert coverage_call.unit_ids == tuple(unit.id for unit in question.coverage_units)
+  non_empty_ids = {str(answer.participant_id) for answer in question.answers if answer.text.strip()}
+  coverage_calls = [call for call in provider.calls if call.branch == "coverage"]
+  family_calls = [call for call in provider.calls if call.branch == "family"]
+  assert len(coverage_calls) == (len(non_empty_ids) + 4) // 5
+  assert all(1 <= call.answer_count <= 5 for call in coverage_calls)
+  assert {participant_id for call in coverage_calls for participant_id in call.participant_ids} == non_empty_ids
+  assert all(call.unit_ids == tuple(unit.id for unit in question.coverage_units) for call in coverage_calls)
+  assert len(family_calls) == 1
+  family_call = family_calls[0]
+  assert set(family_call.participant_ids) == non_empty_ids
   assert family_call.unit_ids == ()
   assert family_call.includes_reference is False
 
@@ -146,6 +217,66 @@ def test_all_empty_question_skips_both_provider_calls() -> None:
     assignment.family_id is None and assignment.covered_unit_ids == ()
     for assignment in artifact.questions[0].assignments
   )
+
+
+@pytest.mark.parametrize(("answer_count", "expected_batches"), ((0, 0), (1, 1), (5, 1), (6, 2), (20, 4)))
+def test_coverage_batches_are_deterministic_and_families_remain_cohort_wide(
+  answer_count: int,
+  expected_batches: int,
+) -> None:
+  question = _batched_question(answer_count)
+  provider = _BatchingProvider()
+
+  artifact = SemanticCompiler(provider).compile_sync([question])
+
+  expected_ids = tuple(str(answer.participant_id) for answer in question.answers if answer.text.strip())
+  assert [ids for ids, repair in provider.coverage_calls if not repair] == [
+    expected_ids[offset : offset + 5] for offset in range(0, len(expected_ids), 5)
+  ]
+  assert len(provider.coverage_calls) == expected_batches
+  assert provider.family_calls == ([] if answer_count == 0 else [expected_ids])
+  assert tuple(item.participant_id for item in artifact.questions[0].assignments) == question.participant_ids
+
+
+def test_one_coverage_batch_repairs_without_rerunning_sibling_batches() -> None:
+  question = _batched_question(6)
+  repair_participant = str(question.answers[-1].participant_id)
+  provider = _BatchingProvider(invalid_once_participant=repair_participant)
+
+  artifact = SemanticCompiler(provider).compile_sync([question])
+
+  first_batch = tuple(str(answer.participant_id) for answer in question.answers[:5])
+  second_batch = (repair_participant,)
+  assert provider.coverage_calls.count((first_batch, False)) == 1
+  assert provider.coverage_calls.count((first_batch, True)) == 0
+  assert provider.coverage_calls.count((second_batch, False)) == 1
+  assert provider.coverage_calls.count((second_batch, True)) == 1
+  assert len(artifact.questions[0].assignments) == 6
+  assert len(provider.family_calls) == 1
+
+
+def test_each_coverage_batch_has_one_independent_transport_retry() -> None:
+  question = _batched_question(6)
+  provider = _BatchingProvider(transient_once=True)
+
+  SemanticCompiler(provider, transport_retry_delay_seconds=0).compile_sync([question])
+
+  batch_ids = [tuple(str(answer.participant_id) for answer in question.answers[:5])]
+  batch_ids.append((str(question.answers[-1].participant_id),))
+  assert all(provider.coverage_calls.count((participant_ids, False)) == 2 for participant_ids in batch_ids)
+  assert not any(repair for _participant_ids, repair in provider.coverage_calls)
+  assert len(provider.family_calls) == 1
+
+
+def test_coverage_batch_failure_cancels_siblings_and_family_without_an_artifact() -> None:
+  provider = _FailingAndBlockingBatchProvider()
+
+  with pytest.raises(SemanticCompilerError) as captured:
+    SemanticCompiler(provider).compile_sync([_batched_question(6)])
+
+  assert captured.value.code == "SEMANTIC_PROVIDER_ERROR"
+  assert provider.coverage_cancelled
+  assert provider.family_cancelled
 
 
 @pytest.mark.parametrize("participant_count", (3, 12, 60))
@@ -206,6 +337,47 @@ def test_recorded_fixture_exact_content_remaps_arbitrary_cohort(
     else:
       assert assignment.family_id is not None
       assert actual_label_by_id[assignment.family_id] == expected_labels[family_index]
+
+
+def test_recorded_fixture_remaps_identically_adjudicated_duplicate_answers_for_both_branches(
+  tmp_path: Path,
+) -> None:
+  fixture_path = _write_duplicate_answer_fixture(tmp_path)
+  question = _duplicate_answer_runtime_question()
+  provider = RecordedSemanticProvider.from_fixture_files([fixture_path])
+
+  artifact = SemanticCompiler(provider).compile_sync([question])
+
+  compiled = artifact.questions[0]
+  assert len(compiled.assignments) == len(question.participant_ids)
+  assert all(assignment.covered_unit_ids == ("runtime_unit",) for assignment in compiled.assignments)
+  assert len(compiled.families) == 1
+  assert compiled.families[0].label == "Shared position"
+  assert all(assignment.family_id == compiled.families[0].id for assignment in compiled.assignments)
+  assert len([call for call in provider.calls if call.branch == "coverage"]) == 1
+  assert len([call for call in provider.calls if call.branch == "family"]) == 1
+
+
+def test_recorded_fixture_rejects_duplicate_answer_with_conflicting_coverage(tmp_path: Path) -> None:
+  provider = RecordedSemanticProvider.from_fixture_files(
+    [_write_duplicate_answer_fixture(tmp_path, conflicting_coverage=True)]
+  )
+
+  with pytest.raises(SemanticCompilerError) as captured:
+    SemanticCompiler(provider).compile_sync([_duplicate_answer_runtime_question()])
+
+  assert captured.value.code == "SEMANTIC_PROVIDER_ERROR"
+
+
+def test_recorded_fixture_rejects_duplicate_answer_with_conflicting_family(tmp_path: Path) -> None:
+  provider = RecordedSemanticProvider.from_fixture_files(
+    [_write_duplicate_answer_fixture(tmp_path, conflicting_family=True)]
+  )
+
+  with pytest.raises(SemanticCompilerError) as captured:
+    SemanticCompiler(provider).compile_sync([_duplicate_answer_runtime_question()])
+
+  assert captured.value.code == "SEMANTIC_PROVIDER_ERROR"
 
 
 def test_recorded_fixture_fails_closed_on_content_mismatch() -> None:
@@ -438,6 +610,30 @@ def test_second_transport_failure_is_not_retried_again() -> None:
   assert len([call for call in provider.calls if call.branch == "coverage"]) == 2
 
 
+def test_room_timeout_bounds_an_in_progress_transport_retry() -> None:
+  provider = _BlockingProvider()
+
+  with pytest.raises(SemanticCompilerError) as captured:
+    SemanticCompiler(
+      provider,
+      request_timeout_seconds=0.02,
+      room_timeout_seconds=0.03,
+      transport_retry_delay_seconds=0,
+    ).compile_sync([_question()])
+
+  assert captured.value.code == "SEMANTIC_TIMEOUT"
+  assert all(1 <= calls <= 2 for calls in provider.calls.values())
+
+
+def test_request_timeout_cannot_exceed_room_timeout() -> None:
+  with pytest.raises(ValueError, match="request timeout cannot exceed room timeout"):
+    SemanticCompiler(
+      RecordedSemanticProvider({}),
+      request_timeout_seconds=2,
+      room_timeout_seconds=1,
+    )
+
+
 def test_repair_request_is_preflighted_with_invalid_result_and_schema() -> None:
   good = _good_records()[str(QUESTION_ID)]
   oversized_invalid = {
@@ -559,6 +755,8 @@ def test_openai_adapter_uses_stateless_responses_parse_without_tools() -> None:
   assert responses.kwargs["tools"] == []
   assert responses.kwargs["text_format"] is FamilyClusteringOutput
   assert responses.kwargs["safety_identifier"] == "room-hash"
+  assert responses.kwargs["timeout"] == 90
+  assert responses.kwargs["max_output_tokens"] == 8_000
   serialized_input = json.dumps(responses.kwargs["input"])
   assert "coverageUnits" not in serialized_input
   assert "referenceMaterial" not in serialized_input
@@ -672,11 +870,13 @@ def test_family_prompt_defines_conservative_subject_agnostic_equivalence() -> No
   assert "central response to the question" in instructions
   assert "supporting consideration" in instructions
   assert "without answering the central question" in instructions
-  assert "even if one is shorter or adds evidence, safeguards" in instructions
-  assert "differences only in supporting rationales" in instructions
-  assert "coverage units already preserve those differences" in instructions
+  assert "answer to an explicitly requested evaluative dimension" in instructions
+  assert "whether evidence supports an explanation" in instructions
+  assert "endorsing a claim and rejecting or withholding endorsement" in instructions
+  assert "when the bottom-line judgment is the same" in instructions
+  assert "coverage units preserve those differences" in instructions
   assert "shared keywords, evidence, or concerns alone are not enough" in instructions
-  assert "when uncertain, separate rather than merge" in instructions
+  assert "do not turn a hedge, limitation, or difference in confidence into a new stance" in instructions
 
 
 def test_process_local_semaphore_bounds_calls_across_questions() -> None:
@@ -725,6 +925,27 @@ def _question(
       SemanticAnswerInput(participant_id=P1, text=texts[0]),
       SemanticAnswerInput(participant_id=P2, text=texts[1]),
     ),
+  )
+
+
+def _batched_question(answer_count: int) -> QuestionCompilationInput:
+  participant_count = max(1, answer_count)
+  participant_ids = tuple(UUID(f"40000000-0000-4000-8000-{index:012d}") for index in range(1, participant_count + 1))
+  answers = (
+    tuple(
+      SemanticAnswerInput(participant_id=participant_id, text=f"Answer {index} evidence")
+      for index, participant_id in enumerate(participant_ids, start=1)
+    )
+    if answer_count
+    else (SemanticAnswerInput(participant_id=participant_ids[0], text="  \r\n"),)
+  )
+  return QuestionCompilationInput(
+    question_id=QUESTION_ID,
+    prompt="Explain the idea.",
+    reference_material="Reference material",
+    coverage_units=(CoverageUnitInput(id="u1", text="The idea"),),
+    participant_ids=participant_ids,
+    answers=answers,
   )
 
 
@@ -887,6 +1108,134 @@ class _TrackingProvider:
       return await operation()
     finally:
       self.active -= 1
+
+
+class _BatchingProvider:
+  model_name = "batching"
+
+  def __init__(self, *, invalid_once_participant: str | None = None, transient_once: bool = False) -> None:
+    self.invalid_once_participant = invalid_once_participant
+    self.transient_once = transient_once
+    self.coverage_calls: list[tuple[tuple[str, ...], bool]] = []
+    self.family_calls: list[tuple[str, ...]] = []
+    self._attempts: dict[tuple[str, ...], int] = {}
+
+  async def classify_coverage(
+    self,
+    prompt: CoveragePrompt,
+    *,
+    repair: object | None = None,
+  ) -> ProviderResult[CoverageClassificationOutput]:
+    participant_ids = tuple(answer.participant_id for answer in prompt.answers)
+    self.coverage_calls.append((participant_ids, repair is not None))
+    attempts = self._attempts.get(participant_ids, 0)
+    self._attempts[participant_ids] = attempts + 1
+    if self.transient_once and attempts == 0:
+      raise ProviderTransientError()
+    answers = prompt.answers
+    if self.invalid_once_participant in participant_ids and repair is None:
+      answers = answers[:-1]
+    return ProviderResult(
+      value=CoverageClassificationOutput.model_validate(
+        {
+          "assignments": [
+            {"participantId": answer.participant_id, "coveredUnitIds": [], "evidence": []} for answer in answers
+          ]
+        }
+      ),
+      telemetry=ProviderTelemetry(None, 0),
+    )
+
+  async def cluster_families(
+    self,
+    prompt: FamilyPrompt,
+    *,
+    repair: object | None = None,
+  ) -> ProviderResult[FamilyClusteringOutput]:
+    assert repair is None
+    participant_ids = tuple(answer.participant_id for answer in prompt.answers)
+    self.family_calls.append(participant_ids)
+    return ProviderResult(
+      value=FamilyClusteringOutput.model_validate(
+        {
+          "families": [],
+          "assignments": [{"participantId": participant_id, "familyIndex": None} for participant_id in participant_ids],
+        }
+      ),
+      telemetry=ProviderTelemetry(None, 0),
+    )
+
+
+class _FailingAndBlockingBatchProvider(_BatchingProvider):
+  def __init__(self) -> None:
+    super().__init__()
+    self.coverage_blocking = False
+    self.coverage_cancelled = False
+    self.family_cancelled = False
+
+  async def classify_coverage(
+    self,
+    prompt: CoveragePrompt,
+    *,
+    repair: object | None = None,
+  ) -> ProviderResult[CoverageClassificationOutput]:
+    del repair
+    participant_ids = tuple(answer.participant_id for answer in prompt.answers)
+    self.coverage_calls.append((participant_ids, False))
+    if len(prompt.answers) == 1:
+      while not self.coverage_blocking:
+        await asyncio.sleep(0)
+      raise ProviderPermanentError()
+    self.coverage_blocking = True
+    try:
+      await asyncio.sleep(3_600)
+    except asyncio.CancelledError:
+      self.coverage_cancelled = True
+      raise
+    raise AssertionError("The blocking coverage batch must be cancelled.")
+
+  async def cluster_families(
+    self,
+    prompt: FamilyPrompt,
+    *,
+    repair: object | None = None,
+  ) -> ProviderResult[FamilyClusteringOutput]:
+    del prompt, repair
+    try:
+      await asyncio.sleep(3_600)
+    except asyncio.CancelledError:
+      self.family_cancelled = True
+      raise
+    raise AssertionError("The blocking family call must be cancelled.")
+
+
+class _BlockingProvider:
+  model_name = "blocking"
+
+  def __init__(self) -> None:
+    self.calls = {"coverage": 0, "family": 0}
+
+  async def classify_coverage(
+    self,
+    prompt: CoveragePrompt,
+    *,
+    repair: object | None = None,
+  ) -> ProviderResult[CoverageClassificationOutput]:
+    del prompt, repair
+    self.calls["coverage"] += 1
+    await asyncio.sleep(3_600)
+    raise AssertionError("A blocking provider call must be cancelled.")
+
+  async def cluster_families(
+    self,
+    prompt: FamilyPrompt,
+    *,
+    repair: object | None = None,
+  ) -> ProviderResult[FamilyClusteringOutput]:
+    del prompt, repair
+    self.calls["family"] += 1
+    await asyncio.sleep(3_600)
+    raise AssertionError("A blocking provider call must be cancelled.")
 
 
 _TrackedResult = TypeVar("_TrackedResult")

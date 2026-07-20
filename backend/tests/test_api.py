@@ -166,6 +166,84 @@ def test_session_establishes_csrf_and_host_grant(harness: AppHarness) -> None:
   assert session.json()["participantRoomIds"] == []
 
 
+def test_activity_history_lists_only_rooms_hosted_in_this_browser(harness: AppHarness) -> None:
+  with TestClient(harness.app) as host, TestClient(harness.app) as other_browser:
+    csrf = get_csrf(host)
+    draft = create_room(host, csrf)
+    harness.clock.advance(seconds=1)
+    published, question = create_open_room(host, csrf)
+    participants = [join_room(harness.app, published["joinCode"], name) for name in ("Maya", "Alex")]
+    try:
+      start_room(host, csrf, published["roomId"])
+      for index, (client, participant_csrf, _) in enumerate(participants):
+        submit_answer(
+          client,
+          participant_csrf,
+          published["roomId"],
+          question["id"],
+          f"Answer {index + 1}",
+        )
+      assert harness.scheduler.run_ready() == 2
+
+      history = host.get("/api/activities")
+      other_history = other_browser.get("/api/activities")
+    finally:
+      for client, _, _ in participants:
+        client.close()
+
+  assert history.status_code == 200
+  activities = history.json()["activities"]
+  assert [activity["roomId"] for activity in activities] == [published["roomId"], draft["roomId"]]
+  assert activities[0] == {
+    "roomId": published["roomId"],
+    "joinCode": published["joinCode"],
+    "title": "Reasoning workshop",
+    "status": "published",
+    "createdAt": "2026-07-18T09:00:01Z",
+    "groupingPublishedAt": "2026-07-18T09:00:01Z",
+    "participantCount": 2,
+    "questionCount": 1,
+    "groupCount": 1,
+    "generationMode": "placeholder",
+    "fullyCoveredGroupQuestions": None,
+    "totalGroupQuestions": None,
+  }
+  assert activities[1]["status"] == "draft"
+  assert activities[1]["groupCount"] == 0
+  assert other_history.status_code == 200
+  assert other_history.json()["activities"] == []
+
+
+def test_host_deletion_requires_the_room_invite_code(harness: AppHarness) -> None:
+  with TestClient(harness.app) as host:
+    csrf = get_csrf(host)
+    room = create_room(host, csrf)
+    room_id = room["roomId"]
+
+    rejected = host.request(
+      "DELETE",
+      f"/api/rooms/{room_id}",
+      headers={"X-CSRF-Token": csrf},
+      json={"confirmationCode": "WRONG1"},
+    )
+    still_present = host.get(f"/api/rooms/{room_id}")
+    deleted = host.request(
+      "DELETE",
+      f"/api/rooms/{room_id}",
+      headers={"X-CSRF-Token": csrf},
+      json={"confirmationCode": room["joinCode"].lower()},
+    )
+    history = host.get("/api/activities")
+    session = host.get("/api/session")
+
+  assert rejected.status_code == 422
+  assert rejected.json()["error"]["code"] == "ROOM_DELETE_CONFIRMATION_INVALID"
+  assert still_present.status_code == 200
+  assert deleted.status_code == 204
+  assert history.json()["activities"] == []
+  assert session.json()["hostRoomIds"] == []
+
+
 def test_host_can_upload_material_add_coverage_question_and_open_room(
   harness: AppHarness,
 ) -> None:

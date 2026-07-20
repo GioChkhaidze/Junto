@@ -6,6 +6,7 @@ from typing import Literal, cast
 from uuid import UUID
 
 from junto.api.schemas import (
+  ActivitySummaryView,
   AgendaQuestionView,
   CoverageCarrierView,
   CoverageGroupsView,
@@ -89,6 +90,34 @@ def host_room_view(room: Room, *, now: datetime) -> HostRoomView:
     startEligibility=start_eligibility_view(room),
     allowedActions=host_actions(room),
     lastError=room.last_error,
+  )
+
+
+def activity_summary_view(room: Room) -> ActivitySummaryView:
+  result = room.grouping_result
+  group_count = len(result.groups) if result is not None else 0
+  generation_mode: Literal["placeholder", "coverage_aware"] | None = None
+  fully_covered: int | None = None
+  total: int | None = None
+  if result is not None:
+    generation_mode = cast(Literal["placeholder", "coverage_aware"], result.generation_mode)
+    if isinstance(result, GroupingArtifact):
+      coverage_groups = [_coverage_host_group_view(room, group) for group in result.groups]
+      fully_covered = sum(question.fullyCovered for group in coverage_groups for question in group.questions)
+      total = len(coverage_groups) * len(room.questions)
+  return ActivitySummaryView(
+    roomId=room.id,
+    joinCode=room.join_code,
+    title=room.title,
+    status=room.status,
+    createdAt=room.created_at,
+    groupingPublishedAt=result.generated_at if result is not None else None,
+    participantCount=len(room.participants),
+    questionCount=len(room.questions),
+    groupCount=group_count,
+    generationMode=generation_mode,
+    fullyCoveredGroupQuestions=fully_covered,
+    totalGroupQuestions=total,
   )
 
 

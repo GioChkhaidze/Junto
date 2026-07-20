@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Literal, Protocol, TypeVar
 
 from pydantic import BaseModel
@@ -25,6 +26,7 @@ from junto.engine.provider import (
 )
 
 T = TypeVar("T", bound=BaseModel)
+_LOG = logging.getLogger("junto.semantic.openrouter")
 
 
 class StructuredCompletionClient(Protocol):
@@ -105,6 +107,12 @@ class OpenRouterSemanticProvider:
         max_tokens=self._max_output_tokens,
       )
     except OpenRouterError as error:
+      _LOG.warning(
+        "OpenRouter semantic failure branch=%s category=%s reason=%s",
+        branch,
+        error.category,
+        error.reason,
+      )
       if error.category == "transient":
         raise ProviderTransientError() from None
       if error.category == "refusal":

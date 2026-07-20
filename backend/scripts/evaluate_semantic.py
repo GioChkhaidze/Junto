@@ -9,6 +9,7 @@ reference, answer, evidence-quote, or coverage-unit text.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -81,7 +82,7 @@ class MeasuringProvider:
   def __init__(self, delegate: SemanticProvider) -> None:
     self._delegate = delegate
     self.calls: list[ProviderCall] = []
-    self.coverage_outputs: dict[str, CoverageClassificationOutput] = {}
+    self.coverage_outputs: dict[str, dict[tuple[str, ...], CoverageClassificationOutput]] = {}
     self.family_outputs: dict[str, FamilyClusteringOutput] = {}
 
   @property
@@ -116,7 +117,8 @@ class MeasuringProvider:
         telemetry=result.telemetry,
       )
     )
-    self.coverage_outputs[prompt.question_id] = result.value
+    batch = tuple(answer.participant_id for answer in prompt.answers)
+    self.coverage_outputs.setdefault(prompt.question_id, {})[batch] = result.value
     return result
 
   async def cluster_families(
@@ -155,17 +157,20 @@ class _Args(Protocol):
   mode: str
   live_provider: str
   fixtures: Path
+  fixture: list[Path] | None
   model: str | None
   reasoning_effort: str
   timeout_seconds: float
   max_fixture_latency_ms: int
+  max_output_tokens: int
   max_total_tokens: int
+  seed: int
   output: Path | None
 
 
 def main() -> int:
   args = cast(_Args, _parser().parse_args())
-  fixture_paths = tuple(sorted(args.fixtures.glob("*.json")))
+  fixture_paths = _fixture_paths(args)
   if not fixture_paths:
     print("No semantic fixtures were found.", file=sys.stderr)
     return 2
@@ -181,6 +186,7 @@ def main() -> int:
       request_timeout_seconds=args.timeout_seconds,
       max_fixture_latency_ms=args.max_fixture_latency_ms,
       max_total_tokens=args.max_total_tokens,
+      seed=args.seed,
     )
   except (OSError, ValueError, SemanticCompilerError) as error:
     # These messages are authored by this evaluator/compiler and never include source text.
@@ -204,7 +210,19 @@ def _parser() -> argparse.ArgumentParser:
     default="openai",
     help="Provider used only in live mode; recorded mode never contacts either provider.",
   )
-  parser.add_argument("--fixtures", type=Path, default=DEFAULT_FIXTURE_DIRECTORY)
+  selection = parser.add_mutually_exclusive_group()
+  selection.add_argument(
+    "--fixtures",
+    type=Path,
+    default=DEFAULT_FIXTURE_DIRECTORY,
+    help="Directory of JSON fixtures. Used when --fixture is omitted.",
+  )
+  selection.add_argument(
+    "--fixture",
+    action="append",
+    type=Path,
+    help="Exact JSON fixture file. Repeat to select several; files run once in sorted path order.",
+  )
   parser.add_argument(
     "--model",
     default=None,
@@ -213,7 +231,7 @@ def _parser() -> argparse.ArgumentParser:
   parser.add_argument(
     "--reasoning-effort",
     choices=("none", "low", "medium", "high", "xhigh", "max"),
-    default="low",
+    default="high",
     help="Reasoning effort used by the OpenAI live provider.",
   )
   parser.add_argument(
@@ -222,9 +240,22 @@ def _parser() -> argparse.ArgumentParser:
     default=45.0,
   )
   parser.add_argument("--max-fixture-latency-ms", type=int, default=180_000)
+  parser.add_argument("--max-output-tokens", type=int, default=20_000)
   parser.add_argument("--max-total-tokens", type=int, default=250_000)
+  parser.add_argument(
+    "--seed",
+    type=int,
+    default=41,
+    help="Live-only seed for deterministic input order and identifier blinding.",
+  )
   parser.add_argument("--output", type=Path)
   return parser
+
+
+def _fixture_paths(args: _Args) -> tuple[Path, ...]:
+  if args.fixture:
+    return tuple(sorted(set(args.fixture), key=lambda path: path.as_posix()))
+  return tuple(sorted(args.fixtures.glob("*.json")))
 
 
 def _provider(args: _Args, paths: tuple[Path, ...]) -> SemanticProvider:
@@ -243,9 +274,11 @@ def _provider(args: _Args, paths: tuple[Path, ...]) -> SemanticProvider:
       api_key=api_key,
       timeout_seconds=args.timeout_seconds,
     )
-    return OpenRouterSemanticProvider(client=client, model=model)
+    return OpenRouterSemanticProvider(client=client, model=model, max_output_tokens=args.max_output_tokens)
   if args.live_provider != "openai":
     raise ValueError("--live-provider must be openai or openrouter")
+  if args.max_output_tokens <= 0:
+    raise ValueError("--max-output-tokens must be positive")
   api_key = os.getenv("OPENAI_API_KEY")
   if api_key is None or not api_key.strip():
     raise ValueError("OPENAI_API_KEY is required for --mode live --live-provider openai")
@@ -257,6 +290,7 @@ def _provider(args: _Args, paths: tuple[Path, ...]) -> SemanticProvider:
     api_key=api_key,
     model=model,
     sdk_timeout_seconds=args.timeout_seconds,
+    max_output_tokens=args.max_output_tokens,
     reasoning_effort=effort,
     safety_identifier="junto-reviewed-semantic-evaluation",
   )
@@ -272,8 +306,8 @@ def _live_model(args: _Args) -> str:
   if args.model is not None:
     return args.model
   if args.live_provider == "openrouter":
-    return "google/gemini-2.5-flash-lite"
-  return "gpt-5.6-sol"
+    return "google/gemini-2.5-flash"
+  return "gpt-5.6-luna"
 
 
 def _load_fixture(path: Path) -> EvaluationFixture:
@@ -313,6 +347,132 @@ def _load_fixture(path: Path) -> EvaluationFixture:
   )
 
 
+def _prepare_evaluation_fixtures(
+  fixtures: tuple[EvaluationFixture, ...],
+  *,
+  mode: Literal["recorded", "live"],
+  seed: int,
+) -> tuple[EvaluationFixture, ...]:
+  if mode == "recorded":
+    return fixtures
+  return tuple(_blind_live_fixture(fixture, seed=seed) for fixture in fixtures)
+
+
+def _blind_live_fixture(fixture: EvaluationFixture, *, seed: int) -> EvaluationFixture:
+  """Return a cue-resistant copy without exposing its private identifier maps."""
+  question = fixture.question
+  context = f"{seed}\0{fixture.fixture_id}\0{question.question_id}"
+  source_participants = question.participant_ids
+  excluded_uuids = set(source_participants) | {question.question_id}
+  question_id = _opaque_uuid(context, "question", excluded_uuids)
+  excluded_uuids.add(question_id)
+  participant_ids: dict[UUID, UUID] = {}
+  for participant_id in source_participants:
+    blinded_id = _opaque_uuid(context, f"participant\0{participant_id}", excluded_uuids)
+    participant_ids[participant_id] = blinded_id
+    excluded_uuids.add(blinded_id)
+
+  source_unit_ids = {unit.id for unit in question.coverage_units}
+  excluded_unit_ids = set(source_unit_ids)
+  unit_ids: dict[str, str] = {}
+  for unit in question.coverage_units:
+    blinded_unit_id = _opaque_unit_id(context, unit.id, excluded_unit_ids)
+    unit_ids[unit.id] = blinded_unit_id
+    excluded_unit_ids.add(blinded_unit_id)
+
+  ordered_participants = tuple(
+    sorted(
+      source_participants,
+      key=lambda participant_id: (_blind_digest(context, f"order\0{participant_id}"), str(participant_id)),
+    )
+  )
+  if len(ordered_participants) > 1 and ordered_participants == source_participants:
+    ordered_participants = ordered_participants[1:] + ordered_participants[:1]
+  answers_by_participant = {answer.participant_id: answer.text for answer in question.answers}
+  answers = tuple(
+    SemanticAnswerInput(participant_id=participant_ids[source_id], text=answers_by_participant[source_id])
+    for source_id in ordered_participants
+    if source_id in answers_by_participant
+  )
+
+  replacements = {str(source): str(target) for source, target in participant_ids.items()}
+  replacements[str(question.question_id)] = str(question_id)
+  replacements.update(unit_ids)
+  return EvaluationFixture(
+    fixture_id=fixture.fixture_id,
+    subject=fixture.subject,
+    question=QuestionCompilationInput(
+      question_id=question_id,
+      prompt=question.prompt,
+      reference_material=question.reference_material,
+      coverage_units=tuple(CoverageUnitInput(id=unit_ids[unit.id], text=unit.text) for unit in question.coverage_units),
+      participant_ids=tuple(participant_ids[participant_id] for participant_id in ordered_participants),
+      answers=answers,
+    ),
+    expected_coverage={
+      _mapped_participant(participant_ids, participant_id): frozenset(
+        _mapped_unit(unit_ids, unit_id) for unit_id in covered_unit_ids
+      )
+      for participant_id, covered_unit_ids in fixture.expected_coverage.items()
+    },
+    expected_family={
+      _mapped_participant(participant_ids, participant_id): family_index
+      for participant_id, family_index in fixture.expected_family.items()
+    },
+    relationships=_remap_json(fixture.relationships, replacements),
+    answer_by_participant={str(answer.participant_id): answer.text for answer in answers},
+  )
+
+
+def _blind_digest(context: str, purpose: str) -> bytes:
+  return hashlib.sha256(f"junto-live-evaluation-v1\0{context}\0{purpose}".encode()).digest()
+
+
+def _opaque_uuid(context: str, purpose: str, excluded: set[UUID]) -> UUID:
+  nonce = 0
+  while True:
+    candidate = UUID(bytes=_blind_digest(context, f"{purpose}\0{nonce}")[:16], version=4)
+    if candidate not in excluded:
+      return candidate
+    nonce += 1
+
+
+def _opaque_unit_id(context: str, source_id: str, excluded: set[str]) -> str:
+  nonce = 0
+  while True:
+    purpose = f"unit\0{source_id}\0{nonce}"
+    candidate = f"u_{_blind_digest(context, purpose).hex()[:24]}"
+    if candidate not in excluded:
+      return candidate
+    nonce += 1
+
+
+def _mapped_participant(mapping: dict[UUID, UUID], participant_id: UUID) -> UUID:
+  try:
+    return mapping[participant_id]
+  except KeyError:
+    raise ValueError("A semantic fixture references an unknown participant.") from None
+
+
+def _mapped_unit(mapping: dict[str, str], unit_id: str) -> str:
+  try:
+    return mapping[unit_id]
+  except KeyError:
+    raise ValueError("A semantic fixture references an unknown coverage unit.") from None
+
+
+def _remap_json(value: Any, replacements: dict[str, str]) -> Any:
+  if isinstance(value, str):
+    return replacements.get(value, value)
+  if isinstance(value, list):
+    return [_remap_json(item, replacements) for item in value]
+  if isinstance(value, tuple):
+    return tuple(_remap_json(item, replacements) for item in value)
+  if isinstance(value, dict):
+    return {replacements.get(key, key): _remap_json(item, replacements) for key, item in value.items()}
+  return value
+
+
 def _evaluate(
   fixtures: tuple[EvaluationFixture, ...],
   provider: MeasuringProvider,
@@ -322,9 +482,11 @@ def _evaluate(
   request_timeout_seconds: float,
   max_fixture_latency_ms: int = 180_000,
   max_total_tokens: int = 250_000,
+  seed: int = 41,
 ) -> dict[str, Any]:
   if max_fixture_latency_ms <= 0 or max_total_tokens < 0:
     raise ValueError("Evaluation latency and token limits are invalid.")
+  fixtures = _prepare_evaluation_fixtures(fixtures, mode=mode, seed=seed)
   compiler = SemanticCompiler(
     provider,
     request_timeout_seconds=request_timeout_seconds,
@@ -361,7 +523,7 @@ def _evaluate(
   )
   gates = _gate_report(aggregate)
   gates_passed = all(item["status"] == "pass" for item in gates)
-  return {
+  report = {
     "schemaVersion": "2",
     "generatedAt": datetime.now(UTC).isoformat(),
     "mode": mode,
@@ -374,6 +536,9 @@ def _evaluate(
     "overallStatus": "pass" if gates_passed else "fail",
     "readinessClaim": _readiness_claim(mode, gates_passed=gates_passed),
   }
+  if mode == "live":
+    report["blindSeed"] = seed
+  return report
 
 
 def _score_fixture(
@@ -441,7 +606,7 @@ def _score_fixture(
   )
   matrix_passed, matrix_total, failed_relationship_checks = _matrix_checks(fixture, assignments)
   evidence_valid = _evidence_is_valid(
-    provider.coverage_outputs.get(question_id),
+    tuple(provider.coverage_outputs.get(question_id, {}).values()),
     fixture.answer_by_participant,
   )
   passed = assignment_complete and evidence_valid and matrix_passed == matrix_total
@@ -597,27 +762,33 @@ def _matrix_checks(
 
 
 def _evidence_is_valid(
-  output: CoverageClassificationOutput | None,
+  outputs: tuple[CoverageClassificationOutput, ...],
   answer_by_participant: dict[str, str],
 ) -> bool:
-  if output is None:
-    return False
-  for assignment in output.assignments:
-    answer = answer_by_participant.get(assignment.participant_id)
-    if answer is None:
-      return False
-    evidence_ids = [item.unit_id for item in assignment.evidence]
-    if len(evidence_ids) != len(set(evidence_ids)):
-      return False
-    if set(evidence_ids) != set(assignment.covered_unit_ids):
-      return False
-    normalized_answer = _normalize_line_endings(answer)
-    for evidence in assignment.evidence:
-      if not 1 <= len(evidence.quotes) <= 2:
+  if not outputs:
+    return not any(answer.strip() for answer in answer_by_participant.values())
+  seen_participants: set[str] = set()
+  for output in outputs:
+    for assignment in output.assignments:
+      if assignment.participant_id in seen_participants:
         return False
-      if any(_normalize_line_endings(quote) not in normalized_answer for quote in evidence.quotes):
+      seen_participants.add(assignment.participant_id)
+      answer = answer_by_participant.get(assignment.participant_id)
+      if answer is None:
         return False
-  return True
+      evidence_ids = [item.unit_id for item in assignment.evidence]
+      if len(evidence_ids) != len(set(evidence_ids)):
+        return False
+      if set(evidence_ids) != set(assignment.covered_unit_ids):
+        return False
+      normalized_answer = _normalize_line_endings(answer)
+      for evidence in assignment.evidence:
+        if not 1 <= len(evidence.quotes) <= 2:
+          return False
+        if any(_normalize_line_endings(quote) not in normalized_answer for quote in evidence.quotes):
+          return False
+  expected_participants = {participant_id for participant_id, answer in answer_by_participant.items() if answer.strip()}
+  return seen_participants == expected_participants
 
 
 def _family_pair_counts(

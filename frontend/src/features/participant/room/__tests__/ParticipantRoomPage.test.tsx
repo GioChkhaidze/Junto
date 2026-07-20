@@ -203,6 +203,7 @@ describe("ParticipantRoomPage answer runner", () => {
   });
 
   it("shows only the participant group agenda for a coverage-aware result", async () => {
+    const user = userEvent.setup();
     apiMocks.getParticipantRoom.mockResolvedValue({
       ...room,
       status: "published",
@@ -250,7 +251,12 @@ describe("ParticipantRoomPage answer runner", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Discussion agenda" })).toBeInTheDocument();
-    expect(screen.getByText("Ask Alex Kim to introduce this idea.")).toBeInTheDocument();
+    const questionSummary = screen.getByText("Question 1:").closest("summary");
+    const carrierGuidance = screen.getByText("Ask Alex Kim to introduce this idea.");
+    expect(questionSummary).not.toBeNull();
+    expect(carrierGuidance).not.toBeVisible();
+    await user.click(questionSummary!);
+    expect(carrierGuidance).toBeVisible();
     expect(screen.queryByText(/answer classifications/i)).not.toBeInTheDocument();
   });
 });

@@ -37,7 +37,7 @@ from junto.repositories.base import RoomRepository
 from junto.repositories.memory import InMemoryRoomRepository
 from junto.repositories.postgres import PostgresRoomRepository
 from junto.services.analysis import AnalysisPipeline, CoverageAnalysisPipeline
-from junto.services.authoring import AuthoringService, OpenAIAuthoringService
+from junto.services.authoring import AuthoringService, OpenAIAuthoringService, OpenRouterAuthoringService
 from junto.services.references import DefaultReferenceTextExtractor, ReferenceTextExtractor
 from junto.services.rooms import RoomService, utc_now
 from junto.services.scheduling import Scheduler, ThreadingScheduler
@@ -80,7 +80,10 @@ def create_app(
     max_pdf_pages=app_settings.max_pdf_pages,
     max_docx_uncompressed_bytes=app_settings.max_docx_uncompressed_bytes,
   )
-  configured_authoring = authoring_service or _build_authoring_service(app_settings)
+  configured_authoring = authoring_service or _build_authoring_service(
+    app_settings,
+    openrouter_client=openrouter_client,
+  )
   room_service = RoomService(
     room_repository,
     grouping or DeterministicPlaceholderGroupingService(),
@@ -242,7 +245,7 @@ def _build_analysis_pipeline(
   elif settings.engine_mode == "openrouter":
     if openrouter_client is None:
       raise RuntimeError("OPENROUTER_API_KEY is required for the OpenRouter analysis engine.")
-    provider = OpenRouterSemanticProvider(client=openrouter_client, model=settings.openrouter_models[0])
+    provider = OpenRouterSemanticProvider(client=openrouter_client, model=settings.openrouter_model)
   else:
     fixture_directory = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "semantic"
     fixture_paths = sorted(fixture_directory.glob("*.json"))
@@ -264,6 +267,7 @@ def _build_analysis_pipeline(
     ),
     max_concurrency=settings.semantic_max_concurrency,
     request_timeout_seconds=settings.provider_timeout_seconds,
+    room_timeout_seconds=settings.semantic_room_timeout_seconds,
   )
   optimizer = CoverageFirstOptimizer(
     OptimizerConfig(
@@ -298,20 +302,29 @@ def _build_synthetic_classroom(
   if configured_openrouter is None and openrouter_client is not None:
     configured_openrouter = OpenRouterSyntheticAnswerProvider(
       client=openrouter_client,
-      models=settings.openrouter_models,
-      batch_size=settings.synthetic_batch_size,
-      max_concurrency=settings.synthetic_max_concurrency,
+      model=settings.openrouter_model,
     )
   return SyntheticClassroomService(
     rooms,
     enabled=settings.synthetic_classroom_enabled,
-    patterned_provider=(PatternedSyntheticAnswerProvider() if settings.synthetic_classroom_enabled else None),
+    patterned_provider=(
+      PatternedSyntheticAnswerProvider()
+      if settings.synthetic_classroom_enabled and settings.engine_mode == "placeholder"
+      else None
+    ),
     openrouter_provider=(configured_openrouter if settings.synthetic_classroom_enabled else None),
     max_cohort_size=settings.synthetic_max_cohort_size,
+    generation_timeout_seconds=settings.synthetic_generation_timeout_seconds,
   )
 
 
-def _build_authoring_service(settings: Settings) -> AuthoringService | None:
+def _build_authoring_service(
+  settings: Settings,
+  *,
+  openrouter_client: OpenRouterStructuredClient | None = None,
+) -> AuthoringService | None:
+  if openrouter_client is not None:
+    return OpenRouterAuthoringService(client=openrouter_client, model=settings.openrouter_model)
   if settings.openai_api_key is None:
     return None
   return OpenAIAuthoringService.from_api_key(

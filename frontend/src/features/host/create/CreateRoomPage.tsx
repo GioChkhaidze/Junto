@@ -1,7 +1,7 @@
 import { type ChangeEvent, type DragEvent, type FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../../../api";
-import { AppShell } from "../../../components/layout";
+import { AppShell, HeaderLink } from "../../../components/layout";
 import { Button, Field, Icon, InlineNotice, Input, Select, TextArea } from "../../../components/ui";
 import { useDocumentTitle } from "../../../hooks/useDocumentTitle";
 import { formatDuration, formatFileSize } from "../../../lib/format";
@@ -442,7 +442,11 @@ export function CreateRoomPage() {
   }
 
   return (
-    <AppShell context="Create an activity" variant="authoring">
+    <AppShell
+      context="Create an activity"
+      variant="authoring"
+      actions={<HeaderLink to="/activities">Activities</HeaderLink>}
+    >
       <div className={styles.createLayout}>
         <aside className={styles.stepRail} aria-label="Create activity progress">
           <ol>

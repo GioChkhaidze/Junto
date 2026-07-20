@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AppShell } from "../../components/layout";
+import { AppShell, HeaderLink } from "../../components/layout";
 import { Button, Icon, Input } from "../../components/ui";
 import { normalizeJoinCode } from "../../lib/format";
 import styles from "./HomePage.module.css";
@@ -16,11 +16,10 @@ export function HomePage() {
   }
 
   return (
-    <AppShell variant="public">
+    <AppShell variant="public" actions={<HeaderLink to="/activities">Activities</HeaderLink>}>
       <div className={styles.layout}>
         <section className={styles.introduction} aria-labelledby="home-title">
           <div className={styles.introductionInner}>
-            <p className={styles.productLine}>Questions in. Better conversations out.</p>
             <h1 id="home-title">Build each discussion from the ideas already in the room.</h1>
             <p className={styles.lede}>
               Create a timed question activity, collect individual thinking, and form groups with the strongest feasible
@@ -83,7 +82,6 @@ export function HomePage() {
                 Get this code from the person hosting your activity.
               </p>
             </form>
-            <p className={styles.accountNote}>No account, email address, or installation required.</p>
           </div>
         </section>
       </div>

@@ -155,9 +155,9 @@ class OpenAISemanticProvider:
     *,
     client: _OpenAIClient | None = None,
     model: str,
-    sdk_timeout_seconds: float = 45.0,
-    max_output_tokens: int = 20_000,
-    reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] | None = "low",
+    sdk_timeout_seconds: float = 90.0,
+    max_output_tokens: int = 8_000,
+    reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] | None = "high",
     safety_identifier: str | None = None,
     _client_factory: Callable[[], _OpenAIClient] | None = None,
   ) -> None:
@@ -183,9 +183,9 @@ class OpenAISemanticProvider:
     *,
     api_key: str,
     model: str,
-    sdk_timeout_seconds: float = 45.0,
-    max_output_tokens: int = 20_000,
-    reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] | None = "low",
+    sdk_timeout_seconds: float = 90.0,
+    max_output_tokens: int = 8_000,
+    reasoning_effort: Literal["none", "low", "medium", "high", "xhigh", "max"] | None = "high",
     safety_identifier: str | None = None,
   ) -> OpenAISemanticProvider:
     """Create the adapter lazily so recorded CI does not require SDK initialization."""
@@ -498,18 +498,21 @@ class RecordedSemanticProvider:
     prompt: CoveragePrompt | FamilyPrompt,
   ) -> ProviderResult[T]:
     key = (question_id, branch)
-    try:
-      steps = self._records[question_id][branch]
-    except KeyError:
+    position = self._positions.get(key, 0)
+    if self._fixture_templates:
       remapped = self._exact_fixture_result(branch, prompt)
       if remapped is None:
         raise ProviderPermanentError("No recorded semantic response exists.") from None
-      steps = (remapped,)
-    position = self._positions.get(key, 0)
-    if position >= len(steps):
-      raise ProviderPermanentError("The recorded semantic responses are exhausted.")
+      step: RecordedStep = remapped
+    else:
+      try:
+        steps = self._records[question_id][branch]
+      except KeyError:
+        raise ProviderPermanentError("No recorded semantic response exists.") from None
+      if position >= len(steps):
+        raise ProviderPermanentError("The recorded semantic responses are exhausted.")
+      step = steps[position]
     self._positions[key] = position + 1
-    step = steps[position]
     if isinstance(step, BaseException):
       raise step
     try:
@@ -577,12 +580,17 @@ def _match_fixture_participants(
   answers: tuple[PromptAnswer, ...],
 ) -> tuple[tuple[str, str], ...] | None:
   fixture_answers = [item for item in fixture.participants if item[1].strip()]
-  fixture_by_answer: dict[str, str] = {}
+  fixture_ids_by_answer: dict[str, list[str]] = {}
   for fixture_participant_id, text in fixture_answers:
-    if text in fixture_by_answer:
-      # One exact answer cannot safely select two different adjudicated assignments.
+    fixture_ids_by_answer.setdefault(text, []).append(fixture_participant_id)
+  fixture_by_answer: dict[str, str] = {}
+  for text, fixture_participant_ids in fixture_ids_by_answer.items():
+    if len(fixture_participant_ids) > 1 and not _duplicate_adjudications_match(
+      fixture,
+      fixture_participant_ids,
+    ):
       return None
-    fixture_by_answer[text] = fixture_participant_id
+    fixture_by_answer[text] = fixture_participant_ids[0]
   mappings: list[tuple[str, str]] = []
   for answer in answers:
     matched_participant_id = fixture_by_answer.get(answer.text)
@@ -592,6 +600,38 @@ def _match_fixture_participants(
   if len({runtime_id for runtime_id, _fixture_id in mappings}) != len(mappings):
     return None
   return tuple(mappings)
+
+
+def _duplicate_adjudications_match(
+  fixture: _RecordedFixtureTemplate,
+  participant_ids: list[str],
+) -> bool:
+  try:
+    coverage = CoverageClassificationOutput.model_validate(fixture.coverage)
+    families = FamilyClusteringOutput.model_validate(fixture.family)
+  except ValidationError:
+    return False
+  coverage_by_participant = {
+    assignment.participant_id: (
+      tuple(sorted(assignment.covered_unit_ids)),
+      tuple(sorted((evidence.unit_id, tuple(sorted(evidence.quotes))) for evidence in assignment.evidence)),
+    )
+    for assignment in coverage.assignments
+  }
+  family_by_participant = {assignment.participant_id: assignment.family_index for assignment in families.assignments}
+  if len(coverage_by_participant) != len(coverage.assignments):
+    return False
+  if len(family_by_participant) != len(families.assignments):
+    return False
+  if any(
+    participant_id not in coverage_by_participant or participant_id not in family_by_participant
+    for participant_id in participant_ids
+  ):
+    return False
+  return (
+    len({coverage_by_participant[participant_id] for participant_id in participant_ids}) == 1
+    and len({family_by_participant[participant_id] for participant_id in participant_ids}) == 1
+  )
 
 
 def _match_fixture_units(

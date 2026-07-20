@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from junto.domain.entities import AnalysisPhase, GroupingPolicy, RoomStatus
+from junto.domain.limits import MAX_ANSWER_CHARACTERS
 from junto.engine.models import CompleteCoverageStatus, SolverStatus
 
 
@@ -46,6 +47,10 @@ class RoomPatch(ApiModel):
     if any(getattr(self, field_name) is None for field_name in self.model_fields_set):
       raise ValueError("Room fields cannot be null.")
     return self
+
+
+class RoomDelete(ApiModel):
+  confirmationCode: str = Field(min_length=6, max_length=6)
 
 
 class CoverageUnitWrite(ApiModel):
@@ -132,10 +137,10 @@ class AuthoringSuggestionRequest(ApiModel):
 
 
 class AuthoringSuggestionResponse(ApiModel):
-  questionPrompt: str = Field(min_length=5, max_length=2_000)
-  coverageUnits: list[Annotated[str, Field(min_length=3, max_length=240)]] = Field(
+  questionPrompt: str = Field(min_length=5, max_length=280)
+  coverageUnits: list[Annotated[str, Field(min_length=3, max_length=80)]] = Field(
     min_length=1,
-    max_length=8,
+    max_length=5,
   )
 
 
@@ -202,6 +207,25 @@ class SessionView(ApiModel):
   participantRoomIds: list[UUID]
 
 
+class ActivitySummaryView(ApiModel):
+  roomId: UUID
+  joinCode: str
+  title: str
+  status: RoomStatus
+  createdAt: datetime
+  groupingPublishedAt: datetime | None
+  participantCount: int = Field(ge=0)
+  questionCount: int = Field(ge=0)
+  groupCount: int = Field(ge=0)
+  generationMode: Literal["placeholder", "coverage_aware"] | None
+  fullyCoveredGroupQuestions: int | None = Field(default=None, ge=0)
+  totalGroupQuestions: int | None = Field(default=None, ge=0)
+
+
+class ActivityHistoryView(ApiModel):
+  activities: list[ActivitySummaryView]
+
+
 class JoinLookupView(ApiModel):
   title: str
   status: RoomStatus
@@ -248,7 +272,7 @@ class ParticipantRoomView(ApiModel):
 
 
 class AnswerWrite(ApiModel):
-  text: str = Field(max_length=1_500)
+  text: str = Field(max_length=MAX_ANSWER_CHARACTERS)
 
 
 class AnswerReceipt(ApiModel):
@@ -295,6 +319,17 @@ class AnalysisAccepted(ApiModel):
   analysisPhase: AnalysisPhase
 
 
+class SyntheticGenerationView(ApiModel):
+  status: Literal["running", "failed", "complete"]
+  source: Literal["patterned", "openrouter"]
+  requestedParticipantCount: int = Field(ge=0, le=20)
+  completedParticipantCount: int = Field(ge=0, le=20)
+  failedParticipantCount: int = Field(ge=0, le=20)
+  startedAt: datetime
+  finishedAt: datetime | None
+  error: str | None
+
+
 class SyntheticClassroomView(ApiModel):
   enabled: bool
   stage: RoomStatus
@@ -305,6 +340,9 @@ class SyntheticClassroomView(ApiModel):
   canGenerate: bool
   patternedAvailable: bool
   openRouterAvailable: bool
+  syntheticParticipantIds: list[UUID]
+  pendingSyntheticParticipantIds: list[UUID]
+  generation: SyntheticGenerationView | None
 
 
 class SyntheticCohortWrite(ApiModel):
@@ -313,7 +351,7 @@ class SyntheticCohortWrite(ApiModel):
 
 
 class SyntheticResponsesWrite(ApiModel):
-  source: Literal["patterned", "openrouter"] = "patterned"
+  source: Literal["patterned", "openrouter"]
 
 
 class SyntheticResponsesResultView(ApiModel):

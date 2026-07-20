@@ -8,6 +8,22 @@ import httpx
 from pydantic import BaseModel, ValidationError
 
 T = TypeVar("T", bound=BaseModel)
+OpenRouterCategory = Literal["transient", "permanent", "refusal", "invalid"]
+OpenRouterReason = Literal[
+  "unspecified",
+  "transport",
+  "http_status",
+  "response_json",
+  "response_shape",
+  "finish_error",
+  "finish_length",
+  "finish_other",
+  "schema",
+  "schema_json",
+  "schema_answer_count",
+  "schema_answer_too_long",
+  "schema_shape",
+]
 
 
 class OpenRouterError(RuntimeError):
@@ -15,10 +31,12 @@ class OpenRouterError(RuntimeError):
 
   def __init__(
     self,
-    category: Literal["transient", "permanent", "refusal", "invalid"],
+    category: OpenRouterCategory,
+    reason: OpenRouterReason = "unspecified",
   ) -> None:
-    super().__init__(f"OpenRouter request failed: {category}.")
+    super().__init__(f"OpenRouter request failed: {category}/{reason}.")
     self.category = category
+    self.reason = reason
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,7 +57,7 @@ class OpenRouterCompletion(Generic[T]):
 
 
 class OpenRouterStructuredClient:
-  """Small strict-JSON client shared by semantic evaluation and synthetic students."""
+  """Small strict-JSON client shared by authoring, semantic analysis, and simulation."""
 
   def __init__(
     self,
@@ -63,14 +81,27 @@ class OpenRouterStructuredClient:
     messages: list[dict[str, str]],
     output_type: type[T],
     max_tokens: int,
+    temperature: float = 0,
+    reasoning_max_tokens: int | None = None,
+    exclude_reasoning: bool = False,
   ) -> OpenRouterCompletion[T]:
-    if not model.strip() or max_tokens <= 0:
+    if not model.strip() or not _is_positive_int(max_tokens):
       raise ValueError("OpenRouter model and max_tokens are required.")
+    if not 0 <= temperature <= 2:
+      raise ValueError("OpenRouter temperature must be between 0 and 2.")
+    if reasoning_max_tokens is not None:
+      if not _is_positive_int(reasoning_max_tokens):
+        raise ValueError("OpenRouter reasoning_max_tokens must be positive.")
+      if reasoning_max_tokens >= max_tokens:
+        raise ValueError("OpenRouter max_tokens must exceed reasoning_max_tokens.")
     body = self._body(
       model=model,
       messages=messages,
       output_type=output_type,
       max_tokens=max_tokens,
+      temperature=temperature,
+      reasoning_max_tokens=reasoning_max_tokens,
+      exclude_reasoning=exclude_reasoning,
     )
     started = perf_counter()
     try:
@@ -81,40 +112,42 @@ class OpenRouterStructuredClient:
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
             "HTTP-Referer": "https://junto.local",
-            "X-OpenRouter-Title": "Junto development evaluation",
+            "X-OpenRouter-Title": "Junto",
           },
           json=body,
         )
     except (httpx.TimeoutException, httpx.TransportError):
-      raise OpenRouterError("transient") from None
+      raise OpenRouterError("transient", "transport") from None
 
     elapsed = max(0, round((perf_counter() - started) * 1_000))
     if response.status_code >= 400:
       category: Literal["transient", "permanent"] = (
         "transient" if response.status_code in {408, 409, 429} or response.status_code >= 500 else "permanent"
       )
-      raise OpenRouterError(category)
+      raise OpenRouterError(category, "http_status")
     try:
       payload = response.json()
     except ValueError:
-      raise OpenRouterError("invalid") from None
+      raise OpenRouterError("invalid", "response_json") from None
     usage = _usage(payload, elapsed=elapsed)
     try:
       choice = payload["choices"][0]
       finish_reason = choice["finish_reason"]
       content = choice["message"]["content"]
     except (KeyError, IndexError, TypeError):
-      raise OpenRouterError("invalid") from None
+      raise OpenRouterError("invalid", "response_shape") from None
     if finish_reason == "content_filter":
-      raise OpenRouterError("refusal")
+      raise OpenRouterError("refusal", "finish_other")
+    if finish_reason == "error":
+      raise OpenRouterError("transient", "finish_error")
     if finish_reason == "length":
-      raise OpenRouterError("transient")
+      raise OpenRouterError("permanent", "finish_length")
     if finish_reason != "stop" or not isinstance(content, str):
-      raise OpenRouterError("permanent")
+      raise OpenRouterError("permanent", "finish_other")
     try:
       value = output_type.model_validate_json(content)
-    except ValidationError:
-      raise OpenRouterError("invalid") from None
+    except ValidationError as error:
+      raise OpenRouterError("invalid", _schema_reason(error)) from None
     return OpenRouterCompletion(value=value, usage=usage)
 
   def _body(
@@ -124,6 +157,9 @@ class OpenRouterStructuredClient:
     messages: list[dict[str, str]],
     output_type: type[BaseModel],
     max_tokens: int,
+    temperature: float,
+    reasoning_max_tokens: int | None,
+    exclude_reasoning: bool,
   ) -> dict[str, object]:
     normalized_messages = [
       {
@@ -132,17 +168,17 @@ class OpenRouterStructuredClient:
       }
       for message in messages
     ]
-    return {
+    body: dict[str, object] = {
       "model": model,
       "messages": normalized_messages,
-      "temperature": 0,
+      "temperature": temperature,
       "max_tokens": max_tokens,
       "response_format": {
         "type": "json_schema",
         "json_schema": {
           "name": output_type.__name__.lower(),
           "strict": True,
-          "schema": output_type.model_json_schema(by_alias=True),
+          "schema": _provider_schema(output_type.model_json_schema(by_alias=True)),
         },
       },
       "provider": {
@@ -151,6 +187,14 @@ class OpenRouterStructuredClient:
         "zdr": True,
       },
     }
+    if reasoning_max_tokens is not None or exclude_reasoning:
+      reasoning: dict[str, object] = {}
+      if reasoning_max_tokens is not None:
+        reasoning["max_tokens"] = reasoning_max_tokens
+      if exclude_reasoning:
+        reasoning["exclude"] = True
+      body["reasoning"] = reasoning
+    return body
 
 
 def _usage(payload: object, *, elapsed: int) -> OpenRouterUsage:
@@ -175,5 +219,39 @@ def _nonnegative_int(value: object) -> int:
   return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else 0
 
 
+def _schema_reason(error: ValidationError) -> OpenRouterReason:
+  failures = tuple(
+    (detail["type"], detail["loc"])
+    for detail in error.errors(include_url=False, include_context=False, include_input=False)
+  )
+  if any(error_type == "json_invalid" for error_type, _location in failures):
+    return "schema_json"
+  if any(
+    error_type == "string_too_long" and location and location[0] == "answers" for error_type, location in failures
+  ):
+    return "schema_answer_too_long"
+  if any(
+    error_type in {"too_short", "too_long"} and location and location[0] == "answers"
+    for error_type, location in failures
+  ):
+    return "schema_answer_count"
+  shape_errors = {"missing", "extra_forbidden", "list_type", "string_type", "model_type", "dict_type"}
+  if any(error_type in shape_errors for error_type, _location in failures):
+    return "schema_shape"
+  return "schema"
+
+
+def _is_positive_int(value: object) -> bool:
+  return isinstance(value, int) and not isinstance(value, bool) and value > 0
+
+
 def _bounded_string(value: object, maximum: int) -> str | None:
   return value if isinstance(value, str) and 0 < len(value) <= maximum else None
+
+
+def _provider_schema(value: object) -> object:
+  if isinstance(value, dict):
+    return {key: _provider_schema(child) for key, child in value.items() if key != "maxItems"}
+  if isinstance(value, list):
+    return [_provider_schema(child) for child in value]
+  return value

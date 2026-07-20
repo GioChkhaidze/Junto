@@ -309,26 +309,15 @@ def test_database_cascade_removes_all_room_scoped_data(
       assert session.scalar(select(func.count()).select_from(model)) == 0
 
 
-def test_health_delete_and_retention_operations(postgres_harness: PostgresHarness) -> None:
-  expired = _room(join_code="OLD001")
-  expired.updated_at = NOW - timedelta(days=8)
+def test_health_and_manual_delete_operations(postgres_harness: PostgresHarness) -> None:
   analyzing = _room(join_code="RUN001")
   analyzing.status = RoomStatus.ANALYZING
   analyzing.analysis_phase = AnalysisPhase.ANALYZING_RESPONSES
   analyzing.updated_at = NOW - timedelta(days=8)
   analyzing.analysis_started_at = NOW - timedelta(hours=2)
-  postgres_harness.repository.add(expired)
   postgres_harness.repository.add(analyzing)
 
   assert postgres_harness.repository.ping()
-  assert (
-    postgres_harness.repository.delete_expired(
-      before=NOW - timedelta(days=7),
-      answering_before=NOW - timedelta(hours=1),
-    )
-    == 1
-  )
-  assert postgres_harness.repository.get(expired.id) is None
   assert postgres_harness.repository.get(analyzing.id) is not None
   assert postgres_harness.repository.delete(analyzing.id)
   assert not postgres_harness.repository.delete(analyzing.id)

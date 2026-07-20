@@ -102,7 +102,7 @@ class RoomService:
     raise conflict("JOIN_CODE_EXHAUSTED", "A unique invite code could not be created.")
 
   def get_room(self, room_id: UUID) -> Room:
-    self.expire_if_due(room_id)
+    self.close_collection_if_due(room_id)
     room = self._repository.get(room_id)
     if room is None:
       raise not_found()
@@ -114,19 +114,19 @@ class RoomService:
     except Exception:
       return False
 
-  def run_maintenance(self) -> tuple[int, int]:
+  def run_maintenance(self) -> int:
     now = self._clock()
-    recovered = self._repository.recover_stale_analyses(
+    return self._repository.recover_stale_analyses(
       before=now - timedelta(seconds=self._settings.analysis_stale_seconds),
       failed_at=now,
     )
-    deleted = self._repository.delete_expired(
-      before=now - timedelta(hours=self._settings.room_retention_hours),
-      answering_before=now - timedelta(seconds=self._settings.analysis_stale_seconds),
-    )
-    return recovered, deleted
 
-  def delete_room(self, room_id: UUID) -> None:
+  def delete_room(self, room_id: UUID, *, confirmation_code: str) -> None:
+    room = self._repository.get(room_id)
+    if room is None:
+      raise not_found()
+    if not secrets.compare_digest(room.join_code, confirmation_code.strip().upper()):
+      raise invalid("ROOM_DELETE_CONFIRMATION_INVALID", "The invite code does not match.")
     if not self._repository.delete(room_id):
       raise not_found()
 
@@ -484,11 +484,11 @@ class RoomService:
       room.status = RoomStatus.ANSWERING
       room.updated_at = now
       deadline_delay = max(0.0, (room.deadline_at - now).total_seconds())
-    self._scheduler.schedule(deadline_delay, lambda: self._expire_scheduled(room_id))
+    self._scheduler.schedule(deadline_delay, lambda: self._close_collection_scheduled(room_id))
     return self.get_room(room_id)
 
-  def _expire_scheduled(self, room_id: UUID) -> None:
-    self.expire_if_due(room_id)
+  def _close_collection_scheduled(self, room_id: UUID) -> None:
+    self.close_collection_if_due(room_id)
 
   def save_answer(
     self,
@@ -498,7 +498,7 @@ class RoomService:
     *,
     text: str,
   ) -> AnswerSaveResult:
-    self.expire_if_due(room_id)
+    self.close_collection_if_due(room_id)
     with self._repository.transaction(room_id) as room:
       participant = self._require_answering_participant(room, participant_id)
       if participant.submitted_at is not None:
@@ -610,8 +610,66 @@ class RoomService:
       raise conflict("DEADLINE_PASSED", "The response deadline has passed.")
     return response_count
 
+  def complete_synthetic_response(
+    self,
+    room_id: UUID,
+    *,
+    participant_id: UUID,
+    answers: Mapping[UUID, str],
+  ) -> int:
+    """Save and submit one generated participant so demo progress is observable and retryable."""
+
+    should_schedule = False
+    response_count = 0
+    with self._repository.transaction(room_id) as room:
+      if not self._is_answering(room):
+        raise conflict("ROOM_NOT_ANSWERING", "Answers are not being collected right now.")
+      now = self._clock()
+      if room.deadline_at is not None and room.deadline_at <= now:
+        raise conflict("DEADLINE_PASSED", "The response deadline has passed.")
+      participant = room.participants.get(participant_id)
+      if participant is None or participant_id not in room.cohort_ids or not is_synthetic_participant(participant):
+        raise not_found()
+      if participant.submitted_at is not None:
+        return 0
+      question_ids = {question.id for question in room.questions}
+      if not isinstance(answers, Mapping) or set(answers) != question_ids:
+        raise invalid(
+          "SYNTHETIC_QUESTION_MATRIX_INVALID",
+          "A simulated participant must answer every room question exactly once.",
+        )
+      normalized_answers: dict[UUID, str] = {}
+      for question_id, text in answers.items():
+        if not isinstance(text, str):
+          raise invalid("SYNTHETIC_ANSWER_INVALID", "Simulated answers must be text.")
+        if len(text) > self._settings.max_answer_characters:
+          raise invalid(
+            "ANSWER_TOO_LONG",
+            f"An answer cannot exceed {self._settings.max_answer_characters} characters.",
+          )
+        normalized_answers[question_id] = text.strip()
+      for question_id, text in normalized_answers.items():
+        key = (participant_id, question_id)
+        if text:
+          room.responses[key] = Response(
+            participant_id=participant_id,
+            question_id=question_id,
+            text=text,
+            updated_at=now,
+          )
+          response_count += 1
+        else:
+          room.responses.pop(key, None)
+      participant.submitted_at = now
+      room.updated_at = now
+      if all(room.participants[member_id].submitted_at is not None for member_id in room.cohort_ids):
+        should_schedule = self._claim_analysis(room, trigger="all_submitted")
+    if should_schedule:
+      self._schedule_analysis(room_id)
+    return response_count
+
   def submit(self, room_id: UUID, participant_id: UUID) -> tuple[Participant, bool]:
-    self.expire_if_due(room_id)
+    self.close_collection_if_due(room_id)
     should_schedule = False
     with self._repository.transaction(room_id) as room:
       participant = room.participants.get(participant_id)
@@ -631,7 +689,7 @@ class RoomService:
     return saved, should_schedule
 
   def start_analysis(self, room_id: UUID) -> Room:
-    self.expire_if_due(room_id)
+    self.close_collection_if_due(room_id)
     with self._repository.transaction(room_id) as room:
       if not self._is_answering(room):
         raise conflict("ROOM_NOT_ANSWERING", "Analysis can only start during collection.")
@@ -661,7 +719,7 @@ class RoomService:
       self._schedule_analysis(room_id)
     return self.get_room(room_id)
 
-  def expire_if_due(self, room_id: UUID) -> bool:
+  def close_collection_if_due(self, room_id: UUID) -> bool:
     room = self._repository.get(room_id)
     if room is None or not self._is_answering(room):
       return False

@@ -1,0 +1,394 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "media-literacy-cooling-centers",
+  "subject": "media literacy",
+  "questionId": "d25b587f-ce0b-44e3-8be8-25fbfdc00002",
+  "questionPrompt": "Do the excerpts justify the city's claim that its cooling-center program successfully reached residents across the city? Decide whether to accept, reject, qualify, or withhold the claim, and explain how the sources should be weighed.",
+  "referenceMaterial": "Source A — Mayor's Office release, 18 July: 'Across twelve cooling centers, turnstiles recorded 4,800 entries during the alert. The program therefore reached residents in every district.' Source B — Metro Desk, 19 July: A reporter visited Northgate and Elm from 1–3 p.m.; Northgate opened ninety minutes late and Elm admitted 37 visitors. The paper did not observe the other ten centers. Source C — Westside Neighbors log, 18 July: Volunteers recorded 146 outreach conversations in four western districts; 52 people said bus detours prevented them from reaching a center. The log does not track center attendance.",
+  "coverageUnits": [
+    {
+      "id": "u_provenance",
+      "text": "Evaluates how a source's authorship, incentive, or collection method affects its weight"
+    },
+    {
+      "id": "u_measure",
+      "text": "Distinguishes turnstile entries from unique residents or explains why entries cannot prove reach"
+    },
+    {
+      "id": "u_scope",
+      "text": "Uses limits in site or district sampling when judging a citywide claim"
+    },
+    {
+      "id": "u_conflict",
+      "text": "Compares evidence of substantial use with evidence of late opening or uneven access"
+    },
+    {
+      "id": "u_equity",
+      "text": "Uses the documented bus-detour barrier as evidence about unequal access"
+    },
+    {
+      "id": "u_verification",
+      "text": "Identifies specific evidence needed to verify reach, such as site logs, hours, or unique attendance"
+    }
+  ],
+  "participants": [
+    {
+      "participantId": "88888888-8888-4888-8888-888888888801",
+      "answer": "Withhold judgment. The city's 4,800 turnstile entries could count repeat visits, and the release comes from the mayor's office, which has an incentive to advertise its program. The newspaper saw delays at two sites and the volunteer log reports bus barriers in four districts, yet neither samples the whole city. Those findings conflict with the claim of uniform reach without proving universal failure. Match timestamped site logs to unique attendance and independent district observations before deciding."
+    },
+    {
+      "participantId": "88888888-8888-4888-8888-888888888802",
+      "answer": "Qualify the claim: 4,800 entries suggest substantial use, but entries are not unique residents and cannot prove every district was reached. The late Northgate opening and the volunteers' 52 reports of bus barriers show uneven access. Keep the centers, but publish site-level hours and deduplicated attendance before claiming citywide reach."
+    },
+    {
+      "participantId": "88888888-8888-4888-8888-888888888803",
+      "answer": ""
+    },
+    {
+      "participantId": "88888888-8888-4888-8888-888888888804",
+      "answer": "Heat waves are becoming more common because of climate change. Cities should plant trees, paint roofs white, and remind everyone to drink water."
+    },
+    {
+      "participantId": "88888888-8888-4888-8888-888888888805",
+      "answer": "On balance, accept the citywide success claim. Twelve centers logged 4,800 entries, direct operational evidence of heavy use. The newspaper observed only two sites for two hours, so its late opening and count cannot overturn the citywide total. The mayor's office has reason to present its own program favorably, so an independent audit would strengthen the conclusion."
+    },
+    {
+      "participantId": "88888888-8888-4888-8888-888888888806",
+      "answer": "Reject the claim of citywide success. Northgate opened ninety minutes late, and 52 people across four western districts said bus detours blocked access. These reports directly conflict with 'reached residents in every district.' A federal audit also found that 70% of centers were closed, proving failure."
+    },
+    {
+      "participantId": "88888888-8888-4888-8888-888888888807",
+      "answer": "Qualify the claim: 4,800 entries suggest substantial use, but entries are not unique residents and cannot prove every district was reached. The late Northgate opening and the volunteers' 52 reports of bus barriers show uneven access. Keep the centers, but publish site-level hours and deduplicated attendance before claiming citywide reach."
+    },
+    {
+      "participantId": "88888888-8888-4888-8888-888888888808",
+      "answer": "Las entradas no son personas unicas: 4,800 turnstile entries pueden incluir visitas repetidas."
+    },
+    {
+      "participantId": "88888888-8888-4888-8888-888888888809",
+      "answer": "Withhold judgment. The city release suggests broad use, but the visits and volunteer log show access failures; because those checks cover only two sites and four western districts, they cannot resolve citywide reach. Verify distinct visitors and operating hours per district before deciding."
+    }
+  ],
+  "expectedCoverage": {
+    "assignments": [
+      {
+        "participantId": "88888888-8888-4888-8888-888888888801",
+        "coveredUnitIds": [
+          "u_provenance",
+          "u_measure",
+          "u_scope",
+          "u_conflict",
+          "u_equity",
+          "u_verification"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_provenance",
+            "quotes": [
+              "the release comes from the mayor's office, which has an incentive to advertise its program"
+            ]
+          },
+          {
+            "unitId": "u_measure",
+            "quotes": [
+              "The city's 4,800 turnstile entries could count repeat visits"
+            ]
+          },
+          {
+            "unitId": "u_scope",
+            "quotes": [
+              "The newspaper saw delays at two sites and the volunteer log reports bus barriers in four districts, yet neither samples the whole city."
+            ]
+          },
+          {
+            "unitId": "u_conflict",
+            "quotes": [
+              "Those findings conflict with the claim of uniform reach without proving universal failure."
+            ]
+          },
+          {
+            "unitId": "u_equity",
+            "quotes": [
+              "the volunteer log reports bus barriers in four districts"
+            ]
+          },
+          {
+            "unitId": "u_verification",
+            "quotes": [
+              "Match timestamped site logs to unique attendance and independent district observations before deciding."
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888802",
+        "coveredUnitIds": [
+          "u_measure",
+          "u_conflict",
+          "u_equity",
+          "u_verification"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_measure",
+            "quotes": [
+              "entries are not unique residents and cannot prove every district was reached"
+            ]
+          },
+          {
+            "unitId": "u_conflict",
+            "quotes": [
+              "4,800 entries suggest substantial use",
+              "The late Northgate opening and the volunteers' 52 reports of bus barriers show uneven access."
+            ]
+          },
+          {
+            "unitId": "u_equity",
+            "quotes": [
+              "the volunteers' 52 reports of bus barriers show uneven access"
+            ]
+          },
+          {
+            "unitId": "u_verification",
+            "quotes": [
+              "publish site-level hours and deduplicated attendance before claiming citywide reach"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888804",
+        "coveredUnitIds": [],
+        "evidence": []
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888805",
+        "coveredUnitIds": [
+          "u_provenance",
+          "u_scope",
+          "u_conflict"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_provenance",
+            "quotes": [
+              "The mayor's office has reason to present its own program favorably"
+            ]
+          },
+          {
+            "unitId": "u_scope",
+            "quotes": [
+              "The newspaper observed only two sites for two hours"
+            ]
+          },
+          {
+            "unitId": "u_conflict",
+            "quotes": [
+              "its late opening and count cannot overturn the citywide total"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888806",
+        "coveredUnitIds": [
+          "u_equity"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_equity",
+            "quotes": [
+              "52 people across four western districts said bus detours blocked access"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888807",
+        "coveredUnitIds": [
+          "u_measure",
+          "u_conflict",
+          "u_equity",
+          "u_verification"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_measure",
+            "quotes": [
+              "entries are not unique residents and cannot prove every district was reached"
+            ]
+          },
+          {
+            "unitId": "u_conflict",
+            "quotes": [
+              "4,800 entries suggest substantial use",
+              "The late Northgate opening and the volunteers' 52 reports of bus barriers show uneven access."
+            ]
+          },
+          {
+            "unitId": "u_equity",
+            "quotes": [
+              "the volunteers' 52 reports of bus barriers show uneven access"
+            ]
+          },
+          {
+            "unitId": "u_verification",
+            "quotes": [
+              "publish site-level hours and deduplicated attendance before claiming citywide reach"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888808",
+        "coveredUnitIds": [
+          "u_measure"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_measure",
+            "quotes": [
+              "Las entradas no son personas unicas: 4,800 turnstile entries pueden incluir visitas repetidas."
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888809",
+        "coveredUnitIds": [
+          "u_scope",
+          "u_conflict",
+          "u_verification"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_scope",
+            "quotes": [
+              "because those checks cover only two sites and four western districts, they cannot resolve citywide reach"
+            ]
+          },
+          {
+            "unitId": "u_conflict",
+            "quotes": [
+              "The city release suggests broad use, but the visits and volunteer log show access failures"
+            ]
+          },
+          {
+            "unitId": "u_verification",
+            "quotes": [
+              "Verify distinct visitors and operating hours per district before deciding."
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "expectedFamilies": {
+    "families": [
+      {
+        "label": "Accept the citywide success claim"
+      },
+      {
+        "label": "Reject the citywide success claim"
+      },
+      {
+        "label": "Conditional acceptance: substantial but uneven"
+      },
+      {
+        "label": "Withhold judgment pending reconciliation"
+      }
+    ],
+    "assignments": [
+      {
+        "participantId": "88888888-8888-4888-8888-888888888801",
+        "familyIndex": 3
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888802",
+        "familyIndex": 2
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888804",
+        "familyIndex": null
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888805",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888806",
+        "familyIndex": 1
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888807",
+        "familyIndex": 2
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888808",
+        "familyIndex": null
+      },
+      {
+        "participantId": "88888888-8888-4888-8888-888888888809",
+        "familyIndex": 3
+      }
+    ]
+  },
+  "expectedRelationships": {
+    "sameFamily": [
+      {
+        "participantIds": [
+          "88888888-8888-4888-8888-888888888802",
+          "88888888-8888-4888-8888-888888888807"
+        ],
+        "reason": "The answers are exact duplicates and both qualify rather than accept or reject citywide success."
+      },
+      {
+        "participantIds": [
+          "88888888-8888-4888-8888-888888888801",
+          "88888888-8888-4888-8888-888888888809"
+        ],
+        "reason": "Both withhold judgment until the conflicting and incomplete evidence is reconciled."
+      }
+    ],
+    "differentFamily": [
+      {
+        "participantIds": [
+          "88888888-8888-4888-8888-888888888801",
+          "88888888-8888-4888-8888-888888888802"
+        ],
+        "reason": "One withholds the claim while the other conditionally accepts a qualified version."
+      },
+      {
+        "participantIds": [
+          "88888888-8888-4888-8888-888888888801",
+          "88888888-8888-4888-8888-888888888805"
+        ],
+        "reason": "One withholds judgment while the other accepts the citywide success claim."
+      },
+      {
+        "participantIds": [
+          "88888888-8888-4888-8888-888888888801",
+          "88888888-8888-4888-8888-888888888806"
+        ],
+        "reason": "One withholds judgment while the other rejects the citywide success claim."
+      }
+    ],
+    "nullFamilyWithCoverage": [
+      "88888888-8888-4888-8888-888888888808"
+    ],
+    "emptyAnswerParticipantIds": [
+      "88888888-8888-4888-8888-888888888803"
+    ],
+    "validDisagreement": [
+      {
+        "participantIds": [
+          "88888888-8888-4888-8888-888888888801",
+          "88888888-8888-4888-8888-888888888802",
+          "88888888-8888-4888-8888-888888888805",
+          "88888888-8888-4888-8888-888888888806"
+        ],
+        "reason": "Each conclusion weighs the supplied sources differently; family membership records that conclusion, not its quality."
+      }
+    ]
+  }
+}

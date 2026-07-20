@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
+from typing import Any
+
 import pytest
 
+import junto.config as config
 from junto.config import Settings
 
 
@@ -48,9 +53,49 @@ def test_direct_production_settings_enforce_cookie_safety(
     )
 
 
-def test_openrouter_configuration_requires_models() -> None:
+def test_openrouter_configuration_requires_a_model() -> None:
   with pytest.raises(RuntimeError):
-    Settings(openrouter_models=())
+    Settings(openrouter_model=" ")
+
+
+def test_default_openrouter_model_is_the_pinned_synthetic_workhorse() -> None:
+  settings = Settings.from_environment({"APP_ENV": "test"})
+
+  assert settings.openrouter_model == "google/gemini-2.5-flash"
+
+
+def test_default_openai_analysis_uses_luna_with_high_reasoning() -> None:
+  settings = Settings.from_environment({"APP_ENV": "test"})
+
+  assert settings.openai_model == "gpt-5.6-luna"
+  assert settings.openai_reasoning_effort == "high"
+
+
+def test_semantic_timeout_defaults_leave_room_for_one_slow_request_and_solver() -> None:
+  settings = Settings.from_environment({"APP_ENV": "test"})
+
+  assert settings.provider_timeout_seconds == 90
+  assert settings.semantic_room_timeout_seconds == 240
+  assert settings.analysis_stale_seconds > settings.semantic_room_timeout_seconds + settings.solver_timeout_seconds
+
+
+@pytest.mark.parametrize(
+  "overrides",
+  [
+    {"provider_timeout_seconds": 0},
+    {"semantic_room_timeout_seconds": 0},
+    {"provider_timeout_seconds": 91, "semantic_room_timeout_seconds": 90},
+    {
+      "engine_mode": "openai",
+      "semantic_room_timeout_seconds": 240,
+      "solver_timeout_seconds": 10,
+      "analysis_stale_seconds": 250,
+    },
+  ],
+)
+def test_invalid_semantic_timeout_policies_are_rejected(overrides: dict[str, Any]) -> None:
+  with pytest.raises(RuntimeError):
+    Settings(**overrides)
 
 
 def test_synthetic_classroom_can_use_openai_analysis() -> None:
@@ -65,7 +110,7 @@ def test_conventional_environment_names_are_loaded(monkeypatch: pytest.MonkeyPat
   monkeypatch.setenv("ANALYSIS_ENGINE", "recorded")
   monkeypatch.setenv("OPENAI_MODEL", "test-model")
   monkeypatch.setenv("OPENAI_REASONING_EFFORT", "high")
-  monkeypatch.setenv("OPENROUTER_MODELS", "test/model-a,test/model-b")
+  monkeypatch.setenv("OPENROUTER_MODEL", "test/model")
   monkeypatch.setenv("TRUSTED_ORIGINS", "http://localhost:4173")
 
   settings = Settings.from_environment()
@@ -76,9 +121,8 @@ def test_conventional_environment_names_are_loaded(monkeypatch: pytest.MonkeyPat
   assert settings.engine_mode == "recorded"
   assert settings.openai_model == "test-model"
   assert settings.openai_reasoning_effort == "high"
-  assert settings.openrouter_models == ("test/model-a", "test/model-b")
+  assert settings.openrouter_model == "test/model"
   assert settings.synthetic_classroom_enabled is False
-  assert settings.synthetic_batch_size == 5
   assert settings.trusted_origins == ("http://localhost:4173",)
 
 
@@ -90,6 +134,27 @@ def test_development_enables_synthetic_classrooms_from_app_mode(
   settings = Settings.from_environment()
 
   assert settings.synthetic_classroom_enabled is True
+
+
+def test_default_development_settings_load_root_dotenv_without_mutating_environment(
+  monkeypatch: pytest.MonkeyPatch,
+  tmp_path: Path,
+) -> None:
+  env_file = tmp_path / ".env"
+  env_file.write_text(
+    "OPENAI_API_KEY=local-file-key\nOPENAI_MODEL=file-model\n",
+    encoding="utf-8",
+  )
+  monkeypatch.setattr(config, "_ROOT_ENV_FILE", env_file)
+  monkeypatch.setenv("APP_ENV", "development")
+  monkeypatch.setenv("OPENAI_MODEL", "process-model")
+  monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+  settings = config._default_settings()
+
+  assert settings.openai_api_key == "local-file-key"
+  assert settings.openai_model == "process-model"
+  assert os.getenv("OPENAI_API_KEY") is None
 
 
 def test_direct_production_settings_reject_non_openai_engine() -> None:

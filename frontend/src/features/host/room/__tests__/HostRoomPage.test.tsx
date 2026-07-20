@@ -93,6 +93,9 @@ describe("HostRoomPage", () => {
       canGenerate: false,
       patternedAvailable: false,
       openRouterAvailable: false,
+      syntheticParticipantIds: [],
+      pendingSyntheticParticipantIds: [],
+      generation: null,
     });
   });
 
@@ -118,7 +121,8 @@ describe("HostRoomPage", () => {
     expect(liveAncestor).toBeNull();
   });
 
-  it("renders coverage truth and auditable answer classifications without optimality theater", async () => {
+  it("reveals coverage, family placement, and numbered answer classifications in layers", async () => {
+    const user = userEvent.setup();
     apiMocks.getRoom.mockResolvedValue({
       ...room,
       status: "published",
@@ -181,10 +185,24 @@ describe("HostRoomPage", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("heading", { name: "Coverage-aware groups" })).toBeInTheDocument();
-    expect(screen.getByText(/optimality was not proved/i)).toBeInTheDocument();
-    expect(screen.getByText("No submitted answer clearly supported this unit")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Groups" })).toBeInTheDocument();
+    expect(screen.getByText(/complete-coverage feasibility was not resolved/i)).toBeInTheDocument();
+    expect(screen.queryByText("Defines the dynamic-programming state")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /Group 1: Maya Chen, Alex Kim, Sam Lee, Noor Ali/ }));
+    await user.click(screen.getByRole("button", { name: /Question 1: Explain the state used in your solution/ }));
+
+    expect(screen.getByText("Supported by Maya Chen")).toBeInTheDocument();
+    expect(screen.getByText("Not represented in this group")).toBeInTheDocument();
+    expect(screen.getByText("Top-down")).toBeInTheDocument();
+    expect(screen.getByText("Maya Chen")).toBeInTheDocument();
+    expect(screen.queryByText("Let dp[i] describe the best result through i.")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Show answer classifications" }));
+
+    expect(screen.getByText("Covered units: 1")).toBeInTheDocument();
     expect(screen.getByText("Let dp[i] describe the best result through i.")).toBeInTheDocument();
+    expect(screen.getAllByText("Defines the dynamic-programming state")).toHaveLength(1);
   });
 
   it("adds a simulated roster only after the host explicitly submits the lobby control", async () => {
@@ -231,6 +249,11 @@ describe("HostRoomPage", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Simulated participants" })).toBeInTheDocument();
+    expect(screen.getByText(/activity title, question prompts, anonymous behavioral profiles/i)).toBeInTheDocument();
+    expect(screen.getByText(/uploaded or pasted room-wide source text/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Participant names and IDs, coverage units, and host-only notes are not sent/i),
+    ).toBeInTheDocument();
     expect(apiMocks.configureSyntheticCohort).not.toHaveBeenCalled();
 
     await user.selectOptions(screen.getByLabelText("Simulated roster size"), "20");
@@ -240,6 +263,53 @@ describe("HostRoomPage", () => {
 
     await user.click(await screen.findByRole("button", { name: "Remove simulated participants" }));
     expect(apiMocks.configureSyntheticCohort).toHaveBeenLastCalledWith("room-1", { targetSize: 0 });
+  });
+
+  it("does not let an unavailable provider strand a simulated roster after the room starts", async () => {
+    const user = userEvent.setup();
+    const lobbyRoom: HostRoom = {
+      ...room,
+      status: "lobby",
+      activityStarted: false,
+      startedAt: null,
+      deadlineAt: null,
+      remainingSeconds: null,
+      startEligibility: { eligible: true, reasonCode: null, message: "The room is ready to start." },
+      allowedActions: ["startActivity"],
+    };
+    const projection = {
+      enabled: true,
+      stage: "lobby" as const,
+      syntheticParticipantCount: 5,
+      pendingSyntheticParticipantCount: 0,
+      targetSizes: [5, 10, 20],
+      canConfigure: true,
+      canGenerate: false,
+      patternedAvailable: true,
+      openRouterAvailable: false,
+    };
+    apiMocks.getRoom.mockResolvedValue(lobbyRoom);
+    apiMocks.getSyntheticClassroom.mockResolvedValue(projection);
+    apiMocks.configureSyntheticCohort.mockResolvedValue({ ...projection, syntheticParticipantCount: 0 });
+
+    render(
+      <MemoryRouter initialEntries={["/host/room-1"]}>
+        <Routes>
+          <Route path="/host/:roomId" element={<HostRoomPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText(/Remove this simulated roster before starting/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Simulated roster size")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Update participants" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Start activity" })).toBeDisabled();
+    expect(screen.getByText(/Remove the simulated roster or configure OpenRouter/i)).toBeInTheDocument();
+
+    const removeButton = screen.getByRole("button", { name: "Remove simulated participants" });
+    expect(removeButton).toBeEnabled();
+    await user.click(removeButton);
+    expect(apiMocks.configureSyntheticCohort).toHaveBeenCalledWith("room-1", { targetSize: 0 });
   });
 
   it("runs OpenRouter response generation only after an explicit host action", async () => {
@@ -274,17 +344,115 @@ describe("HostRoomPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Simulated responses" })).toBeInTheDocument();
     expect(apiMocks.generateSyntheticResponses).not.toHaveBeenCalled();
-
-    await user.selectOptions(screen.getByLabelText("Response source"), "openrouter");
-    expect(screen.getByText(/answer as distinct student profiles/i)).toBeInTheDocument();
+    expect(screen.getByText(/activity title, question prompts, anonymous behavioral profiles/i)).toBeInTheDocument();
+    expect(screen.getByText(/uploaded or pasted room-wide source text/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Participant names and IDs, coverage units, and host-only notes are not sent/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Generated responses can be incomplete or mistaken/i)).toBeInTheDocument();
+    expect(screen.queryByText(/patterned local responses/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Response source")).not.toBeInTheDocument();
     expect(apiMocks.generateSyntheticResponses).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Generate with OpenRouter and submit" }));
 
     expect(apiMocks.generateSyntheticResponses).toHaveBeenCalledWith("room-1", { source: "openrouter" });
+    expect(await screen.findByText("Simulated responses submitted")).toBeInTheDocument();
+    expect(screen.getByText(/20 question responses through OpenRouter/i)).toBeInTheDocument();
+    expect(screen.getByText(/Models: configured-model/i)).toBeInTheDocument();
   });
 
-  it("does not offer OpenRouter when the server has not enabled it", async () => {
+  it("shows per-student OpenRouter statuses without duplicating the room progress", async () => {
+    const partialRoom: HostRoom = {
+      ...room,
+      progress: { ...room.progress, submittedParticipantCount: 1, answeredResponseCount: 1, submittedResponseCount: 1 },
+      participants: [
+        { ...room.participants[0]!, submittedAt: "2026-07-19T10:00:10.000Z" },
+        ...room.participants.slice(1),
+      ],
+    };
+    apiMocks.getRoom.mockResolvedValue(partialRoom);
+    apiMocks.getSyntheticClassroom.mockResolvedValue({
+      enabled: true,
+      stage: "answering",
+      syntheticParticipantCount: 4,
+      pendingSyntheticParticipantCount: 3,
+      targetSizes: [],
+      canConfigure: false,
+      canGenerate: false,
+      patternedAvailable: false,
+      openRouterAvailable: true,
+      syntheticParticipantIds: room.participants.map((participant) => participant.participantId),
+      pendingSyntheticParticipantIds: room.participants.slice(1).map((participant) => participant.participantId),
+      generation: {
+        status: "running",
+        source: "openrouter",
+        requestedParticipantCount: 4,
+        completedParticipantCount: 1,
+        failedParticipantCount: 0,
+        startedAt: "2026-07-19T10:00:00.000Z",
+        finishedAt: null,
+        error: null,
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/host/room-1"]}>
+        <Routes>
+          <Route path="/host/:roomId" element={<HostRoomPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Submitted")).toBeInTheDocument();
+    expect(screen.getAllByText("Generating")).toHaveLength(3);
+    expect(
+      screen.queryByRole("progressbar", { name: "Simulated response generation progress" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Working")).not.toBeInTheDocument();
+  });
+
+  it("keeps partial simulated submissions and offers a retry for only the remaining students", async () => {
+    apiMocks.getSyntheticClassroom.mockResolvedValue({
+      enabled: true,
+      stage: "answering",
+      syntheticParticipantCount: 4,
+      pendingSyntheticParticipantCount: 3,
+      targetSizes: [],
+      canConfigure: false,
+      canGenerate: true,
+      patternedAvailable: false,
+      openRouterAvailable: true,
+      syntheticParticipantIds: room.participants.map((participant) => participant.participantId),
+      pendingSyntheticParticipantIds: room.participants.slice(1).map((participant) => participant.participantId),
+      generation: {
+        status: "failed",
+        source: "openrouter",
+        requestedParticipantCount: 4,
+        completedParticipantCount: 1,
+        failedParticipantCount: 3,
+        startedAt: "2026-07-19T10:00:00.000Z",
+        finishedAt: "2026-07-19T10:00:20.000Z",
+        error:
+          "OpenRouter stopped after 1 simulated participant submitted. Their responses were kept; retry the " +
+          "remaining participants.",
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/host/room-1"]}>
+        <Routes>
+          <Route path="/host/:roomId" element={<HostRoomPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("button", { name: "Retry remaining students" })).toBeEnabled();
+    expect(screen.getAllByText("Needs retry")).toHaveLength(3);
+    expect(screen.getByRole("alert")).toHaveTextContent(/responses were kept/i);
+  });
+
+  it("fails closed instead of offering patterned fillers when OpenRouter is unavailable", async () => {
     apiMocks.getSyntheticClassroom.mockResolvedValue({
       enabled: true,
       stage: "answering",
@@ -305,7 +473,10 @@ describe("HostRoomPage", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("option", { name: "Patterned local responses" })).toBeInTheDocument();
-    expect(screen.queryByRole("option", { name: "OpenRouter responses" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Response generation unavailable" })).toBeInTheDocument();
+    expect(screen.getByText(/will not submit placeholder answers/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /generate/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/patterned local responses/i)).not.toBeInTheDocument();
+    expect(apiMocks.generateSyntheticResponses).not.toHaveBeenCalled();
   });
 });

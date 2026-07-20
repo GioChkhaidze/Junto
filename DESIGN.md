@@ -134,9 +134,13 @@ one seminar-console shell:
   sections.
 - Response collection promotes the shared timer and completion measure without becoming an analytics dashboard.
 - Analysis communicates only the active backend phase and retains the same restrained work surface.
-- Results use report hierarchy, dividers, rosters, and coverage rows. Capacity-only output is explicitly distinguished
-  from coverage-aware output.
+- Results begin with one borderless roster line per group. A group opens its question lines; a question opens numbered
+  coverage-unit text and carriers, a family-to-student map, then an optional answer-classification audit. Rows use type,
+  whitespace, and a quiet selected wash rather than cards, chevrons, or status chips.
 - Failure and unavailable states remain recoverable inside the same host shell.
+
+The Activities route uses the same host shell and a compact ruled index. Each row links to the activity room and shows
+only title, date, participant/group scale, and current or aggregate result. It is not a timeline or event feed.
 
 ## Participant questionnaire pattern
 
@@ -176,6 +180,7 @@ Join waiting, submitted, analysis, failure, and group-result states extend Edito
 | Home                                 | Public split        | Forest explanation + white create/join actions    |
 | Join invitation                      | Public split        | Forest activity context + white name form         |
 | Create activity                      | Seminar console     | Forest workflow rail + white editor               |
+| Activity history                     | Seminar report      | Compact host activity, result, and deletion index |
 | Host draft/lobby/answering           | Seminar console     | Forest header + one white room workspace          |
 | Host analysis/failure/results        | Seminar console     | Forest header + restrained process/report surface |
 | Participant lobby/submitted/analysis | Editorial focus     | White reading measure with explicit live state    |

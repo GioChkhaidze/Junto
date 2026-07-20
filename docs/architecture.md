@@ -2,9 +2,9 @@
 
 ## System boundary
 
-Junto is one browser application, one FastAPI application process, one PostgreSQL database, one configured semantic
-provider, and an in-process OR-Tools optimizer. It deliberately avoids accounts, browser-to-database access, WebSockets,
-a queue, and a second backend runtime.
+Junto is one browser application, one FastAPI application process, one PostgreSQL database, server-selected authoring
+and semantic providers, and an in-process OR-Tools optimizer. It deliberately avoids accounts, browser-to-database
+access, WebSockets, a queue, and a second backend runtime.
 
 ```text
 Browser
@@ -19,14 +19,14 @@ FastAPI application
   semantic compiler -> coverage-first CP-SAT
        |                              |
        v                              v
-PostgreSQL                    OpenAI Responses API
-six relational tables        two independent structured calls/question
+PostgreSQL                    configured model API
+six relational tables        authoring or semantic structured output
 + two room-local JSON artifacts
 ```
 
 `placeholder`, `recorded`, `openrouter`, and `openai` are explicit engine modes. The latter three use the real
-optimizer; `placeholder` is a labelled capacity-only development adapter. OpenRouter uses a server-owned pinned model
-pool and is development-only. Production still refuses to start without PostgreSQL and the live OpenAI mode.
+optimizer; `placeholder` is a labelled capacity-only development adapter. OpenRouter uses one server-owned, pinned full
+Gemini 2.5 Flash model and is development-only. Production still requires PostgreSQL and live OpenAI mode.
 
 ## Frontend
 
@@ -41,7 +41,9 @@ frontend/src/
   features/
     home/              create-or-join entry
     host/create/       material-first authoring sequence
-    host/room/         lobby, progress, analysis, and all groups
+    host/history/      browser-scoped room and result index
+    host/results/      progressive all-group result report
+    host/room/         lobby, progress, and analysis lifecycle
     participant/join/  invite disclosure and display-name entry
     participant/room/  waiting, questionnaire, review, and own agenda
   hooks/               countdown, polling, connectivity, document title
@@ -58,6 +60,7 @@ Browser routes are:
 | ----------------- | ---------------------------------------------- |
 | `/`               | Create-or-join entry                           |
 | `/create`         | Host authoring flow                            |
+| `/activities`     | Rooms hosted by this browser session           |
 | `/host/:roomId`   | Host room lifecycle and all-group result       |
 | `/join/:joinCode` | Participant disclosure and name entry          |
 | `/room/:roomId`   | Participant questionnaire and own-group agenda |
@@ -93,9 +96,14 @@ Dependency direction stays inward:
 Tests can inject a clock, scheduler, repository, extractor, provider, optimizer, or complete analysis pipeline.
 
 Development may also compose a synthetic-classroom service beside the room workflow. It replaces only the simulated
-lobby roster in one transaction and later commits an entire generated answer matrix in one answering transaction. The
-local patterned provider is network-free. The OpenRouter provider batches students, validates exact identifiers, denies
-provider data collection, and uses only the configured pinned model pool. Neither path changes the persistence model.
+lobby roster in one transaction and later commits each student's complete answer set in one answering transaction. The
+local patterned provider is a network-free, flow-only adapter restricted to placeholder analysis. The OpenRouter
+provider makes one anonymous request per student, runs at most five requests concurrently, validates each ordered answer
+list against the exact question count, normalizes bounded provider overshoot to the 1,500-character domain limit, and
+maps it to room IDs on the server. It denies provider data collection and uses only the pinned full
+`google/gemini-2.5-flash` model. Completed students become visible immediately; an interrupted run keeps them submitted
+and retries only the remaining simulated students. Neither path changes the persistence schema. The complete provider
+run has a two-minute service deadline; the browser stops waiting shortly afterward.
 
 ## Runtime paths
 
@@ -120,7 +128,7 @@ uploaded file or pasted reference + complete browser draft
   -> multipart POST /api/authoring/suggestions + CSRF
   -> bounded extraction when a file is supplied
   -> AuthoringService
-  -> OpenAI Responses API structured output (store=false, no tools)
+  -> OpenRouter strict JSON output, or direct OpenAI fallback
   -> apply only the requested question or coverage target in browser state
   -> host review and ordinary room creation
 ```
@@ -129,6 +137,7 @@ The request is session-scoped, per-source rate-limited, and never grants room ac
 the selected target/index, every current prompt and coverage-unit row, and extracted or pasted reference text. It
 contains no room, participant, answer, invite-code, grouping, or solver data. Suggestions are transient and do not write
 to the repository; persistence begins only when the host creates the activity through the normal room endpoints.
+OpenRouter is preferred when both provider keys exist and uses data-collection-denied, zero-data-retention routing.
 
 Opening the lobby freezes authoring. Starting validates a feasible capacity partition, freezes ordered cohort IDs,
 records UTC `startedAt` and `deadlineAt`, and schedules the deadline callback. Browser countdowns derive from
@@ -143,22 +152,26 @@ Collection is claimed once by all submissions, deadline, or host action:
 
 ```text
 frozen room aggregate
-  -> build one input batch per question
-  -> coverage classification ----------+
-  -> independent family clustering ----+-> validate and merge by participant ID
+  -> split each question's answers into coverage batches of at most five
+  -> independent coverage classifications --+
+  -> one cohort-wide family clustering ------+-> validate and merge by participant ID
   -> immutable SemanticArtifact
   -> CoverageFirstOptimizer
   -> immutable GroupingArtifact
   -> atomic artifact storage + published state
 ```
 
-The coverage call receives the prompt, relevant reference text, approved units, opaque participant IDs, and non-empty
-answers. The family call receives only the prompt, opaque IDs, and answers. It cannot see units, references, or coverage
-results. Display names, join codes, cookies, group sizes, and tentative groups are not sent to either call.
+Each coverage batch receives the prompt, relevant reference text, approved units, and at most five opaque participant
+IDs with their non-empty answers. The family call receives the prompt and every non-empty answer in one cohort-wide
+request. It cannot see units, references, or coverage results. Display names, join codes, cookies, group sizes, and
+tentative groups are not sent to either branch.
 
 The OpenAI adapter uses the Responses API with Pydantic Structured Outputs, `store=false`, no tools, explicit request
-timeouts, no SDK retries, and one compiler-owned transient retry. Coverage and family outputs each receive one bounded
-repair opportunity after schema or domain failure. A process-wide limiter bounds provider concurrency.
+timeouts, no SDK retries, and an 8,000-token application output cap per response. Application defaults allow 90 seconds
+per provider request and 240 seconds for the complete semantic room. Each coverage batch and the cohort-wide family call
+owns one transient retry shared across its initial and repair phases, while the room deadline caps all work. Each output
+receives one bounded repair opportunity after schema or domain failure. A process-wide limiter bounds provider
+concurrency across batches, questions, branches, and compiler instances.
 
 All-empty questions skip provider calls and receive explicit empty assignments. Evidence quotes are validated as literal
 substrings in memory, then discarded; the stored semantic artifact contains only family and covered-unit IDs.
@@ -178,8 +191,8 @@ allows a bounded retry against the same frozen cohort and saved responses.
   to the real optimizer, and publishes the normal coverage-aware projection.
 - `openai` uses the live provider adapter and otherwise follows the same compiler, optimizer, persistence, and
   presentation paths.
-- `openrouter` uses strict JSON-schema Chat Completions, denies provider data collection, and uses a server-owned pinned
-  model pool; it is development-only.
+- `openrouter` uses strict JSON-schema Chat Completions, denies provider data collection, and uses the single
+  server-owned full `google/gemini-2.5-flash` model; it is development-only.
 
 ## Persistence
 
@@ -221,12 +234,19 @@ All mutations require the matching `X-CSRF-Token`. A browser-session nonce plus 
 repeated joins to the same room idempotent. Missing room grants return caller-safe not-found responses. Trusted-origin
 middleware rejects foreign browser mutations; production requires explicit HTTPS origins and secure cookies.
 
+The frontend caches the current session projection. If a backend restart or session rotation causes a mutation to fail
+with `CSRF_INVALID`, the shared HTTP transport refreshes `/api/session` and retries that mutation once. Concurrent stale
+requests share the refreshed session. Origin failures and all non-CSRF application errors remain terminal.
+
 Public invite lookup exposes only title, duration, question count, lobby state, and analysis mode. Host projections
 include authoring data, roster, progress, all groups, and the coverage audit. Participant projections include their own
 identity, prompts, their own answers, and only their published group. Extracted reference text has no public API field.
 
-Synthetic answer generation receives only the title, participant-visible prompts, opaque participant IDs, and synthetic
-behavioral profiles. It never receives coverage units, question reference material, or uploaded extracted text. Its
+Synthetic answer generation receives the title, ordered prompts, anonymous behavioral traits, and bounded room-wide
+uploaded or pasted source text. It receives no filenames, display names, persona labels, room IDs, question IDs,
+participant IDs, coverage units, host-only question notes/reference, expected labels, response families, or group
+settings. Each provider response contains only one student's ordered answer list. The service validates its exact
+question count and maps it to room IDs. Human participant projections still omit extracted source text. Synthetic
 endpoints are host-scoped, CSRF-protected, and disabled in production.
 
 Request telemetry replaces UUIDs and invite codes with route templates and excludes bodies, cookies, model inputs, and
@@ -240,9 +260,9 @@ non-root user without Node. FastAPI serves `frontend/dist` and returns `index.ht
 `/api` paths remain JSON 404 responses.
 
 Analysis and deadline callbacks run inside the one FastAPI process. PostgreSQL preserves rooms, deadlines, answers, and
-published artifacts across restarts; startup maintenance marks stale `analyzing` rooms as `failed` and deletes expired
-rooms. In-flight provider execution itself is not durable, so the start script enforces one web worker and the host
-retry is the recovery path.
+published artifacts across restarts; startup maintenance only marks stale `analyzing` rooms as `failed`. Rooms remain
+until a host manually deletes them. In-flight provider execution itself is not durable, so the start script enforces one
+web worker and the host retry is the recovery path.
 
 Add infrastructure only for a demonstrated requirement:
 
@@ -251,4 +271,4 @@ Add infrastructure only for a demonstrated requirement:
 - accounts only for saved cross-device history;
 - normalized semantic tables only for real cross-room analytics.
 
-Operational configuration, migrations, retention, recovery, and release checks are in [operations.md](operations.md).
+Operational configuration, migrations, deletion, recovery, and release checks are in [operations.md](operations.md).
