@@ -1,0 +1,283 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "programming-dynamic-programming-route-counting",
+  "subject": "programming",
+  "questionId": "11111111-1111-4111-8111-111111111111",
+  "questionPrompt": "A robot starts at cell 0 and must reach cell n on a line. It may move one or two cells at a time, and some cells are blocked. Explain an algorithm that counts the valid routes and give its complexity.",
+  "referenceMaterial": "A complete dynamic-programming explanation should define the route-count state, establish the start state, prevent blocked cells from receiving routes, relate each unblocked cell to the two preceding cells (or give the equivalent forward propagation), and analyze runtime and storage.",
+  "coverageUnits": [
+    {
+      "id": "u_state",
+      "text": "Defines a state as the number of valid routes that reach a particular cell"
+    },
+    {
+      "id": "u_base",
+      "text": "Establishes one route at the starting cell as the base case"
+    },
+    {
+      "id": "u_blocked",
+      "text": "Makes a blocked cell contribute zero routes"
+    },
+    {
+      "id": "u_transition",
+      "text": "Combines the route counts from one-step and two-step predecessors, or propagates them forward equivalently"
+    },
+    {
+      "id": "u_complexity",
+      "text": "Explains that processing each cell once gives linear time and states the storage cost"
+    }
+  ],
+  "participants": [
+    {
+      "participantId": "11111111-1111-4111-8111-111111111201",
+      "answer": "Use a memoized function ways(i), the number of valid routes that reach cell i. Set ways(0) = 1. If cell i is blocked, ways(i) = 0; otherwise ways(i) = ways(i - 1) + ways(i - 2), treating negative indices as zero. Memoization evaluates each cell once, so the algorithm takes O(n) time and O(n) space."
+    },
+    {
+      "participantId": "11111111-1111-4111-8111-111111111202",
+      "answer": "Define solve(i) as the route count for cell i and cache it. A blocked destination returns zero. Recursively add solve(i - 1) and solve(i - 2)."
+    },
+    {
+      "participantId": "11111111-1111-4111-8111-111111111203",
+      "answer": "Let dp[i] be the number of legal routes ending at i. Initialize dp[0] = 1. Scan left to right: for an unblocked i, set dp[i] = dp[i - 1] + dp[i - 2]; for a blocked i, set dp[i] = 0. The scan uses O(n) time and O(n) memory, reducible to constant memory."
+    },
+    {
+      "participantId": "11111111-1111-4111-8111-111111111204",
+      "answer": "Start with count[0] = 1 and sweep forward. From each reachable unblocked cell, add its count to i + 1 and i + 2 when those targets are not blocked. Each cell and outgoing move is processed once, so time is O(n); storing the counts costs O(n)."
+    },
+    {
+      "participantId": "11111111-1111-4111-8111-111111111205",
+      "answer": "Whatever method is used, a blocked cell must have zero routes through it."
+    },
+    {
+      "participantId": "11111111-1111-4111-8111-111111111206",
+      "answer": ""
+    }
+  ],
+  "expectedCoverage": {
+    "assignments": [
+      {
+        "participantId": "11111111-1111-4111-8111-111111111201",
+        "coveredUnitIds": [
+          "u_state",
+          "u_base",
+          "u_blocked",
+          "u_transition",
+          "u_complexity"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_state",
+            "quotes": [
+              "ways(i), the number of valid routes that reach cell i"
+            ]
+          },
+          {
+            "unitId": "u_base",
+            "quotes": [
+              "Set ways(0) = 1."
+            ]
+          },
+          {
+            "unitId": "u_blocked",
+            "quotes": [
+              "If cell i is blocked, ways(i) = 0"
+            ]
+          },
+          {
+            "unitId": "u_transition",
+            "quotes": [
+              "ways(i) = ways(i - 1) + ways(i - 2)"
+            ]
+          },
+          {
+            "unitId": "u_complexity",
+            "quotes": [
+              "the algorithm takes O(n) time and O(n) space"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "11111111-1111-4111-8111-111111111202",
+        "coveredUnitIds": [
+          "u_state",
+          "u_blocked",
+          "u_transition"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_state",
+            "quotes": [
+              "Define solve(i) as the route count for cell i"
+            ]
+          },
+          {
+            "unitId": "u_blocked",
+            "quotes": [
+              "A blocked destination returns zero."
+            ]
+          },
+          {
+            "unitId": "u_transition",
+            "quotes": [
+              "Recursively add solve(i - 1) and solve(i - 2)."
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "11111111-1111-4111-8111-111111111203",
+        "coveredUnitIds": [
+          "u_state",
+          "u_base",
+          "u_blocked",
+          "u_transition",
+          "u_complexity"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_state",
+            "quotes": [
+              "Let dp[i] be the number of legal routes ending at i."
+            ]
+          },
+          {
+            "unitId": "u_base",
+            "quotes": [
+              "Initialize dp[0] = 1."
+            ]
+          },
+          {
+            "unitId": "u_blocked",
+            "quotes": [
+              "for a blocked i, set dp[i] = 0"
+            ]
+          },
+          {
+            "unitId": "u_transition",
+            "quotes": [
+              "set dp[i] = dp[i - 1] + dp[i - 2]"
+            ]
+          },
+          {
+            "unitId": "u_complexity",
+            "quotes": [
+              "The scan uses O(n) time and O(n) memory, reducible to constant memory."
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "11111111-1111-4111-8111-111111111204",
+        "coveredUnitIds": [
+          "u_base",
+          "u_blocked",
+          "u_transition",
+          "u_complexity"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_base",
+            "quotes": [
+              "Start with count[0] = 1"
+            ]
+          },
+          {
+            "unitId": "u_blocked",
+            "quotes": [
+              "when those targets are not blocked"
+            ]
+          },
+          {
+            "unitId": "u_transition",
+            "quotes": [
+              "add its count to i + 1 and i + 2"
+            ]
+          },
+          {
+            "unitId": "u_complexity",
+            "quotes": [
+              "Each cell and outgoing move is processed once, so time is O(n); storing the counts costs O(n)."
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "11111111-1111-4111-8111-111111111205",
+        "coveredUnitIds": [
+          "u_blocked"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_blocked",
+            "quotes": [
+              "a blocked cell must have zero routes through it"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "expectedFamilies": {
+    "families": [
+      {
+        "label": "Top-down memoization"
+      },
+      {
+        "label": "Bottom-up tabulation"
+      },
+      {
+        "label": "Forward route propagation"
+      }
+    ],
+    "assignments": [
+      {
+        "participantId": "11111111-1111-4111-8111-111111111201",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "11111111-1111-4111-8111-111111111202",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "11111111-1111-4111-8111-111111111203",
+        "familyIndex": 1
+      },
+      {
+        "participantId": "11111111-1111-4111-8111-111111111204",
+        "familyIndex": 2
+      },
+      {
+        "participantId": "11111111-1111-4111-8111-111111111205",
+        "familyIndex": null
+      }
+    ]
+  },
+  "expectedRelationships": {
+    "sameFamily": [
+      {
+        "participantIds": [
+          "11111111-1111-4111-8111-111111111201",
+          "11111111-1111-4111-8111-111111111202"
+        ],
+        "reason": "Both use recursive memoization even though p2 omits the base case and complexity."
+      }
+    ],
+    "differentFamily": [
+      {
+        "participantIds": [
+          "11111111-1111-4111-8111-111111111201",
+          "11111111-1111-4111-8111-111111111203"
+        ],
+        "reason": "They cover the same five units through top-down and bottom-up methods."
+      }
+    ],
+    "nullFamilyWithCoverage": [
+      "11111111-1111-4111-8111-111111111205"
+    ],
+    "emptyAnswerParticipantIds": [
+      "11111111-1111-4111-8111-111111111206"
+    ],
+    "validDisagreement": []
+  }
+}

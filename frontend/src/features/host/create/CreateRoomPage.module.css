@@ -1,13 +1,18 @@
 .createLayout {
   display: grid;
-  grid-template-columns: 14rem minmax(0, 48rem);
-  gap: clamp(2.5rem, 6vw, 6rem);
-  align-items: start;
+  grid-template-columns: 17rem minmax(0, 1fr);
+  min-height: calc(100vh - 4.5rem);
+  background: var(--white);
 }
 
 .stepRail {
   position: sticky;
-  top: 6.5rem;
+  top: 4.5rem;
+  align-self: start;
+  min-height: calc(100vh - 4.5rem);
+  padding: var(--space-10) var(--space-6);
+  color: var(--white);
+  background: var(--green-950);
 }
 
 .stepRail ol {
@@ -18,36 +23,36 @@
 
 .stepRail li {
   position: relative;
-  min-height: 3.25rem;
+  min-height: 4.75rem;
 }
 
 .stepRail li:not(:last-child)::after {
   position: absolute;
-  top: 2rem;
+  top: 2.65rem;
   bottom: 0;
-  left: 0.94rem;
+  left: 1.18rem;
   width: 1px;
-  background: var(--line);
+  background: color-mix(in oklch, var(--white) 24%, transparent);
   content: "";
 }
 
 .stepRail button {
   display: flex;
-  min-height: 2.75rem;
+  min-height: 3rem;
   align-items: center;
   gap: var(--space-3);
   width: 100%;
   padding: 0;
-  color: var(--ink-muted);
+  color: color-mix(in oklch, var(--white) 58%, transparent);
   background: transparent;
   border: 0;
-  font-size: 0.88rem;
-  font-weight: 600;
+  font-size: 0.925rem;
+  font-weight: 620;
   text-align: left;
 }
 
 .stepRail button:not(:disabled):hover {
-  color: var(--green-800);
+  color: var(--white);
 }
 
 .stepRail button:disabled {
@@ -60,35 +65,54 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.9rem;
-  height: 1.9rem;
-  color: var(--ink-secondary);
-  background: var(--white);
-  border: 1px solid var(--line-strong);
+  width: 2.4rem;
+  height: 2.4rem;
+  color: color-mix(in oklch, var(--white) 74%, transparent);
+  background: var(--green-950);
+  border: 1px solid color-mix(in oklch, var(--white) 42%, transparent);
   border-radius: 50%;
-  font-size: 0.78rem;
+  font-size: 0.85rem;
   font-weight: 750;
 }
 
 .currentStep button {
-  color: var(--green-950);
+  color: var(--white);
 }
 
 .currentStep .stepNumber {
-  color: var(--white);
-  background: var(--green-800);
-  border-color: var(--green-800);
+  color: var(--green-950);
+  background: var(--green-100);
+  border-color: var(--green-100);
+}
+
+.completedStep button {
+  color: color-mix(in oklch, var(--white) 90%, transparent);
+}
+
+.completedStep .stepNumber {
+  color: var(--green-950);
+  background: var(--white);
+  border-color: var(--white);
 }
 
 .stepRail > p {
   max-width: 24ch;
-  color: var(--ink-muted);
-  font-size: 0.78rem;
-  line-height: 1.45;
+  color: color-mix(in oklch, var(--white) 72%, transparent);
+  font-size: 0.82rem;
+  line-height: 1.55;
 }
 
 .form {
   min-width: 0;
+  min-height: calc(100vh - 4.5rem);
+  padding: var(--space-12) clamp(var(--space-8), 6vw, 6rem) var(--space-16);
+  background: var(--white);
+}
+
+.form > section,
+.formActions {
+  width: min(100%, 62rem);
+  margin-inline: auto;
 }
 
 .sectionHeader {
@@ -103,11 +127,24 @@
 
 .sectionHeader h1 {
   margin-bottom: var(--space-3);
+  font-size: 2.15rem;
+  letter-spacing: -0.035em;
+}
+
+.sectionHeader h1:focus {
+  outline: none;
 }
 
 .sectionHeader p {
   max-width: 65ch;
   margin: 0;
+}
+
+.sectionHeader .assistIntro {
+  margin-top: var(--space-3);
+  color: var(--green-800);
+  font-size: 0.84rem;
+  font-weight: 600;
 }
 
 .optionalText {
@@ -131,6 +168,11 @@
 .uploadDragging {
   background: var(--green-50);
   border-color: var(--green-700);
+}
+
+.fileErrorNotice,
+.reviewErrorNotice {
+  margin-top: var(--space-4);
 }
 
 .uploadPrompt,
@@ -251,10 +293,13 @@
 }
 
 .questionEditor {
-  padding: var(--space-6);
+  padding: 0 0 var(--space-10);
   background: var(--white);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-control);
+  border-bottom: 1px solid var(--line);
+}
+
+.questionEditor + .questionEditor {
+  padding-top: var(--space-10);
 }
 
 .questionEditor > header {
@@ -262,14 +307,14 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding-bottom: var(--space-4);
-  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-5);
+  margin-bottom: var(--space-6);
   border-bottom: 1px solid var(--line);
 }
 
 .questionEditor h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 1.15rem;
 }
 
 .questionActions {
@@ -277,9 +322,15 @@
   gap: var(--space-1);
 }
 
+.questionHeaderControls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .coverageEditor {
-  padding-top: var(--space-6);
-  margin-top: var(--space-6);
+  padding-top: var(--space-8);
+  margin-top: var(--space-8);
   border-top: 1px solid var(--line);
 }
 
@@ -293,23 +344,30 @@
 
 .coverageHeading h3 {
   margin-bottom: var(--space-1);
-  font-size: 0.9rem;
+  font-size: 1rem;
   letter-spacing: 0;
 }
 
 .coverageHeading p,
-.coverageHeading > span {
+.coverageMeta > span {
   margin: 0;
   color: var(--ink-muted);
-  font-size: 0.76rem;
+  font-size: 0.82rem;
 }
 
 .coverageHeading p {
   max-width: 62ch;
 }
 
-.coverageHeading > span {
+.coverageMeta {
+  display: flex;
   flex: 0 0 auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.coverageMeta > span {
+  white-space: nowrap;
 }
 
 .coverageRows {
@@ -328,9 +386,27 @@
 
 .coverageRow > span {
   color: var(--ink-muted);
-  font-size: 0.76rem;
+  font-size: 0.82rem;
   font-weight: 700;
   text-align: center;
+}
+
+.assistFeedback {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  color: var(--green-800);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.assistFeedback svg {
+  flex: 0 0 auto;
+}
+
+.assistError {
+  color: var(--red-700);
 }
 
 .limitText {
@@ -404,12 +480,16 @@
 }
 
 .formActions {
+  position: sticky;
+  z-index: var(--z-sticky);
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding-top: var(--space-8);
+  padding: var(--space-5) 0;
   margin-top: var(--space-10);
+  background: var(--white);
   border-top: 1px solid var(--line);
 }
 
@@ -419,14 +499,15 @@
   margin-top: var(--space-2);
 }
 
-@media (max-width: 820px) {
+@media (max-width: 900px) {
   .createLayout {
     grid-template-columns: 1fr;
-    gap: var(--space-8);
   }
 
   .stepRail {
     position: static;
+    min-height: auto;
+    padding: var(--space-5) var(--space-6) var(--space-4);
   }
 
   .stepRail ol {
@@ -441,16 +522,16 @@
   }
 
   .stepRail li:not(:last-child)::after {
-    top: 0.94rem;
-    right: calc(-50% + 0.95rem);
+    top: 1.2rem;
+    right: calc(-50% + 1.2rem);
     bottom: auto;
-    left: calc(50% + 0.95rem);
+    left: calc(50% + 1.2rem);
     width: auto;
     height: 1px;
   }
 
   .stepRail button {
-    min-height: 4.5rem;
+    min-height: 4.25rem;
     align-items: center;
     flex-direction: column;
     gap: var(--space-2);
@@ -466,12 +547,33 @@
   .stepRail > p {
     display: none;
   }
+
+  .form {
+    min-height: 0;
+    padding: var(--space-10) var(--space-6) var(--space-16);
+  }
 }
 
 @media (max-width: 620px) {
+  .stepRail {
+    padding-inline: var(--space-3);
+  }
+
+  .stepRail button {
+    font-size: 0.78rem;
+  }
+
+  .form {
+    padding: var(--space-8) var(--space-4) var(--space-12);
+  }
+
   .sectionHeader {
     padding-bottom: var(--space-6);
     margin-bottom: var(--space-6);
+  }
+
+  .sectionHeader h1 {
+    font-size: 1.75rem;
   }
 
   .twoColumns,
@@ -495,21 +597,36 @@
   }
 
   .questionEditor {
-    padding: var(--space-5) var(--space-4);
+    padding-bottom: var(--space-8);
   }
 
   .questionEditor > header {
-    align-items: flex-start;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
   }
 
   .questionActions {
     width: 100%;
     flex-wrap: wrap;
+    grid-column: 1 / -1;
+  }
+
+  .questionHeaderControls {
+    display: contents;
+  }
+
+  .questionHeaderControls .questionActions {
+    flex: 1;
+  }
+
+  .questionHeaderControls > .assistIconButton {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .questionActions > * {
-    flex: 1 1 7rem;
+    flex: 1 1 5.5rem;
   }
 
   .coverageRow {
@@ -519,5 +636,14 @@
   .coverageRow > :last-child {
     grid-column: 2;
     justify-self: start;
+  }
+
+  .coverageHeading {
+    flex-direction: column;
+  }
+
+  .coverageMeta {
+    width: 100%;
+    justify-content: space-between;
   }
 }

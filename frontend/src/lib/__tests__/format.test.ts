@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  formatCountdown,
-  formatDuration,
-  formatFileSize,
-  normalizeJoinCode,
-} from "../format";
+import { formatCountdown, formatDuration, formatFileSize, normalizeJoinCode } from "../format";
 
 describe("format helpers", () => {
   it("normalizes invite codes for room navigation", () => {

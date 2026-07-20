@@ -8,23 +8,30 @@ interface AppShellProps {
   context?: string;
   actions?: ReactNode;
   wide?: boolean;
-  quietHeader?: boolean;
+  variant?: "default" | "authoring" | "host" | "public";
 }
 
-export function AppShell({
-  children,
-  context,
-  actions,
-  wide = false,
-  quietHeader = false,
-}: AppShellProps) {
+export function AppShell({ children, context, actions, wide = false, variant = "default" }: AppShellProps) {
+  const authoring = variant === "authoring";
+  const host = variant === "host";
+  const publicPage = variant === "public";
+  const darkHeader = authoring || host || publicPage;
+  const mainClass = authoring
+    ? styles.mainAuthoring
+    : publicPage
+      ? styles.mainPublic
+      : host
+        ? styles.mainHost
+        : wide
+          ? styles.mainWide
+          : styles.mainReading;
   return (
-    <div className={styles.shell}>
+    <div className={publicPage ? `${styles.shell} ${styles.publicShell}` : styles.shell}>
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
-      <header className={`${styles.header} ${quietHeader ? styles.quiet : ""}`}>
-        <div className={styles.headerInner}>
+      <header className={`${styles.header} ${darkHeader ? styles.darkHeader : ""}`}>
+        <div className={`${styles.headerInner} ${darkHeader ? styles.darkHeaderInner : ""}`}>
           <Link className={styles.brandLink} to="/" aria-label="Junto home">
             <AppMark />
           </Link>
@@ -37,10 +44,7 @@ export function AppShell({
           {actions ? <div className={styles.actions}>{actions}</div> : null}
         </div>
       </header>
-      <main
-        id="main-content"
-        className={`${styles.main} ${wide ? styles.mainWide : styles.mainReading}`}
-      >
+      <main id="main-content" className={`${styles.main} ${mainClass}`}>
         {children}
       </main>
     </div>

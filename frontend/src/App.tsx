@@ -4,33 +4,21 @@ import { AppShell } from "./components/layout";
 import { AppErrorBoundary } from "./components/system/AppErrorBoundary";
 import { LoadingSkeleton } from "./components/ui";
 
-const HomePage = lazy(() =>
-  import("./features/home/HomePage").then((module) => ({ default: module.HomePage })),
-);
+const HomePage = lazy(() => import("./features/home/HomePage").then((module) => ({ default: module.HomePage })));
 const CreateRoomPage = lazy(() =>
-  import("./features/host/create/CreateRoomPage").then((module) => ({
-    default: module.CreateRoomPage,
-  })),
+  import("./features/host/create/CreateRoomPage").then((module) => ({ default: module.CreateRoomPage })),
 );
 const HostRoomPage = lazy(() =>
-  import("./features/host/room/HostRoomPage").then((module) => ({
-    default: module.HostRoomPage,
-  })),
+  import("./features/host/room/HostRoomPage").then((module) => ({ default: module.HostRoomPage })),
 );
 const JoinRoomPage = lazy(() =>
-  import("./features/participant/join/JoinRoomPage").then((module) => ({
-    default: module.JoinRoomPage,
-  })),
+  import("./features/participant/join/JoinRoomPage").then((module) => ({ default: module.JoinRoomPage })),
 );
 const ParticipantRoomPage = lazy(() =>
-  import("./features/participant/room/ParticipantRoomPage").then((module) => ({
-    default: module.ParticipantRoomPage,
-  })),
+  import("./features/participant/room/ParticipantRoomPage").then((module) => ({ default: module.ParticipantRoomPage })),
 );
 const NotFoundPage = lazy(() =>
-  import("./features/not-found/NotFoundPage").then((module) => ({
-    default: module.NotFoundPage,
-  })),
+  import("./features/not-found/NotFoundPage").then((module) => ({ default: module.NotFoundPage })),
 );
 
 function RouteLoading() {

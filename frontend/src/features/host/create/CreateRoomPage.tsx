@@ -1,27 +1,18 @@
-import {
-  type ChangeEvent,
-  type DragEvent,
-  type FormEvent,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type ChangeEvent, type DragEvent, type FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../../../api";
 import { AppShell } from "../../../components/layout";
-import {
-  Button,
-  Field,
-  Icon,
-  InlineNotice,
-  Input,
-  Select,
-  TextArea,
-} from "../../../components/ui";
+import { Button, Field, Icon, InlineNotice, Input, Select, TextArea } from "../../../components/ui";
 import { useDocumentTitle } from "../../../hooks/useDocumentTitle";
 import { formatDuration, formatFileSize } from "../../../lib/format";
 import { scrollPageToTop } from "../../../lib/motion";
-import type { GroupSize, HostQuestion, QuestionMutation, ReferenceAttachment } from "../../../domain";
+import type {
+  AuthoringSuggestionTarget,
+  GroupSize,
+  HostQuestion,
+  QuestionMutation,
+  ReferenceAttachment,
+} from "../../../domain";
 import styles from "./CreateRoomPage.module.css";
 
 type WizardStep = "material" | "details" | "questions" | "review";
@@ -41,6 +32,16 @@ interface ActivityDraft {
   questions: QuestionDraft[];
 }
 
+interface SuggestionFeedback {
+  tone: "success" | "error";
+  message: string;
+}
+
+interface SuggestingTarget {
+  clientId: string;
+  target: AuthoringSuggestionTarget;
+}
+
 const steps: Array<{ id: WizardStep; label: string }> = [
   { id: "material", label: "Reference material" },
   { id: "details", label: "Activity details" },
@@ -51,6 +52,12 @@ const steps: Array<{ id: WizardStep; label: string }> = [
 const acceptedTypes = ".pdf,.docx,.txt,.md";
 const acceptedExtensions = [".pdf", ".docx", ".txt", ".md"];
 const maxFileBytes = 5 * 1024 * 1024;
+const materialDescription =
+  "Optional. Attach a reading, rubric, notes, or answer guide to this room. " +
+  "Participants won’t see the file. Junto uses it only as host-provided context when evaluating response coverage.";
+const nextStepDescription =
+  "You’ll receive an invite code. Participants enter their names and wait in the lobby until you start the " +
+  "shared timer.";
 
 function newQuestion(): QuestionDraft {
   return { clientId: crypto.randomUUID(), prompt: "", coverageUnits: [""] };
@@ -62,12 +69,18 @@ function errorMessage(error: unknown): string {
   return "Junto couldn’t create the activity. Please try again.";
 }
 
+function authoringErrorMessage(error: unknown): string {
+  if (error instanceof ApiError) return error.message;
+  if (error instanceof Error) return error.message;
+  return "Junto couldn’t finish the suggestion. Your draft was not changed.";
+}
+
+function suggestionKey(clientId: string, target: AuthoringSuggestionTarget): string {
+  return `${clientId}:${target}`;
+}
+
 function groupSizeFor(preferred: number): GroupSize {
-  return {
-    minimum: Math.max(2, preferred - 1),
-    preferred,
-    maximum: Math.min(8, preferred + 1),
-  };
+  return { minimum: Math.max(2, preferred - 1), preferred, maximum: Math.min(8, preferred + 1) };
 }
 
 function questionMutation(question: QuestionDraft, position: number): QuestionMutation {
@@ -85,9 +98,7 @@ function questionMatches(existing: HostQuestion, desired: QuestionMutation): boo
     existing.prompt === desired.prompt &&
     existing.referenceMaterial === (desired.referenceMaterial ?? null) &&
     existing.coverageUnits.length === desired.coverageUnits.length &&
-    existing.coverageUnits.every(
-      (unit, index) => unit.text === desired.coverageUnits[index]?.text,
-    )
+    existing.coverageUnits.every((unit, index) => unit.text === desired.coverageUnits[index]?.text)
   );
 }
 
@@ -130,6 +141,8 @@ export function CreateRoomPage() {
   const [fileError, setFileError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [suggesting, setSuggesting] = useState<SuggestingTarget | null>(null);
+  const [suggestionFeedback, setSuggestionFeedback] = useState<Record<string, SuggestionFeedback>>({});
   const [setupRoomId, setSetupRoomId] = useState<string | null>(null);
   const [skipReference, setSkipReference] = useState(false);
   const [draft, setDraft] = useState<ActivityDraft>({
@@ -142,6 +155,7 @@ export function CreateRoomPage() {
   });
 
   const activeIndex = steps.findIndex((item) => item.id === step);
+  const hasReference = Boolean(draft.materialFile || draft.pastedReference.trim());
 
   useEffect(() => {
     stepHeadingRef.current?.focus({ preventScroll: true });
@@ -151,6 +165,16 @@ export function CreateRoomPage() {
   function updateDraft<K extends keyof ActivityDraft>(key: K, value: ActivityDraft[K]) {
     setSubmitError(null);
     setDraft((current) => ({ ...current, [key]: value }));
+  }
+
+  function clearSuggestionFeedback(clientId: string, target: AuthoringSuggestionTarget) {
+    const key = suggestionKey(clientId, target);
+    setSuggestionFeedback((current) => {
+      if (!(key in current)) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
   }
 
   function setMaterial(file: File | null) {
@@ -184,15 +208,15 @@ export function CreateRoomPage() {
   }
 
   function updateQuestion(clientId: string, prompt: string) {
+    clearSuggestionFeedback(clientId, "question");
     updateDraft(
       "questions",
-      draft.questions.map((question) =>
-        question.clientId === clientId ? { ...question, prompt } : question,
-      ),
+      draft.questions.map((question) => (question.clientId === clientId ? { ...question, prompt } : question)),
     );
   }
 
   function updateCoverageUnit(clientId: string, unitIndex: number, text: string) {
+    clearSuggestionFeedback(clientId, "coverage");
     updateDraft(
       "questions",
       draft.questions.map((question) => {
@@ -205,6 +229,7 @@ export function CreateRoomPage() {
   }
 
   function addCoverageUnit(clientId: string) {
+    clearSuggestionFeedback(clientId, "coverage");
     updateDraft(
       "questions",
       draft.questions.map((question) =>
@@ -216,14 +241,12 @@ export function CreateRoomPage() {
   }
 
   function removeCoverageUnit(clientId: string, unitIndex: number) {
+    clearSuggestionFeedback(clientId, "coverage");
     updateDraft(
       "questions",
       draft.questions.map((question) =>
         question.clientId === clientId && question.coverageUnits.length > 1
-          ? {
-              ...question,
-              coverageUnits: question.coverageUnits.filter((_, index) => index !== unitIndex),
-            }
+          ? { ...question, coverageUnits: question.coverageUnits.filter((_, index) => index !== unitIndex) }
           : question,
       ),
     );
@@ -247,6 +270,54 @@ export function CreateRoomPage() {
     questions[index] = adjacent;
     questions[target] = current;
     updateDraft("questions", questions);
+  }
+
+  async function requestSuggestion(clientId: string, questionIndex: number, target: AuthoringSuggestionTarget) {
+    if (!hasReference || suggesting) return;
+    const key = suggestionKey(clientId, target);
+    setSuggestionFeedback((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+    setSuggesting({ clientId, target });
+
+    try {
+      const suggestion = await api.suggestAuthoring(
+        {
+          activityTitle: draft.title.trim(),
+          target,
+          targetQuestionIndex: questionIndex,
+          questions: draft.questions.map((question) => ({
+            prompt: question.prompt,
+            coverageUnits: question.coverageUnits,
+          })),
+          ...(draft.materialFile ? {} : { referenceText: draft.pastedReference.trim() }),
+        },
+        draft.materialFile ?? undefined,
+      );
+      setDraft((current) => ({
+        ...current,
+        questions: current.questions.map((question) => {
+          if (question.clientId !== clientId) return question;
+          return target === "question"
+            ? { ...question, prompt: suggestion.questionPrompt }
+            : { ...question, coverageUnits: suggestion.coverageUnits };
+        }),
+      }));
+      setSubmitError(null);
+      setSuggestionFeedback((current) => ({
+        ...current,
+        [key]: { tone: "success", message: "Suggestion added. Review and edit it before continuing." },
+      }));
+    } catch (error) {
+      setSuggestionFeedback((current) => ({
+        ...current,
+        [key]: { tone: "error", message: authoringErrorMessage(error) },
+      }));
+    } finally {
+      setSuggesting(null);
+    }
   }
 
   function isStepValid(candidate: WizardStep): boolean {
@@ -325,9 +396,7 @@ export function CreateRoomPage() {
         }
       }
 
-      const existingQuestions = [...(savedRoom?.questions ?? [])].sort(
-        (left, right) => left.position - right.position,
-      );
+      const existingQuestions = [...(savedRoom?.questions ?? [])].sort((left, right) => left.position - right.position);
       for (const extra of existingQuestions.slice(draft.questions.length).reverse()) {
         await api.deleteQuestion(roomId, extra.id);
       }
@@ -345,16 +414,12 @@ export function CreateRoomPage() {
 
       const referenceFile = skipReference
         ? null
-        : draft.materialFile ??
+        : (draft.materialFile ??
           (draft.pastedReference.trim()
-            ? new File([draft.pastedReference.trim()], "pasted-reference.txt", {
-                type: "text/plain",
-              })
-            : null);
+            ? new File([draft.pastedReference.trim()], "pasted-reference.txt", { type: "text/plain" })
+            : null));
       if (referenceFile) {
-        const matchingMaterial = savedRoom?.materials.find((material) =>
-          materialMatches(referenceFile, material),
-        );
+        const matchingMaterial = savedRoom?.materials.find((material) => materialMatches(referenceFile, material));
         for (const material of savedRoom?.materials ?? []) {
           if (material.id !== matchingMaterial?.id) {
             await api.deleteReferenceMaterial(roomId, material.id);
@@ -377,7 +442,7 @@ export function CreateRoomPage() {
   }
 
   return (
-    <AppShell context="Create an activity" wide>
+    <AppShell context="Create an activity" variant="authoring">
       <div className={styles.createLayout}>
         <aside className={styles.stepRail} aria-label="Create activity progress">
           <ol>
@@ -385,7 +450,12 @@ export function CreateRoomPage() {
               const completed = index < activeIndex;
               const current = item.id === step;
               return (
-                <li key={item.id} className={current ? styles.currentStep : ""}>
+                <li
+                  key={item.id}
+                  className={[current && styles.currentStep, completed && styles.completedStep]
+                    .filter(Boolean)
+                    .join(" ")}
+                >
                   <button
                     type="button"
                     onClick={() => completed && setStep(item.id)}
@@ -413,11 +483,10 @@ export function CreateRoomPage() {
             <section aria-labelledby="material-title">
               <header className={styles.sectionHeader}>
                 <div>
-                  <h1 id="material-title" ref={stepHeadingRef} tabIndex={-1}>Add reference material</h1>
-                  <p>
-                    Optional. Attach a reading, rubric, notes, or answer guide to this room.
-                    Participants won’t see the file, and placeholder grouping does not read it.
-                  </p>
+                  <h1 id="material-title" ref={stepHeadingRef} tabIndex={-1}>
+                    Add reference material
+                  </h1>
+                  <p>{materialDescription}</p>
                 </div>
                 <span className={styles.optionalText}>Optional</span>
               </header>
@@ -463,16 +532,12 @@ export function CreateRoomPage() {
                       <strong>Drop a file here or choose from your computer</strong>
                       <span id="material-file-help">PDF, DOCX, text, or Markdown · 5 MB maximum</span>
                     </div>
-                    <ReferenceFilePicker
-                      label="Choose file"
-                      describedBy="material-file-help"
-                      onChange={onFileChange}
-                    />
+                    <ReferenceFilePicker label="Choose file" describedBy="material-file-help" onChange={onFileChange} />
                   </div>
                 )}
               </div>
               {fileError ? (
-                <InlineNotice tone="error" title="File not added">
+                <InlineNotice className={styles.fileErrorNotice} tone="error" title="File not added">
                   {fileError}
                 </InlineNotice>
               ) : null}
@@ -503,7 +568,9 @@ export function CreateRoomPage() {
             <section aria-labelledby="details-title">
               <header className={styles.sectionHeader}>
                 <div>
-                  <h1 id="details-title" ref={stepHeadingRef} tabIndex={-1}>Set up the activity</h1>
+                  <h1 id="details-title" ref={stepHeadingRef} tabIndex={-1}>
+                    Set up the activity
+                  </h1>
                   <p>Give participants enough context to recognize the room, then set one shared response window.</p>
                 </div>
               </header>
@@ -511,7 +578,9 @@ export function CreateRoomPage() {
                 <Field
                   label="Activity title"
                   hint="Shown on the join page and throughout the activity."
-                  error={draft.title.length > 0 && draft.title.trim().length < 3 ? "Use at least 3 characters." : undefined}
+                  error={
+                    draft.title.length > 0 && draft.title.trim().length < 3 ? "Use at least 3 characters." : undefined
+                  }
                   required
                 >
                   <Input
@@ -523,11 +592,7 @@ export function CreateRoomPage() {
                 </Field>
 
                 <div className={styles.twoColumns}>
-                  <Field
-                    label="Response time"
-                    hint="The countdown begins when you start the activity."
-                    required
-                  >
+                  <Field label="Response time" hint="The countdown begins when you start the activity." required>
                     <Select
                       value={draft.durationMinutes}
                       onChange={(event) => updateDraft("durationMinutes", Number(event.target.value))}
@@ -564,116 +629,207 @@ export function CreateRoomPage() {
             <section aria-labelledby="questions-title">
               <header className={styles.sectionHeader}>
                 <div>
-                  <h1 id="questions-title" ref={stepHeadingRef} tabIndex={-1}>Write the questions</h1>
+                  <h1 id="questions-title" ref={stepHeadingRef} tabIndex={-1}>
+                    Write the questions
+                  </h1>
                   <p>
-                    Participants answer one question at a time. Use complete prompts and include any reading they must see directly in the question.
+                    Participants answer one question at a time. Use complete prompts and include any reading they must
+                    see directly in the question.
                   </p>
+                  {hasReference ? (
+                    <p className={styles.assistIntro}>
+                      Suggestions send your reference and full draft to the configured model. Review before continuing.
+                    </p>
+                  ) : null}
                 </div>
               </header>
 
               <div className={styles.questionList}>
-                {draft.questions.map((question, index) => (
-                  <article className={styles.questionEditor} key={question.clientId}>
-                    <header>
-                      <h2>Question {index + 1}</h2>
-                      <div className={styles.questionActions}>
-                        <Button
-                          type="button"
-                          variant="quiet"
-                          size="compact"
-                          onClick={() => moveQuestion(index, -1)}
-                          disabled={index === 0}
-                          aria-label={`Move question ${index + 1} earlier`}
-                        >
-                          Move up
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="quiet"
-                          size="compact"
-                          onClick={() => moveQuestion(index, 1)}
-                          disabled={index === draft.questions.length - 1}
-                          aria-label={`Move question ${index + 1} later`}
-                        >
-                          Move down
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="quiet"
-                          size="compact"
-                          onClick={() => removeQuestion(question.clientId)}
-                          disabled={draft.questions.length === 1}
-                          aria-label={`Delete question ${index + 1}`}
-                          leadingIcon={<Icon name="trash" size={16} />}
-                        >
-                          Delete
-                        </Button>
-                      </div>
-                    </header>
-                    <Field
-                      label="Question prompt"
-                      hint={`${question.prompt.length.toLocaleString()} of 2,000 characters · all questions share the room timer`}
-                      error={question.prompt.length > 0 && question.prompt.trim().length < 5 ? "Write a complete question." : undefined}
-                      required
-                    >
-                      <TextArea
-                        rows={7}
-                        maxLength={2000}
-                        value={question.prompt}
-                        onChange={(event) => updateQuestion(question.clientId, event.target.value)}
-                        placeholder="Write the question participants will answer…"
-                      />
-                    </Field>
+                {draft.questions.map((question, index) => {
+                  const questionAssistLabel = question.prompt.trim() ? "Improve question" : "Draft question";
+                  const coverageAssistLabel = question.coverageUnits.some((unit) => unit.trim())
+                    ? "Improve coverage"
+                    : "Suggest coverage";
+                  const questionFeedback = suggestionFeedback[suggestionKey(question.clientId, "question")];
+                  const coverageFeedback = suggestionFeedback[suggestionKey(question.clientId, "coverage")];
+                  const suggestingQuestion =
+                    suggesting?.clientId === question.clientId && suggesting.target === "question";
+                  const suggestingCoverage =
+                    suggesting?.clientId === question.clientId && suggesting.target === "coverage";
 
-                    <div className={styles.coverageEditor}>
-                      <div className={styles.coverageHeading}>
-                        <div>
-                          <h3>What should every discussion cover?</h3>
-                          <p>
-                            Add the ideas, evidence, reasoning steps, or perspectives that should be represented in each group.
-                          </p>
-                        </div>
-                        <span>{question.coverageUnits.length} of 8</span>
-                      </div>
-                      <div className={styles.coverageRows}>
-                        {question.coverageUnits.map((unit, unitIndex) => (
-                          <div className={styles.coverageRow} key={`${question.clientId}-unit-${unitIndex}`}>
-                            <span aria-hidden="true">{unitIndex + 1}</span>
-                            <Input
-                              value={unit}
-                              maxLength={240}
-                              onChange={(event) =>
-                                updateCoverageUnit(question.clientId, unitIndex, event.target.value)
-                              }
-                              placeholder="e.g. Explains the strongest objection to the position"
-                              aria-label={`Coverage unit ${unitIndex + 1} for question ${index + 1}`}
-                            />
+                  return (
+                    <article className={styles.questionEditor} key={question.clientId}>
+                      <header>
+                        <h2>Question {index + 1}</h2>
+                        <div className={styles.questionHeaderControls}>
+                          {hasReference ? (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="compact"
+                              iconOnly
+                              className={styles.assistIconButton}
+                              leadingIcon={<Icon name="draft" size={17} />}
+                              aria-label={`${questionAssistLabel} ${index + 1}`}
+                              title={questionAssistLabel}
+                              loading={suggestingQuestion}
+                              loadingLabel={`${questionAssistLabel} ${index + 1}`}
+                              disabled={Boolean(suggesting) || creating}
+                              onClick={() => void requestSuggestion(question.clientId, index, "question")}
+                            >
+                              {questionAssistLabel}
+                            </Button>
+                          ) : null}
+                          <div className={styles.questionActions}>
                             <Button
                               type="button"
                               variant="quiet"
                               size="compact"
-                              onClick={() => removeCoverageUnit(question.clientId, unitIndex)}
-                              disabled={question.coverageUnits.length === 1}
-                              aria-label={`Remove coverage unit ${unitIndex + 1}`}
+                              onClick={() => moveQuestion(index, -1)}
+                              disabled={index === 0}
+                              aria-label={`Move question ${index + 1} earlier`}
                             >
-                              Remove
+                              Move up
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="quiet"
+                              size="compact"
+                              onClick={() => moveQuestion(index, 1)}
+                              disabled={index === draft.questions.length - 1}
+                              aria-label={`Move question ${index + 1} later`}
+                            >
+                              Move down
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="quiet"
+                              size="compact"
+                              onClick={() => removeQuestion(question.clientId)}
+                              disabled={draft.questions.length === 1}
+                              aria-label={`Delete question ${index + 1}`}
+                              leadingIcon={<Icon name="trash" size={16} />}
+                            >
+                              Delete
                             </Button>
                           </div>
-                        ))}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="quiet"
-                        size="compact"
-                        leadingIcon={<Icon name="plus" size={16} />}
-                        onClick={() => addCoverageUnit(question.clientId)}
-                        disabled={question.coverageUnits.length >= 8}
+                        </div>
+                      </header>
+                      <Field
+                        label="Question prompt"
+                        hint={
+                          `${question.prompt.length.toLocaleString()} of 2,000 characters · ` +
+                          "all questions share the room timer"
+                        }
+                        error={
+                          question.prompt.length > 0 && question.prompt.trim().length < 5
+                            ? "Write a complete question."
+                            : undefined
+                        }
+                        required
                       >
-                        Add coverage unit
-                      </Button>
-                    </div>
-                  </article>
-                ))}
+                        <TextArea
+                          rows={7}
+                          maxLength={2000}
+                          value={question.prompt}
+                          onChange={(event) => updateQuestion(question.clientId, event.target.value)}
+                          placeholder="Write the question participants will answer…"
+                        />
+                      </Field>
+                      {questionFeedback ? (
+                        <p
+                          className={`${styles.assistFeedback} ${
+                            questionFeedback.tone === "error" ? styles.assistError : ""
+                          }`}
+                          role={questionFeedback.tone === "error" ? "alert" : "status"}
+                        >
+                          <Icon name={questionFeedback.tone === "error" ? "alert-circle" : "check"} size={15} />
+                          {questionFeedback.message}
+                        </p>
+                      ) : null}
+
+                      <div className={styles.coverageEditor}>
+                        <div className={styles.coverageHeading}>
+                          <div>
+                            <h3>What should every discussion cover?</h3>
+                            <p>
+                              Add the ideas, evidence, reasoning steps, or perspectives that should be represented in
+                              each group.
+                            </p>
+                          </div>
+                          <div className={styles.coverageMeta}>
+                            <span>{question.coverageUnits.length} of 8</span>
+                            {hasReference ? (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="compact"
+                                iconOnly
+                                className={styles.assistIconButton}
+                                leadingIcon={<Icon name="list-plus" size={17} />}
+                                aria-label={`${coverageAssistLabel} for question ${index + 1}`}
+                                title={coverageAssistLabel}
+                                loading={suggestingCoverage}
+                                loadingLabel={`${coverageAssistLabel} for question ${index + 1}`}
+                                disabled={Boolean(suggesting) || creating}
+                                onClick={() => void requestSuggestion(question.clientId, index, "coverage")}
+                              >
+                                {coverageAssistLabel}
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div className={styles.coverageRows}>
+                          {question.coverageUnits.map((unit, unitIndex) => (
+                            <div className={styles.coverageRow} key={`${question.clientId}-unit-${unitIndex}`}>
+                              <span aria-hidden="true">{unitIndex + 1}</span>
+                              <Input
+                                value={unit}
+                                maxLength={240}
+                                onChange={(event) =>
+                                  updateCoverageUnit(question.clientId, unitIndex, event.target.value)
+                                }
+                                placeholder="e.g. Explains the strongest objection to the position"
+                                aria-label={`Coverage unit ${unitIndex + 1} for question ${index + 1}`}
+                              />
+                              <Button
+                                type="button"
+                                variant="quiet"
+                                size="compact"
+                                onClick={() => removeCoverageUnit(question.clientId, unitIndex)}
+                                disabled={question.coverageUnits.length === 1}
+                                aria-label={`Remove coverage unit ${unitIndex + 1}`}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="quiet"
+                          size="compact"
+                          leadingIcon={<Icon name="plus" size={16} />}
+                          onClick={() => addCoverageUnit(question.clientId)}
+                          disabled={question.coverageUnits.length >= 8}
+                        >
+                          Add coverage unit
+                        </Button>
+                        {coverageFeedback ? (
+                          <p
+                            className={`${styles.assistFeedback} ${
+                              coverageFeedback.tone === "error" ? styles.assistError : ""
+                            }`}
+                            role={coverageFeedback.tone === "error" ? "alert" : "status"}
+                          >
+                            <Icon name={coverageFeedback.tone === "error" ? "alert-circle" : "check"} size={15} />
+                            {coverageFeedback.message}
+                          </p>
+                        ) : null}
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
 
               <Button
@@ -695,7 +851,9 @@ export function CreateRoomPage() {
             <section aria-labelledby="review-title">
               <header className={styles.sectionHeader}>
                 <div>
-                  <h1 id="review-title" ref={stepHeadingRef} tabIndex={-1}>Review and create</h1>
+                  <h1 id="review-title" ref={stepHeadingRef} tabIndex={-1}>
+                    Review and create
+                  </h1>
                   <p>Once created, Junto opens the invite lobby. The timer starts only when you start the activity.</p>
                 </div>
               </header>
@@ -718,14 +876,15 @@ export function CreateRoomPage() {
                   <dd>
                     {skipReference
                       ? "Skipped"
-                      : draft.materialFile?.name ??
-                        (draft.pastedReference.trim() ? "Pasted reference text" : "None")}
+                      : (draft.materialFile?.name ?? (draft.pastedReference.trim() ? "Pasted reference text" : "None"))}
                   </dd>
                 </div>
               </dl>
 
               <div className={styles.reviewQuestions}>
-                <h2>{draft.questions.length} question{draft.questions.length === 1 ? "" : "s"}</h2>
+                <h2>
+                  {draft.questions.length} question{draft.questions.length === 1 ? "" : "s"}
+                </h2>
                 <ol>
                   {draft.questions.map((question) => (
                     <li key={question.clientId}>{question.prompt}</li>
@@ -734,17 +893,16 @@ export function CreateRoomPage() {
               </div>
 
               <InlineNotice tone="info" title="What happens next">
-                You’ll receive an invite code. Participants enter their names and wait in the lobby until you start the shared timer.
+                {nextStepDescription}
               </InlineNotice>
               {submitError ? (
                 <InlineNotice
+                  className={styles.reviewErrorNotice}
                   tone="error"
                   title={setupRoomId ? "Setup not finished" : "Activity not created"}
                 >
                   <span>{submitError}</span>
-                  {setupRoomId &&
-                  (draft.materialFile || draft.pastedReference.trim()) &&
-                  !skipReference ? (
+                  {setupRoomId && (draft.materialFile || draft.pastedReference.trim()) && !skipReference ? (
                     <Button
                       className={styles.retryWithoutMaterial}
                       type="button"
@@ -765,12 +923,7 @@ export function CreateRoomPage() {
 
           <footer className={styles.formActions}>
             {activeIndex > 0 ? (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={previous}
-                disabled={creating}
-              >
+              <Button type="button" variant="secondary" onClick={previous} disabled={creating}>
                 Back
               </Button>
             ) : (

@@ -4,7 +4,7 @@ import styles from "./NotFoundPage.module.css";
 
 export function NotFoundPage() {
   return (
-    <AppShell>
+    <AppShell variant="public">
       <div className={styles.page}>
         <p className={styles.code}>404</p>
         <h1>This page isn’t part of the room.</h1>

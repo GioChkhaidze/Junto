@@ -1,0 +1,274 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "philosophy-ai-proctoring",
+  "subject": "philosophy",
+  "questionId": "22222222-2222-4222-8222-222222222222",
+  "questionPrompt": "Does a university have the moral right to require AI proctoring for remote examinations? Defend a position and address the strongest competing considerations.",
+  "referenceMaterial": "The discussion should weigh academic integrity against privacy and autonomy, examine unequal burdens and false flags, consider less intrusive alternatives, and address proportional safeguards. Multiple conclusions can be defensible when they engage those considerations accurately.",
+  "coverageUnits": [
+    {
+      "id": "u_privacy",
+      "text": "Explains a privacy or autonomy interest affected by remote monitoring"
+    },
+    {
+      "id": "u_integrity",
+      "text": "Articulates the university's academic-integrity justification"
+    },
+    {
+      "id": "u_equity",
+      "text": "Addresses unequal accessibility, bias, or false-positive burdens"
+    },
+    {
+      "id": "u_alternative",
+      "text": "Considers a less intrusive way to verify learning or deter cheating"
+    },
+    {
+      "id": "u_safeguard",
+      "text": "Identifies safeguards needed for proportionality, review, or appeal"
+    }
+  ],
+  "participants": [
+    {
+      "participantId": "22222222-2222-4222-8222-222222222201",
+      "answer": "Universities may use AI proctoring only in narrow, high-stakes cases. Academic integrity is a legitimate aim, but continuous room scanning intrudes on students' privacy and autonomy. False flags and inaccessible monitoring can burden disabled and marginalized students. The school should first offer less intrusive options such as oral follow-ups or open-book assessment. If monitoring remains necessary, it needs human review, an appeal route, minimal data retention, and a no-penalty alternative."
+    },
+    {
+      "participantId": "22222222-2222-4222-8222-222222222202",
+      "answer": "Limited proctoring can be permissible because institutions must protect the credibility of awarded grades. It should collect only data needed during the exam and every flag should receive human review before any penalty."
+    },
+    {
+      "participantId": "22222222-2222-4222-8222-222222222203",
+      "answer": "AI proctoring should not be used. Preserving exam integrity does not justify turning a student's bedroom and body into surveillance data. Facial and behavioral models can misread disability, skin tone, and ordinary anxiety. Oral defenses and redesigned open-resource exams are less intrusive. Even notice, short retention, human review, and appeal cannot make coerced home surveillance proportionate."
+    },
+    {
+      "participantId": "22222222-2222-4222-8222-222222222204",
+      "answer": "Reject AI proctoring because it treats cheating as a surveillance problem instead of an assessment-design problem. Open-book tasks and brief follow-up interviews can verify learning without recording homes."
+    },
+    {
+      "participantId": "22222222-2222-4222-8222-222222222205",
+      "answer": "Any student accused by an automated flag must be shown the evidence and allowed a human appeal before punishment."
+    },
+    {
+      "participantId": "22222222-2222-4222-8222-222222222206",
+      "answer": ""
+    }
+  ],
+  "expectedCoverage": {
+    "assignments": [
+      {
+        "participantId": "22222222-2222-4222-8222-222222222201",
+        "coveredUnitIds": [
+          "u_privacy",
+          "u_integrity",
+          "u_equity",
+          "u_alternative",
+          "u_safeguard"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_privacy",
+            "quotes": [
+              "continuous room scanning intrudes on students' privacy and autonomy"
+            ]
+          },
+          {
+            "unitId": "u_integrity",
+            "quotes": [
+              "Academic integrity is a legitimate aim"
+            ]
+          },
+          {
+            "unitId": "u_equity",
+            "quotes": [
+              "False flags and inaccessible monitoring can burden disabled and marginalized students."
+            ]
+          },
+          {
+            "unitId": "u_alternative",
+            "quotes": [
+              "less intrusive options such as oral follow-ups or open-book assessment"
+            ]
+          },
+          {
+            "unitId": "u_safeguard",
+            "quotes": [
+              "it needs human review, an appeal route, minimal data retention, and a no-penalty alternative"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "22222222-2222-4222-8222-222222222202",
+        "coveredUnitIds": [
+          "u_integrity",
+          "u_safeguard"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_integrity",
+            "quotes": [
+              "institutions must protect the credibility of awarded grades"
+            ]
+          },
+          {
+            "unitId": "u_safeguard",
+            "quotes": [
+              "every flag should receive human review before any penalty"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "22222222-2222-4222-8222-222222222203",
+        "coveredUnitIds": [
+          "u_privacy",
+          "u_integrity",
+          "u_equity",
+          "u_alternative",
+          "u_safeguard"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_privacy",
+            "quotes": [
+              "turning a student's bedroom and body into surveillance data"
+            ]
+          },
+          {
+            "unitId": "u_integrity",
+            "quotes": [
+              "Preserving exam integrity"
+            ]
+          },
+          {
+            "unitId": "u_equity",
+            "quotes": [
+              "Facial and behavioral models can misread disability, skin tone, and ordinary anxiety."
+            ]
+          },
+          {
+            "unitId": "u_alternative",
+            "quotes": [
+              "Oral defenses and redesigned open-resource exams are less intrusive."
+            ]
+          },
+          {
+            "unitId": "u_safeguard",
+            "quotes": [
+              "Even notice, short retention, human review, and appeal"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "22222222-2222-4222-8222-222222222204",
+        "coveredUnitIds": [
+          "u_privacy",
+          "u_alternative"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_privacy",
+            "quotes": [
+              "without recording homes"
+            ]
+          },
+          {
+            "unitId": "u_alternative",
+            "quotes": [
+              "Open-book tasks and brief follow-up interviews can verify learning"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "22222222-2222-4222-8222-222222222205",
+        "coveredUnitIds": [
+          "u_safeguard"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_safeguard",
+            "quotes": [
+              "must be shown the evidence and allowed a human appeal before punishment"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "expectedFamilies": {
+    "families": [
+      {
+        "label": "Conditional permission with safeguards"
+      },
+      {
+        "label": "Opposition with alternative assessment"
+      }
+    ],
+    "assignments": [
+      {
+        "participantId": "22222222-2222-4222-8222-222222222201",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "22222222-2222-4222-8222-222222222202",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "22222222-2222-4222-8222-222222222203",
+        "familyIndex": 1
+      },
+      {
+        "participantId": "22222222-2222-4222-8222-222222222204",
+        "familyIndex": 1
+      },
+      {
+        "participantId": "22222222-2222-4222-8222-222222222205",
+        "familyIndex": null
+      }
+    ]
+  },
+  "expectedRelationships": {
+    "sameFamily": [
+      {
+        "participantIds": [
+          "22222222-2222-4222-8222-222222222201",
+          "22222222-2222-4222-8222-222222222202"
+        ],
+        "reason": "Both conditionally permit proctoring, although p2 covers far fewer considerations."
+      },
+      {
+        "participantIds": [
+          "22222222-2222-4222-8222-222222222203",
+          "22222222-2222-4222-8222-222222222204"
+        ],
+        "reason": "Both reject AI proctoring and recommend alternative assessment; their supporting rationales are represented by coverage rather than separate families."
+      }
+    ],
+    "differentFamily": [
+      {
+        "participantIds": [
+          "22222222-2222-4222-8222-222222222201",
+          "22222222-2222-4222-8222-222222222203"
+        ],
+        "reason": "They cover the same five considerations but reach opposing conclusions."
+      }
+    ],
+    "nullFamilyWithCoverage": [
+      "22222222-2222-4222-8222-222222222205"
+    ],
+    "emptyAnswerParticipantIds": [
+      "22222222-2222-4222-8222-222222222206"
+    ],
+    "validDisagreement": [
+      {
+        "participantIds": [
+          "22222222-2222-4222-8222-222222222201",
+          "22222222-2222-4222-8222-222222222203"
+        ],
+        "reason": "Conditional permission and principled opposition are both relevant, well-supported positions; family difference is not a correctness judgment."
+      }
+    ]
+  }
+}

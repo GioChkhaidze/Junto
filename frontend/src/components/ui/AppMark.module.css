@@ -2,7 +2,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  color: var(--green-950);
+  color: var(--appmark-color, var(--green-950));
   line-height: 1;
 }
 
@@ -11,8 +11,8 @@
   width: 2rem;
   height: 2rem;
   place-items: center;
-  color: var(--white);
-  background: var(--green-800);
+  color: var(--appmark-mark-color, var(--white));
+  background: var(--appmark-background, var(--green-800));
   border-radius: var(--radius-control);
   font-size: 1.15rem;
   font-weight: 800;

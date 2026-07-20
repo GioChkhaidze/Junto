@@ -2,491 +2,318 @@
 
 ## Boundary
 
-The engine converts frozen room inputs into one participant partition:
+The implemented engine converts one frozen room snapshot into one participant partition:
 
 ```text
-frozen question batch
-    ├── question + reference + units + answers
-    │       → coverage classification + transient evidence
-    │       → per-response coveredUnitIds
-    │
-    └── question + answers
-            → independent family clustering
-            → per-response family
-                    │
-                    ▼
-         merge by opaque participant ID
-                    │
-                    ▼
-       coverage-first CP-SAT optimization
-                    │
-                    ▼
-        selected participant partition
+question + reference + approved units + answers
+  -> coverage classification + transient evidence
+  -> coveredUnitIds per answer -------------------+
+                                                   +-> merge by opaque participant ID
+question + answers                                 |
+  -> independent family clustering                |
+  -> family per answer ----------------------------+
+                  |
+                  v
+         immutable SemanticArtifact
+                  |
+                  v
+      coverage-first CP-SAT optimization
+                  |
+                  v
+         immutable GroupingArtifact
 ```
 
-The language model interprets text but never receives group sizes or produces groups. The optimizer consumes only validated discrete artifacts and never interprets prose.
+The language model interprets prose but never receives group sizes or selects groups. The optimizer receives validated
+IDs and relations but never sees answer text. These are separate failure and trust boundaries.
 
-The compiler uses the official OpenAI Python SDK and Responses API with Pydantic-backed Structured Outputs. Calls are independent and stateless: `store` is `false`, no previous response is reused, and no model tools are enabled. `OPENAI_MODEL` is configurable but must be pinned for the deployed demo and support the required schemas.
+The live adapter uses the official OpenAI Python SDK, the Responses API, and Pydantic-backed Structured Outputs.
+Requests are stateless (`store=false`), use no tools or previous response, and pin an explicit configured model.
+`recorded` mode supplies reviewed responses through the same validation path without network access.
 
-Stored artifact shapes are defined in [contracts.md](contracts.md).
+The development-only OpenRouter adapter implements the same `SemanticProvider` contract through strict JSON-schema Chat
+Completions. It requires structured-output-capable routing, denies provider data collection, and uses a server-owned
+pinned model pool shared with synthetic students.
 
-## Coverage units
+## Coverage units and families
 
-A coverage unit is a small, question-local, host-approved primitive that should be available inside every group.
+A coverage unit is a small, question-local, host-approved element that should be available inside each group. It may be
+a concept, reasoning step, fact, argument, objection, perspective, mechanism, tradeoff, or risk. Hosts approve every
+unit, and the semantic compiler never generates or changes them. A separate pre-room authoring assistant may suggest
+editable unit text from host-provided reference material and the full current draft; that suggestion has no
+semantic-artifact or persistence authority.
 
-Units may represent concepts, reasoning steps, evidence, interpretations, arguments, objections, perspectives, user needs, mechanisms, tradeoffs, or risks. Their semantics depend on the question.
+For correctness-sensitive units, a contradiction or material error does not count. For open-ended units, a relevant
+position or objection may count without being the only acceptable conclusion. Every accepted unit is equally required by
+the current optimizer; optional details should not be encoded as required units.
 
-For correctness-sensitive units, invalid facts, formulas, or reasoning do not count. For open-ended units, a relevant position or objection may count without being treated as the only acceptable conclusion.
+A response family describes the central answer: a primary method, position, recommendation, causal weighting, or
+algorithmic strategy. It is independent of correctness and completeness. Answers with the same central answer stay
+together when they differ only in supporting evidence, rationale, safeguards, caveats, or detail; those distinctions
+belong in coverage. Answers split when their conclusion, recommended default, causal weighting, or defining method
+differs. A relevant fragment that never supplies a central answer may remain null-family while still covering units. The
+only coverage relation is between one participant's answer and the approved units for that question:
 
-Every accepted unit is required and equally weighted. Optional details should not be accepted as units.
-
-### Generation input
-
-```text
-question prompt
-optional reference answer, rubric, reading, or learning objective
-```
-
-### Coverage-generation output
-
-```json
-{
-  "units": [
-    {
-      "text": "Explains why overlapping subproblems make cached results reusable"
-    }
-  ]
-}
-```
-
-The model returns text only. After validation and host acceptance, the application assigns stable opaque unit IDs when the list is persisted.
-
-### Generation rules
-
-- hard limit: 1–8 units;
-- normal target: 3–7 units when the question supports that range;
-- each unit is independently present or absent in a response;
-- each unit is specific to the actual question, not a generic label such as “argument” or “evidence”;
-- unit text is concise enough for a discussion checklist;
-- units are grounded in the question prompt and, when present, the host's reference material;
-- alternatives are not automatically units merely because they might become response families;
-- no scores, weights, confidence values, IDs, or extra fields.
-
-The host edits or accepts the generated list. The engine never bypasses host approval.
-
-## Response compilation
-
-After the room is atomically frozen, compile each question through two independent model calls:
-
-1. **Coverage classification** decides which approved units are substantively present in each answer and cites exact answer evidence.
-2. **Family clustering** groups answers by their primary method, reasoning pattern, or position.
-
-Both calls receive the same opaque participant IDs and the same non-empty answers for one question. Unanswered or normalized-empty responses are omitted from both calls and added locally later. Neither call receives the other call's output. The separation is a contract boundary: coverage cannot be inferred from a family, and family membership cannot be influenced by whether an answer is correct or complete.
-
-The calls for a question may run concurrently. One process-local semaphore bounds all OpenAI requests across the room, rather than creating a separate concurrency allowance per question or per call type.
-
-### Coverage-classification input
-
-```text
-question prompt
-optional reference material
-approved coverage units with opaque IDs
-opaque participant IDs and non-empty answer text
-```
-
-Names, session data, join codes, group constraints, group capacities, and tentative assignments are excluded.
-
-### Coverage-classification output
-
-```json
-{
-  "assignments": [
-    {
-      "participantId": "p1",
-      "coveredUnitIds": ["u1", "u2"],
-      "evidence": [
-        {
-          "unitId": "u1",
-          "quotes": [
-            "Let dp[i] represent the minimum cost through position i."
-          ]
-        },
-        {
-          "unitId": "u2",
-          "quotes": [
-            "The recurrence takes the cheaper of the two previous states."
-          ]
-        }
-      ]
-    },
-    {
-      "participantId": "p2",
-      "coveredUnitIds": [],
-      "evidence": []
-    }
-  ]
-}
-```
-
-Evidence makes a coverage judgment auditable; it is not another stored artifact. For each assignment:
-
-- the evidence-unit set exactly equals `coveredUnitIds`;
-- every covered unit has exactly one evidence object;
-- each evidence object contains one or two concise verbatim quotes, each at most 240 characters;
-- every quote is a literal substring of that participant's submitted answer after both strings replace CRLF and bare CR with `\n`; no trimming, case folding, Unicode normalization, or other whitespace normalization is allowed;
-- a quote counts only when its surrounding answer context substantively and accurately supports the unit;
-- a keyword, incidental mention, contradiction, or correctness-sensitive error does not establish coverage;
-- runtime evidence is validated in memory but never persisted in room artifacts or written to application logs; reviewed fixtures may contain synthetic expected evidence spans.
-
-The application derives only `coveredUnitIds` from a valid coverage response. The model returns no confidence score.
-
-### Family-clustering input
-
-```text
-question prompt
-opaque participant IDs and non-empty answer text
-```
-
-Reference material, coverage units, coverage classifications, and coverage evidence are deliberately excluded. A family describes how an answer approaches the question, independently of how many approved units it covers.
-
-### Family-clustering output
-
-```json
-{
-  "families": [
-    {
-      "label": "Top-down memoization"
-    },
-    {
-      "label": "Bottom-up tabulation"
-    }
-  ],
-  "assignments": [
-    {
-      "participantId": "p1",
-      "familyIndex": 0
-    },
-    {
-      "participantId": "p2",
-      "familyIndex": null
-    }
-  ]
-}
-```
-
-The server validates `familyIndex` and generates canonical family IDs. The model never invents persistent family IDs.
-
-### Family rules
-
-- a family represents a primary method, reasoning pattern, or position;
-- answers interchangeable for approach diversity share a family;
-- materially distinct approaches remain separate;
-- a hybrid answer may receive a hybrid family;
-- an unclear or non-substantive answer may receive a null family;
-- when every assignment is null-family, `families` is an empty array even though the question has non-empty answers;
-- family judgments ignore style, verbosity, confidence, identity, personality, correctness, and completeness;
-- every declared family is used;
-- answer text is never repeated in output.
-
-For open-ended questions, opposing positions may each receive valid families. Family identity does not establish correctness and never substitutes for required units.
-
-### Independence invariant
-
-A family has no `coveredUnitIds` field and no implied coverage set. The only coverage relation is between one participant's answer and the approved units for that question. Therefore:
-
-- members of the same family may cover different units;
-- members of different families may cover identical units;
+- same-family answers may cover different units;
+- different-family answers may cover identical units;
 - a null-family answer may still cover units;
-- membership in a strong or common family never grants coverage that the individual answer did not substantiate.
+- family membership never grants a covered unit.
 
-## Validation and repair
+## Per-question semantic calls
 
-Pydantic enforces a separate strict schema for each call. Coverage-domain validation additionally requires:
+Each question with at least one non-empty answer runs two independent operations. The calls may run concurrently, while
+one process-wide limiter bounds provider requests across questions and compiler instances.
 
-- exact participant-ID coverage for every submitted non-empty response;
-- one assignment per input participant;
-- no unknown or duplicated participant IDs;
-- unit IDs belonging to the current question;
-- no duplicate unit IDs inside an assignment;
-- exact agreement between the covered-unit and evidence-unit sets;
-- exactly one evidence object per covered unit;
-- one or two bounded, literal-substring quotes per evidence object;
-- no extra fields.
+### Coverage classification
 
-Family-domain validation independently requires:
+Input:
 
-- exact participant-ID coverage for every submitted non-empty response;
-- one assignment per input participant;
-- no unknown or duplicated participant IDs;
-- unique, non-empty family labels;
-- family indices that are null or in range;
-- no unused family;
-- no extra fields.
+```text
+question prompt
+relevant question and room reference text, when present
+approved coverage units with opaque IDs
+opaque participant IDs and non-empty answers
+```
 
-After both results pass independently, the server assigns canonical family IDs and merges the results by `participantId`, never by array position, into the stored `{participantId, familyId, coveredUnitIds}` assignment. Both validated participant-ID sets must equal the same expected set. The server then adds `{familyId: null, coveredUnitIds: []}` for unanswered participant-question pairs.
+Output schema:
 
-If every answer for a question is empty, skip both provider calls and produce no families plus empty assignments for every participant.
+```json
+{
+  "assignments": [
+    {
+      "participantId": "opaque-id",
+      "coveredUnitIds": ["u1", "u2"],
+      "evidence": [{ "unitId": "u1", "quotes": ["Let dp[i] be the minimum cost through position i."] }]
+    }
+  ]
+}
+```
 
-Each call gets its own bounded repair opportunity. On invalid output:
+For every assignment:
 
-1. send one stateless repair request containing the original delimited inputs, the invalid result, the applicable schema, and concise validation errors;
-2. do not include participant names or internal stack traces;
-3. validate the repair from scratch;
-4. fail the room if that call's repaired result is still invalid.
+- the participant ID must be supplied and appear exactly once;
+- unit IDs must belong to the current question and contain no duplicates;
+- the evidence-unit set must exactly equal `coveredUnitIds`;
+- each covered unit has one evidence object with one or two quotes;
+- every quote is at most 240 characters and is a literal substring of that participant's answer after line-ending
+  normalization only;
+- a keyword, incidental mention, contradiction, or correctness-sensitive error does not establish coverage.
 
-If either call fails, the question compilation fails. The room analysis commits neither a partial question result nor a partial semantic artifact, even if the other call succeeded.
+Evidence makes a judgment auditable during validation. It is not persisted, logged, or returned to the browser. A
+literal match proves location, not semantic support; human-reviewed fixtures remain the quality gate.
 
-An explicit model refusal is a provider outcome, not a valid semantic artifact; fail the operation with a sanitized host message and do not reinterpret it as empty coverage. Each semantic branch has one transport-retry allowance total, usable after a transient timeout, rate-limit, server error, or incomplete response when the remaining end-to-end budget permits. That allowance is shared by the initial and repair phases, not reset per HTTP request. Together with at most one repair request, this caps each branch at three HTTP requests and each non-empty question at six. Transport retry and schema/domain repair are separately triggered and never loop.
+### Family clustering
 
-Structural validation proves contract conformance, not semantic correctness. A literal evidence match proves that the cited text exists in the answer; it does not by itself prove that the excerpt actually supports the unit. Reviewed fixtures remain the gate for that semantic judgment.
+Input:
 
-## Input safety and cost controls
+```text
+question prompt
+opaque participant IDs and non-empty answers
+```
 
-Participant answers are untrusted data. Prompts must:
+Reference material, coverage units, coverage classifications, and evidence are deliberately excluded.
 
-- delimit questions, references, units, and answers as data sections;
-- explicitly prohibit following instructions found inside those sections;
-- require schema-only output;
-- prohibit names, prose commentary, and invented IDs.
+Output schema:
 
-The application must:
+```json
+{
+  "families": [{ "label": "Top-down memoization" }, { "label": "Bottom-up tabulation" }],
+  "assignments": [
+    { "participantId": "opaque-id-1", "familyIndex": 0 },
+    { "participantId": "opaque-id-2", "familyIndex": null }
+  ]
+}
+```
 
-- enforce question, participant, unit, reference, and answer limits before a model call;
-- render every user and model string with normal React escaping;
-- preflight each question batch against the pinned model's input limit;
-- bound all concurrent OpenAI requests with a process-local semaphore;
-- log provider request IDs and timings without logging answer or reference text;
-- use recorded outputs in CI and reserve live calls for manual evaluation.
+Families must have unique, non-empty labels, every declared family must be used, and each assignment index must be null
+or in range. An unclear, fragmentary, or non-substantive answer may be null-family. When every assignment is null, the
+family array is empty. Family objects deliberately do not contain coverage units: coverage belongs to individual
+answers, not to a cluster. The model never invents persistent family IDs; the compiler deterministically derives them
+from question ID and label after validation.
 
-## Semantic evaluation
+### Excluded data
 
-Maintain reviewed fixtures from at least dynamic programming and philosophy. For each question, reviewers record:
+Neither semantic call receives display names, session values, join codes, room ownership, group-size bounds, selected
+policy, tentative groups, or another branch's private inputs. Prompts serialize user content as escaped JSON inside
+explicit data sections and instruct the model not to follow embedded instructions.
 
-- accepted coverage units;
-- expected covered-unit sets per response;
-- accepted evidence spans for covered units;
-- expected response-family relationships.
+All-empty questions make no provider calls. The compiler locally creates null-family, empty-coverage assignments for
+every frozen participant.
 
-Track:
+## Validation, retry, and repair
 
-- schema and domain success before and after repair for each call type;
-- participant assignment completeness for each call and after the merge;
-- evidence literal-match and unit-support review failures;
-- per-unit precision and recall;
-- pairwise family co-clustering agreement;
-- cases where equal family membership correctly produces unequal coverage;
-- cases where equal coverage correctly produces different families;
-- reviewed examples where open-ended disagreement remains valid.
+Pydantic first enforces strict schemas with unknown fields forbidden. Domain validation then enforces exact participant
+sets, known units, evidence integrity, family indices, label uniqueness, and used families independently for each
+branch.
 
-Hard structural gates are 100% participant completeness, 100% literal evidence-substring integrity, zero accepted unknown IDs, zero accepted cross-participant evidence, and zero persisted partial semantic artifacts.
+After both results pass, the compiler merges by `participantId`, never array position. It adds local empty assignments
+for unanswered participant-question pairs, orders units according to the host-approved list, and emits canonical family
+IDs. Every question artifact must contain the same frozen participant set.
 
-Initial live-demo gates on adjudicated fixtures are:
+Each branch has two bounded recovery mechanisms:
 
-| Measure | Gate |
-|---|---:|
-| Micro-averaged unit-coverage precision | ≥ 0.90 |
-| Micro-averaged unit-coverage recall | ≥ 0.80 |
-| Human-judged evidence-support precision | ≥ 0.90 |
-| Pairwise family co-clustering F1 | ≥ 0.80 |
+1. one transport retry total for timeout, rate limit, server error, or incomplete response;
+2. one stateless repair request after schema or domain failure.
 
-Ambiguous labels must be adjudicated before scoring rather than counted opportunistically. Track latency, token use, first-pass validity, and repair success separately for the coverage and family calls. These metrics evaluate the compiler; they are not product claims about learning.
+The transport allowance is shared by the initial and repair phases, so a branch makes at most three HTTP requests.
+Repair includes the original delimited input, sanitized validation errors, invalid structured result, and required
+schema; it revalidates from scratch. A second invalid result fails the room.
+
+Provider refusal, permanent error, repeated transient failure, semantic input overflow, room timeout, and invalid output
+map to distinct internal outcomes and sanitized host messages. If either branch fails, no partial question or semantic
+artifact is stored.
+
+Input limits are checked before provider calls, including a conservative UTF-8 byte limit over messages and schema.
+Repair requests receive the same preflight check. Logs may contain branch, model identifier, request ID, bounded timing,
+token counts, and validation outcome; they exclude prompts, answers, reference text, evidence, names, and raw provider
+output.
+
+## Stored semantic artifact
+
+Only the compact, validated relation is stored:
+
+```json
+{
+  "schemaVersion": "1",
+  "compiledAt": "2026-07-19T10:30:00Z",
+  "model": "configured-model-id",
+  "questions": [
+    {
+      "questionId": "question-uuid",
+      "unitIds": ["u1", "u2"],
+      "families": [{ "id": "f_canonical", "label": "Top-down memoization" }],
+      "assignments": [{ "participantId": "participant-uuid", "familyId": "f_canonical", "coveredUnitIds": ["u1"] }]
+    }
+  ]
+}
+```
+
+The artifact is strict, immutable, versioned, prose-free except for bounded family labels, and complete for the frozen
+cohort. It contains no answer text or evidence quotes.
 
 ## Capacity selection
 
-For participant count `n`, minimum `min`, preferred `preferred`, and maximum `max`, feasible group counts satisfy:
+For participant count `n` and bounds `min`, `preferred`, `max`, feasible group counts satisfy:
 
 ```text
-ceil(n / max) <= group_count <= floor(n / min)
+ceil(n / max) <= groupCount <= floor(n / min)
 ```
 
-Reject analysis when that range is empty.
+Among feasible counts, Junto minimizes the distance between average group size and `preferred`, breaking ties toward the
+larger group count. It then fixes balanced capacities using only `floor(n/groupCount)` and `ceil(n/groupCount)`.
+Capacity is never left for a semantic objective to distort.
 
-Among feasible counts, choose the count minimizing:
+Before CP-SAT starts, stable participant order is placed into those capacities as a last-resort valid partition.
+
+## CP-SAT model
+
+The core binary relations are:
 
 ```text
-abs(n / group_count - preferred)
+x[s,g]          participant s belongs to group g
+covered[g,q,u]  group g has at least one carrier for unit u on question q
+full[g,q]       every approved unit for q is covered in g
+family[g,q,f]   group g contains family f on question q
 ```
 
-Break ties by choosing the larger group count. Create balanced capacities from `floor(n / group_count)` and `ceil(n / group_count)`, then fix them before semantic optimization.
+Hard constraints place every participant in exactly one group, fill every predetermined capacity, and make
+coverage/family presence the logical OR of individual validated assignments. A family variable never influences a
+coverage variable.
 
-## Optimization inputs
+Questions with more units must not dominate. Junto scales each question's covered-unit count to a shared integer maximum
+using the least common multiple of non-zero unit counts.
 
-Let:
+## Complete-coverage feasibility and fallback
 
-- `S` be participants;
-- `Q` be questions;
-- `Uq` be accepted units for question `q`;
-- `Fq` be non-null families for question `q`;
-- `a[s,q,u] = 1` when participant `s` covered unit `u`;
-- `f[s,q]` be the participant's family or null;
-- `G` be fixed group slots and capacities.
+Up to one third of the global solve time limit tests the exact constraint that every group covers every unit on every
+question.
 
-Core variables:
+- `feasible`: a solver witness establishes complete coverage; it becomes a hard constraint for later objectives.
+- `infeasible`: CP-SAT proves the exact complete-coverage model impossible.
+- `unknown`: no proof within the feasibility time limit.
 
-```text
-x[s,g]          participant assignment
-covered[g,q,u]  unit availability
-full[g,q]       full question coverage
-family[g,q,f]   family presence
-```
+A later fallback solution that happens to cover everything is itself a feasibility witness. Timeout or `UNKNOWN` is
+never described as infeasible.
 
-Hard constraints:
-
-```text
-Every participant belongs to exactly one group.
-Every group matches its predetermined capacity.
-covered[g,q,u] is the OR of assigned unit carriers.
-family[g,q,f] is the OR of assigned family members.
-```
-
-## Coverage normalization
-
-Questions with more units must not dominate.
-
-Let:
-
-```text
-L = least common multiple of all non-zero per-question unit counts
-```
-
-Then:
-
-```text
-coverageScore(g,q)
-  = (L / numberOfUnits(q)) × sum(covered[g,q,u])
-```
-
-Every group-question pair has the same maximum score `L`, using integer coefficients only.
-
-## Complete-coverage feasibility
-
-A quick scarcity report identifies units with fewer carriers than groups. This is necessary but not sufficient because one participant may carry several scarce units.
-
-Run an exact feasibility solve with:
-
-```text
-covered[g,q,u] = 1
-for every group, question, and accepted unit
-```
-
-Possible outcomes:
-
-- a witness proves `feasible` and complete coverage becomes a hard constraint;
-- a proof establishes `infeasible` and the fallback objectives run;
-- a timeout returns `unknown`; fallback runs, but the system does not claim infeasibility.
-
-If any fallback solve later finds complete coverage, that assignment is itself a feasibility witness.
-
-The feasibility pass may consume at most one third of `SOLVER_TIMEOUT_SECONDS`; the rest is reserved for producing and improving a valid grouping. Capacity selection also creates a deterministic balanced partition before CP-SAT runs. That partition is the last-resort valid result if the solver returns no assignment before the deadline, so a capacity-valid room does not fail merely because semantic optimization timed out.
-
-## Coverage fallback
-
-When complete coverage is not available, solve lexicographically:
+When complete coverage is not fixed, objectives run lexicographically:
 
 1. maximize the worst normalized group-question coverage;
-2. maximize the minimum number of fully covered questions per group;
+2. maximize the minimum fully covered question count in any group;
 3. maximize total fully covered group-question pairs;
 4. maximize total normalized coverage.
 
-Each optimal objective value is fixed before the next objective begins. Policy objectives cannot trade away the achieved coverage result.
+An objective advances only after its achieved value is proven optimal and fixed. If CP-SAT returns a valid but
+non-optimal assignment, Junto keeps it, reports `feasible`, and stops lower-priority optimization. If no solver
+assignment is available, it returns the deterministic capacity partition with solver status `fallback` and
+complete-coverage status `unknown`.
 
-## Teach Each Other
+## Policy objectives
 
-After coverage is fixed, create solver-only representative variables:
+Policy objectives run only after the achieved coverage priorities are fixed.
 
-```text
-contributes[s,g,q,u] = 1 when participant s is selected as one eligible
-                       representative carrier for available unit u
+### Teach Each Other
+
+Solver-only representative variables select one eligible carrier for every available group-question-unit. They are not
+persisted and do not appoint speakers in the UI; published agendas show every eligible carrier.
+
+The policy then:
+
+1. maximizes the minimum active contributor count across groups;
+2. minimizes the largest representative-unit load on one person;
+3. maximizes total active contributors;
+4. maximizes family variety as a final tie-break.
+
+This distributes overall contribution opportunity while coverage remains the hard priority.
+
+### Explore Different Approaches
+
+For each group-question pair, the model counts represented non-null families and marks whether at least two appear. It
+then:
+
+1. maximizes the minimum number of diverse questions across groups;
+2. maximizes total diverse group-question pairs;
+3. maximizes normalized additional-family coverage.
+
+Pairs with fewer than two available families receive no diversity value. Family variety cannot compensate for missing a
+fixed coverage objective.
+
+## Determinism and truth labels
+
+The optimizer uses stable participant/question ordering, one search worker, a fixed seed, equal-capacity symmetry
+breaking, a deterministic initial hint, a single global time limit, and canonical group IDs `g1`, `g2`, and so on.
+
+The stored grouping artifact is:
+
+```json
+{
+  "schemaVersion": "1",
+  "generationMode": "coverage_aware",
+  "policy": "teach",
+  "trigger": "all_submitted",
+  "generatedAt": "2026-07-19T10:31:00Z",
+  "groups": [{ "id": "g1", "participantIds": ["participant-uuid"] }],
+  "solverStatus": "optimal",
+  "completeCoverageStatus": "feasible",
+  "timedOut": false,
+  "solveMilliseconds": 38,
+  "objectives": [{ "name": "coverage.total_full_pairs", "value": 4, "provenOptimal": true }]
+}
 ```
 
-For every available group-question-unit, select exactly one eligible representative. These variables test whether useful material can be distributed across several group members. They are never persisted or shown as mandatory speaker assignments.
+`solverStatus` is `optimal`, `feasible`, or `fallback`. Only an objective whose `provenOptimal` is true is described as
+proven best. Host and participant diagnostics are derived at read time from this partition plus the semantic artifact;
+missing units, carriers, represented families, and coverage counts are not duplicated in storage.
 
-Define `active[s,g]` when participant `s` represents at least one unit across any question in group `g`. Representative load is the total represented units across all questions. Teach fairness is deliberately group-wide rather than a per-question guarantee: per-question coverage remains the hard priority, while the policy's secondary purpose is to distribute the overall teaching opportunity. The agenda still shows every eligible carrier for every individual unit.
+## Verification and quality boundary
 
-Solve lexicographically:
+Automated semantic tests cover four reviewed subjects (programming, philosophy, history, and design), exact fixture
+remapping, branch independence, all-empty questions, strict IDs, evidence matching, bounded repair/retry,
+prompt-delimiter safety, request-size preflight, privacy-safe errors/logs, adapter parameters, provider outcomes, and
+process-wide concurrency.
 
-1. maximize the minimum number of active contributors in any group;
-2. minimize the maximum representative-unit load assigned to one participant;
-3. maximize total active contributors;
-4. maximize family variety as a final tie-break.
+Optimizer tests cover capacity selection, exactly-once membership, known-feasible and proven-infeasible fixtures,
+unknown/fallback truth labels, a brute-force coverage oracle, policy separation, lexicographic preservation, missing
+answers, null families, deterministic serialization, and randomized supported-size invariants.
 
-The published page shows every eligible carrier, not the representative chosen internally by the solver.
-
-## Explore Different Approaches
-
-For each group-question pair:
-
-```text
-familyCount[g,q] = number of distinct represented non-null families
-diverse[g,q]     = 1 when familyCount[g,q] >= 2
-```
-
-After coverage is fixed, solve lexicographically:
-
-1. maximize the minimum number of diverse questions per group;
-2. maximize total diverse group-question pairs;
-3. maximize normalized additional-family coverage.
-
-One represented family is the baseline. For exact integer normalization, let:
-
-```text
-M[g,q] = min(groupCapacity(g), numberOfAvailableNonNullFamilies(q))
-D      = least common multiple of every positive (M[g,q] - 1), or 1 if none
-
-additionalFamilyScore(g,q) =
-  0,                                      when M[g,q] < 2
-  (D / (M[g,q] - 1)) × (familyCount[g,q] - 1), otherwise
-```
-
-Clamp the final factor at zero when no family is represented. Every eligible group-question pair then has the same maximum score `D`; pairs with fewer than two available families contribute no diversity value.
-
-## Lexicographic execution
-
-For each objective, using the remaining global time budget:
-
-1. solve;
-2. if `OPTIMAL`, record and fix the value, then continue;
-3. if `FEASIBLE`, retain the valid assignment, mark solver status feasible, and stop lower-priority optimization;
-4. if no assignment is returned, retain the last valid higher-priority assignment or the deterministic capacity partition.
-
-Never convert `UNKNOWN` or a timeout into an infeasibility claim.
-
-Only an objective solved to `OPTIMAL` is described as proven best. If the time budget stops on a valid `FEASIBLE` result, Junto reports the assignment as the best found within the configured solve limit and preserves every already fixed higher-priority value.
-
-Use:
-
-- stable participant and question ordering;
-- one solver search worker;
-- a fixed seed;
-- symmetry-breaking constraints;
-- a deterministic capacity-respecting initial hint;
-- canonical group labels after solving.
-
-## Derived diagnostics
-
-Store only the partition and solver truth statuses. At read time derive:
-
-- per-group covered and missing units;
-- every eligible carrier for each unit;
-- represented families;
-- full group-question coverage counts;
-- scarcity warnings.
-
-This keeps `analysis_result` and `grouping_result` as the only semantic sources of truth and prevents duplicated diagnostics from drifting.
-
-## Optimizer verification
-
-Automated tests must cover:
-
-- balanced capacity selection;
-- every participant exactly once;
-- exact capacities;
-- full coverage on known-feasible fixtures;
-- proven infeasibility and exact missing units;
-- unknown timeout semantics;
-- lexicographic objective preservation;
-- policy-specific outcomes;
-- null-family and missing-answer behavior;
-- deterministic serialization;
-- randomized supported-size invariants;
-- small cases compared with a brute-force oracle.
+Recorded fixtures prove the implementation contract without network access. They do not measure a live model. Live model
+readiness requires the adjudicated metrics and human evidence review in [evaluation.md](evaluation.md); no live
+evaluation can be claimed without an API key and recorded report.

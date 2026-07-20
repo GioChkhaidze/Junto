@@ -1,6 +1,6 @@
 .group {
   display: flex;
-  width: var(--skeleton-width);
+  width: 100%;
   max-width: 100%;
   flex-direction: column;
   gap: var(--space-2);
@@ -9,7 +9,7 @@
 .line {
   display: block;
   width: 100%;
-  height: var(--skeleton-height);
+  height: 1rem;
   background: var(--surface-pressed);
   border-radius: 4px;
   animation: pulse 1.4s ease-in-out infinite alternate;

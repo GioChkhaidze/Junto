@@ -7,15 +7,15 @@ export type IconName =
   | "check"
   | "chevron-down"
   | "clock"
-  | "close"
   | "copy"
+  | "draft"
   | "file"
   | "info"
+  | "list-plus"
   | "plus"
   | "refresh"
   | "trash"
   | "upload"
-  | "users"
   | "warning";
 
 const paths: Record<IconName, ReactNode> = {
@@ -46,16 +46,17 @@ const paths: Record<IconName, ReactNode> = {
       <path d="M12 7v5l3.2 2" />
     </>
   ),
-  close: (
-    <>
-      <path d="m7 7 10 10" />
-      <path d="M17 7 7 17" />
-    </>
-  ),
   copy: (
     <>
       <rect x="8" y="8" width="10" height="11" rx="1.5" />
       <path d="M16 8V5H6v11h2" />
+    </>
+  ),
+  draft: (
+    <>
+      <path d="m4 20 4.2-1 10.4-10.4-3.2-3.2L5 15.8z" />
+      <path d="m13.8 7 3.2 3.2" />
+      <path d="M4 20h6" />
     </>
   ),
   file: (
@@ -69,6 +70,12 @@ const paths: Record<IconName, ReactNode> = {
       <circle cx="12" cy="12" r="9" />
       <path d="M12 11v6" />
       <path d="M12 7h.01" />
+    </>
+  ),
+  "list-plus": (
+    <>
+      <path d="M4 6h10M4 12h8M4 18h7" />
+      <path d="M18 13v7M14.5 16.5h7" />
     </>
   ),
   plus: (
@@ -98,14 +105,6 @@ const paths: Record<IconName, ReactNode> = {
       <path d="M5 15v5h14v-5" />
     </>
   ),
-  users: (
-    <>
-      <circle cx="9" cy="8" r="3" />
-      <path d="M3.5 19c.4-3.3 2.2-5 5.5-5s5.1 1.7 5.5 5" />
-      <path d="M15 5.5a3 3 0 0 1 0 5.8" />
-      <path d="M16 14c2.7.2 4.2 1.8 4.5 4.5" />
-    </>
-  ),
   warning: (
     <>
       <path d="M12 3 2.8 20h18.4z" />
@@ -115,7 +114,7 @@ const paths: Record<IconName, ReactNode> = {
   ),
 };
 
-export interface IconProps extends Omit<SVGProps<SVGSVGElement>, "children"> {
+interface IconProps extends Omit<SVGProps<SVGSVGElement>, "children"> {
   name: IconName;
   size?: number;
   title?: string;

@@ -1,0 +1,313 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "history-western-roman-collapse",
+  "subject": "history",
+  "questionId": "33333333-3333-4333-8333-333333333333",
+  "questionPrompt": "Which better explains the collapse of Western Roman imperial rule in the fifth century: internal political-fiscal weakness, external military pressure, or an interaction between them? Defend your weighting with evidence and address a limitation.",
+  "referenceMaterial": "Relevant material includes repeated western civil wars, loss of tax revenue, the Gothic crossing in 376, the sack of Rome in 410, Vandal territorial expansion, and the survival of the Eastern Roman Empire under different fiscal, geographic, and administrative conditions.",
+  "coverageUnits": [
+    {
+      "id": "u_internal",
+      "text": "Connects political instability or fiscal weakness to reduced western state capacity"
+    },
+    {
+      "id": "u_external",
+      "text": "Uses specific evidence of migration, invasion, territorial loss, or military pressure"
+    },
+    {
+      "id": "u_interaction",
+      "text": "Explains how internal weakness and external pressure causally interacted or intensified one another"
+    },
+    {
+      "id": "u_east",
+      "text": "Uses the Eastern Empire's survival as comparative evidence"
+    },
+    {
+      "id": "u_limitation",
+      "text": "States a limitation of a single-cause explanation or of the available comparison"
+    }
+  ],
+  "participants": [
+    {
+      "participantId": "33333333-3333-4333-8333-333333333201",
+      "answer": "Internal weakness was primary. Repeated civil wars replaced emperors and diverted tax revenue from frontier defense, so the western state could not reliably pay or coordinate armies. The Rhine crossings and the sack of Rome mattered because that weakened system could not absorb them. The eastern empire faced many of the same migrating groups yet survived with a stronger tax base and bureaucracy, which is a useful comparison. Still, the eastern comparison is imperfect because its geography and threats differed."
+    },
+    {
+      "participantId": "33333333-3333-4333-8333-333333333202",
+      "answer": "The decisive problem was a shrinking western tax base: without dependable revenue, emperors relied on rival generals and short-lived bargains. The 410 sack and Vandal seizures accelerated the collapse, but they struck an already brittle government."
+    },
+    {
+      "participantId": "33333333-3333-4333-8333-333333333203",
+      "answer": "External military pressure was primary. The 376 Gothic crossing, the 410 sack of Rome, and continuing Vandal expansion removed territory and revenue faster than the western army could recover. Civil wars weakened coordination, so invasion and internal disorder reinforced each other. The East's survival shows that invasion alone was not sufficient, although the East also had richer provinces and a more defensible capital. Evidence is uneven, so 'external' remains a weighting of causes rather than a single trigger."
+    },
+    {
+      "participantId": "33333333-3333-4333-8333-333333333204",
+      "answer": "Neither side alone explains the timing. Civil wars reduced revenue and frontier command, while Gothic and Vandal forces captured taxable land; each process intensified the other. The East survived comparable pressure, warning against treating migration as an automatic cause, but different geography limits that comparison."
+    },
+    {
+      "participantId": "33333333-3333-4333-8333-333333333205",
+      "answer": "The eastern empire survived comparable external pressure, so invasion by itself cannot be a sufficient explanation."
+    },
+    {
+      "participantId": "33333333-3333-4333-8333-333333333206",
+      "answer": ""
+    }
+  ],
+  "expectedCoverage": {
+    "assignments": [
+      {
+        "participantId": "33333333-3333-4333-8333-333333333201",
+        "coveredUnitIds": [
+          "u_internal",
+          "u_external",
+          "u_interaction",
+          "u_east",
+          "u_limitation"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_internal",
+            "quotes": [
+              "Repeated civil wars replaced emperors and diverted tax revenue from frontier defense"
+            ]
+          },
+          {
+            "unitId": "u_external",
+            "quotes": [
+              "The Rhine crossings and the sack of Rome"
+            ]
+          },
+          {
+            "unitId": "u_interaction",
+            "quotes": [
+              "mattered because that weakened system could not absorb them"
+            ]
+          },
+          {
+            "unitId": "u_east",
+            "quotes": [
+              "The eastern empire faced many of the same migrating groups yet survived with a stronger tax base and bureaucracy"
+            ]
+          },
+          {
+            "unitId": "u_limitation",
+            "quotes": [
+              "the eastern comparison is imperfect because its geography and threats differed"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "33333333-3333-4333-8333-333333333202",
+        "coveredUnitIds": [
+          "u_internal",
+          "u_external",
+          "u_interaction"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_internal",
+            "quotes": [
+              "without dependable revenue, emperors relied on rival generals and short-lived bargains"
+            ]
+          },
+          {
+            "unitId": "u_external",
+            "quotes": [
+              "The 410 sack and Vandal seizures accelerated the collapse"
+            ]
+          },
+          {
+            "unitId": "u_interaction",
+            "quotes": [
+              "they struck an already brittle government"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "33333333-3333-4333-8333-333333333203",
+        "coveredUnitIds": [
+          "u_internal",
+          "u_external",
+          "u_interaction",
+          "u_east",
+          "u_limitation"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_internal",
+            "quotes": [
+              "Civil wars weakened coordination"
+            ]
+          },
+          {
+            "unitId": "u_external",
+            "quotes": [
+              "The 376 Gothic crossing, the 410 sack of Rome, and continuing Vandal expansion removed territory and revenue"
+            ]
+          },
+          {
+            "unitId": "u_interaction",
+            "quotes": [
+              "invasion and internal disorder reinforced each other"
+            ]
+          },
+          {
+            "unitId": "u_east",
+            "quotes": [
+              "The East's survival shows that invasion alone was not sufficient"
+            ]
+          },
+          {
+            "unitId": "u_limitation",
+            "quotes": [
+              "although the East also had richer provinces and a more defensible capital"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "33333333-3333-4333-8333-333333333204",
+        "coveredUnitIds": [
+          "u_internal",
+          "u_external",
+          "u_interaction",
+          "u_east",
+          "u_limitation"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_internal",
+            "quotes": [
+              "Civil wars reduced revenue and frontier command"
+            ]
+          },
+          {
+            "unitId": "u_external",
+            "quotes": [
+              "Gothic and Vandal forces captured taxable land"
+            ]
+          },
+          {
+            "unitId": "u_interaction",
+            "quotes": [
+              "each process intensified the other"
+            ]
+          },
+          {
+            "unitId": "u_east",
+            "quotes": [
+              "The East survived comparable pressure"
+            ]
+          },
+          {
+            "unitId": "u_limitation",
+            "quotes": [
+              "different geography limits that comparison"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "33333333-3333-4333-8333-333333333205",
+        "coveredUnitIds": [
+          "u_east",
+          "u_limitation"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_east",
+            "quotes": [
+              "The eastern empire survived comparable external pressure"
+            ]
+          },
+          {
+            "unitId": "u_limitation",
+            "quotes": [
+              "invasion by itself cannot be a sufficient explanation"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "expectedFamilies": {
+    "families": [
+      {
+        "label": "Internal-capacity primacy"
+      },
+      {
+        "label": "External-pressure primacy"
+      },
+      {
+        "label": "Interactive multi-causal explanation"
+      }
+    ],
+    "assignments": [
+      {
+        "participantId": "33333333-3333-4333-8333-333333333201",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "33333333-3333-4333-8333-333333333202",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "33333333-3333-4333-8333-333333333203",
+        "familyIndex": 1
+      },
+      {
+        "participantId": "33333333-3333-4333-8333-333333333204",
+        "familyIndex": 2
+      },
+      {
+        "participantId": "33333333-3333-4333-8333-333333333205",
+        "familyIndex": null
+      }
+    ]
+  },
+  "expectedRelationships": {
+    "sameFamily": [
+      {
+        "participantIds": [
+          "33333333-3333-4333-8333-333333333201",
+          "33333333-3333-4333-8333-333333333202"
+        ],
+        "reason": "Both make internal state capacity primary, but p2 omits the comparative and limitation units."
+      }
+    ],
+    "differentFamily": [
+      {
+        "participantIds": [
+          "33333333-3333-4333-8333-333333333201",
+          "33333333-3333-4333-8333-333333333203"
+        ],
+        "reason": "Both cover all five units while assigning primary weight to different causes."
+      },
+      {
+        "participantIds": [
+          "33333333-3333-4333-8333-333333333203",
+          "33333333-3333-4333-8333-333333333204"
+        ],
+        "reason": "Both cover all five units, but one privileges external pressure and the other refuses a primary cause."
+      }
+    ],
+    "nullFamilyWithCoverage": [
+      "33333333-3333-4333-8333-333333333205"
+    ],
+    "emptyAnswerParticipantIds": [
+      "33333333-3333-4333-8333-333333333206"
+    ],
+    "validDisagreement": [
+      {
+        "participantIds": [
+          "33333333-3333-4333-8333-333333333201",
+          "33333333-3333-4333-8333-333333333203",
+          "33333333-3333-4333-8333-333333333204"
+        ],
+        "reason": "The evidence supports distinct defensible weightings; the family labels record causal approaches rather than correctness."
+      }
+    ]
+  }
+}

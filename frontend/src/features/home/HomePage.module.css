@@ -1,69 +1,119 @@
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(22rem, 0.85fr);
-  gap: clamp(3rem, 7vw, 7rem);
+  grid-template-columns: minmax(0, 1.08fr) minmax(27rem, 0.92fr);
+  min-height: calc(100vh - 4.5rem);
+  background: var(--white);
+}
+
+.introduction,
+.entry {
+  display: flex;
   align-items: center;
-  min-height: calc(100vh - 9rem);
+  min-width: 0;
 }
 
 .introduction {
-  padding-block: var(--space-10);
+  color: var(--white);
+  background: var(--green-950);
+}
+
+.introductionInner {
+  width: min(100%, 45rem);
+  padding: clamp(4rem, 8vw, 7.5rem) clamp(2rem, 6vw, 6.5rem);
+  margin-left: auto;
+}
+
+.productLine {
+  margin-bottom: var(--space-5);
+  color: color-mix(in oklch, var(--white) 74%, transparent);
+  font-size: 0.84rem;
+  font-weight: 720;
 }
 
 .introduction h1 {
-  max-width: 13ch;
+  max-width: 12ch;
   margin-bottom: var(--space-6);
-  color: var(--green-950);
-  font-size: 3.35rem;
-  letter-spacing: -0.04em;
+  color: var(--white);
+  font-size: clamp(2.8rem, 5vw, 4.65rem);
+  font-weight: 720;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
 }
 
 .lede {
-  max-width: 60ch;
-  margin-bottom: var(--space-10);
-  color: var(--ink-secondary);
-  font-size: 1.16rem;
+  max-width: 55ch;
+  margin-bottom: var(--space-12);
+  color: color-mix(in oklch, var(--white) 76%, transparent);
+  font-size: 1.05rem;
   line-height: 1.65;
 }
 
 .process {
-  display: flex;
-  gap: var(--space-8);
-  padding-top: var(--space-6);
-  padding-inline-start: 0;
+  display: grid;
+  gap: var(--space-6);
+  max-width: 39rem;
+  padding: var(--space-8) 0 0;
   margin: 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid color-mix(in oklch, var(--white) 22%, transparent);
+  counter-reset: process;
   list-style: none;
 }
 
 .process li {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: var(--space-1);
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr);
+  gap: 0 var(--space-4);
+  align-items: center;
+  counter-increment: process;
+}
+
+.process li::before {
+  display: inline-flex;
+  grid-row: 1 / span 2;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  color: var(--green-950);
+  background: var(--green-100);
+  border-radius: 50%;
+  font-size: 0.8rem;
+  font-weight: 800;
+  content: counter(process);
 }
 
 .process strong {
-  color: var(--green-800);
-  font-size: 0.95rem;
+  color: var(--white);
+  font-size: 0.94rem;
+  font-weight: 720;
 }
 
 .process span {
-  color: var(--ink-secondary);
-  font-size: 0.86rem;
+  color: color-mix(in oklch, var(--white) 65%, transparent);
+  font-size: 0.82rem;
   line-height: 1.45;
 }
 
 .entry {
-  padding: var(--space-8);
   background: var(--white);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-panel);
 }
 
-.entry > h2 {
-  margin-bottom: var(--space-8);
-  font-size: 1.35rem;
+.entryInner {
+  width: min(100%, 35rem);
+  padding: clamp(4rem, 8vw, 7.5rem) clamp(2rem, 6vw, 6.5rem);
+}
+
+.entryIntro {
+  margin-bottom: var(--space-2);
+  color: var(--green-800);
+  font-size: 0.82rem;
+  font-weight: 720;
+}
+
+.entry h2 {
+  margin-bottom: var(--space-10);
+  font-size: clamp(2rem, 3vw, 2.75rem);
+  letter-spacing: -0.045em;
 }
 
 .hostAction {
@@ -89,11 +139,13 @@
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
   min-height: 2.75rem;
   padding: 0.65rem 1rem;
   color: var(--white);
   background: var(--green-800);
+  border: 1px solid var(--green-800);
   border-radius: var(--radius-control);
   font-size: 0.9rem;
   font-weight: 700;
@@ -104,15 +156,16 @@
 .primaryLink:hover {
   color: var(--white);
   background: var(--green-950);
+  border-color: var(--green-950);
 }
 
 .rule {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin: var(--space-8) 0 var(--space-6);
+  margin: var(--space-10) 0 var(--space-8);
   color: var(--ink-muted);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
 }
 
 .rule::before,
@@ -128,7 +181,7 @@
   margin-bottom: var(--space-2);
   color: var(--ink);
   font-size: 0.875rem;
-  font-weight: 650;
+  font-weight: 680;
 }
 
 .joinRow {
@@ -139,62 +192,83 @@
 .joinRow > :first-child {
   min-width: 0;
   flex: 1;
-  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.hint {
-  margin: var(--space-2) 0 0;
+.hint,
+.accountNote {
   color: var(--ink-muted);
   font-size: 0.78rem;
 }
 
-@media (max-width: 900px) {
-  .layout {
-    grid-template-columns: 1fr;
-    gap: var(--space-4);
-    align-items: start;
-  }
-
-  .introduction {
-    padding-block: var(--space-6);
-  }
-
-  .introduction h1 {
-    max-width: 16ch;
-    font-size: 2.55rem;
-  }
-
-  .entry {
-    max-width: 42rem;
-  }
+.hint {
+  margin: var(--space-2) 0 0;
 }
 
-@media (max-width: 560px) {
+.accountNote {
+  padding-top: var(--space-6);
+  margin: var(--space-8) 0 0;
+  border-top: 1px solid var(--line);
+}
+
+@media (max-width: 940px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .introductionInner,
+  .entryInner {
+    width: 100%;
+    padding: var(--space-16) clamp(var(--space-6), 8vw, var(--space-16));
+    margin: 0;
+  }
+
   .introduction h1 {
-    font-size: 2.15rem;
+    max-width: 15ch;
+    font-size: clamp(2.65rem, 8vw, 4.25rem);
   }
 
   .process {
-    flex-direction: column;
-    gap: var(--space-4);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: none;
   }
 
-  .entry {
-    padding: var(--space-6) var(--space-5);
+  .process li {
+    grid-template-columns: 2.4rem minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 620px) {
+  .introductionInner,
+  .entryInner {
+    padding: var(--space-12) var(--space-5);
   }
 
-  .hostAction {
+  .introduction h1 {
+    font-size: 2.7rem;
+  }
+
+  .lede {
+    margin-bottom: var(--space-10);
+  }
+
+  .process {
+    grid-template-columns: 1fr;
+  }
+
+  .entry h2 {
+    margin-bottom: var(--space-8);
+  }
+
+  .hostAction,
+  .joinRow {
     align-items: stretch;
     flex-direction: column;
   }
 
   .primaryLink {
-    justify-content: center;
-  }
-
-  .joinRow {
-    align-items: stretch;
-    flex-direction: column;
+    width: 100%;
   }
 }

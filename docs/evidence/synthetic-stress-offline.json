@@ -1,0 +1,186 @@
+{
+  "challengeSuite": {
+    "answerCount": 240,
+    "answersOverLimit": 0,
+    "caseTagCounts": {
+      "correlation_causation": 10,
+      "coverage_fragment": 40,
+      "duplicate_answer": 5,
+      "empty_answer": 5,
+      "long_answer": 4,
+      "multilingual": 10,
+      "negation": 19,
+      "null_family_candidate": 40,
+      "paraphrase": 14,
+      "plausible_error": 53,
+      "prompt_injection": 5,
+      "reverse_conditional": 5,
+      "substantive_answer": 137
+    },
+    "errorTendencyCounts": {
+      "answer_adjacent_question": 2,
+      "confuse_correlation": 2,
+      "formula_slip": 2,
+      "miss_exception": 3,
+      "none": 6,
+      "overgeneralize": 3,
+      "reverse_causality": 2
+    },
+    "knowledgeLevelCounts": {
+      "advanced": 5,
+      "developing": 5,
+      "novice": 5,
+      "proficient": 5
+    },
+    "maximumAnswerCharacters": 1454,
+    "missingRequiredCaseTags": [],
+    "nonemptyAnswerCount": 235,
+    "participationStyleCounts": {
+      "complete": 12,
+      "selective": 5,
+      "sparse": 3
+    },
+    "personaCount": 20,
+    "providerCalls": 0,
+    "questionTypes": [
+      "causal-explanation",
+      "causal-mechanism",
+      "design-tradeoff",
+      "evidence-critique",
+      "interpretive-argument",
+      "mechanism-and-limitation",
+      "multi-causal-explanation",
+      "normative-argument",
+      "policy-tradeoff",
+      "proof",
+      "quantitative-interpretation",
+      "threat-model"
+    ],
+    "scenarioCount": 12,
+    "scoreType": "structural-only",
+    "subjectCount": 12,
+    "subjects": [
+      "biology",
+      "chemistry",
+      "economics",
+      "history",
+      "literature",
+      "mathematics",
+      "media-literacy",
+      "philosophy",
+      "physics",
+      "product-design",
+      "software-security",
+      "statistics"
+    ],
+    "uniqueAnswerTemplateCount": 49,
+    "uniqueDisplayNameCount": 20,
+    "uniquePersonaIdCount": 20
+  },
+  "checks": [
+    {
+      "id": "at-least-ten-subjects",
+      "status": "pass"
+    },
+    {
+      "id": "twenty-distinct-personas",
+      "status": "pass"
+    },
+    {
+      "id": "required-adversarial-cases",
+      "status": "pass"
+    },
+    {
+      "id": "answer-character-limit",
+      "status": "pass"
+    },
+    {
+      "id": "scale-payload-limit",
+      "status": "pass"
+    },
+    {
+      "id": "compiler-question-limit-exercised",
+      "status": "pass"
+    },
+    {
+      "id": "zero-provider-calls",
+      "status": "pass"
+    }
+  ],
+  "generatedAt": "2026-07-20T10:21:28.954098+00:00",
+  "goldSuite": {
+    "evaluatedByThisSuite": false,
+    "fixtureCount": 4,
+    "labelSource": "separately reviewed fixture labels",
+    "nonemptyAnswerCount": 20,
+    "note": "Use evaluate_semantic.py for gold accuracy evaluation.",
+    "participantCount": 24,
+    "relationshipCaseCounts": {
+      "differentFamily": 6,
+      "emptyAnswerParticipantIds": 4,
+      "nullFamilyWithCoverage": 4,
+      "sameFamily": 5,
+      "validDisagreement": 3
+    },
+    "subjects": [
+      "design",
+      "history",
+      "philosophy",
+      "programming"
+    ]
+  },
+  "interpretation": "A pass establishes fixture diversity and structural safety at the tested sizes. It does not establish model classification accuracy or learning impact.",
+  "mode": "offline",
+  "overallStatus": "pass",
+  "scaleSuite": {
+    "caseCount": 4,
+    "cases": [
+      {
+        "answerSlots": 5,
+        "caseId": "small-room",
+        "participantCount": 5,
+        "questionCount": 1,
+        "uniqueParticipantIds": 5,
+        "utf8InputBytes": 2829,
+        "withinCompilerInputLimit": true
+      },
+      {
+        "answerSlots": 40,
+        "caseId": "typical-room",
+        "participantCount": 10,
+        "questionCount": 4,
+        "uniqueParticipantIds": 10,
+        "utf8InputBytes": 12452,
+        "withinCompilerInputLimit": true
+      },
+      {
+        "answerSlots": 160,
+        "caseId": "full-demo-room",
+        "participantCount": 20,
+        "questionCount": 8,
+        "uniqueParticipantIds": 20,
+        "utf8InputBytes": 42556,
+        "withinCompilerInputLimit": true
+      },
+      {
+        "answerSlots": 160,
+        "caseId": "alternate-full-room",
+        "participantCount": 20,
+        "questionCount": 8,
+        "uniqueParticipantIds": 20,
+        "utf8InputBytes": 42556,
+        "withinCompilerInputLimit": true
+      }
+    ],
+    "compilerInputLimitBytes": 240000,
+    "maximumParticipantCount": 20,
+    "maximumQuestionCount": 8,
+    "maximumUtf8InputBytes": 42556,
+    "payloadsOverCompilerLimit": 0,
+    "providerCalls": 0,
+    "totalAnswerSlots": 365
+  },
+  "schemaVersion": "1",
+  "semanticAccuracyClaim": "none",
+  "suiteId": "synthetic-classroom-stress-v1"
+}

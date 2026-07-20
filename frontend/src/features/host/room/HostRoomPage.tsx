@@ -1,25 +1,36 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../../../api";
-import { AppShell } from "../../../components/layout";
-import {
-  Button,
-  EmptyState,
-  Icon,
-  InlineNotice,
-  LoadingSkeleton,
-} from "../../../components/ui";
-import type { HostGroupsResponse, HostRoom } from "../../../domain";
+import { AppShell, ContentActions, ContentStack } from "../../../components/layout";
+import { Button, EmptyState, Icon, InlineNotice, LoadingSkeleton } from "../../../components/ui";
+import type {
+  HostGroupsResponse,
+  HostRoom,
+  SyntheticClassroomProjection,
+  SyntheticResponseSource,
+} from "../../../domain";
 import { useCountdown } from "../../../hooks/useCountdown";
 import { useDocumentTitle } from "../../../hooks/useDocumentTitle";
 import { usePolling } from "../../../hooks/usePolling";
 import { copyText, formatCountdown, formatDuration } from "../../../lib/format";
+import { SyntheticClassroomSection } from "../simulation/SyntheticClassroomSection";
 import styles from "./HostRoomPage.module.css";
 
 interface HostLocationState {
   newlyCreated?: boolean;
   setupError?: string;
 }
+
+const optimizerAnalysisBody =
+  "The optimizer is assigning every participant once, respecting group sizes, and preserving the strongest " +
+  "coverage it can prove.";
+const interpretationAnalysisBody =
+  "Junto is checking each answer against the approved coverage units and identifying approaches in a separate pass.";
+const feasibleSolverMessage =
+  "This is the best valid partition found within the configured solve limit; optimality was not proved for " +
+  "every objective.";
+const fallbackSolverMessage =
+  "The semantic optimizer returned no partition in time, so Junto published its deterministic capacity-valid fallback.";
 
 function readableError(error: unknown): string {
   if (error instanceof ApiError && error.status === 404) {
@@ -29,14 +40,6 @@ function readableError(error: unknown): string {
   return "Junto couldn’t load the room.";
 }
 
-function hasFeasibleGroupCount(participantCount: number, minimum: number, maximum: number): boolean {
-  if (participantCount < minimum) return false;
-  for (let groups = 1; groups <= participantCount; groups += 1) {
-    if (groups * minimum <= participantCount && participantCount <= groups * maximum) return true;
-  }
-  return false;
-}
-
 export function HostRoomPage() {
   const { roomId = "" } = useParams<{ roomId: string }>();
   const location = useLocation();
@@ -44,6 +47,7 @@ export function HostRoomPage() {
   const locationState = (location.state ?? {}) as HostLocationState;
   const [room, setRoom] = useState<HostRoom | null>(null);
   const [groups, setGroups] = useState<HostGroupsResponse | null>(null);
+  const [syntheticClassroom, setSyntheticClassroom] = useState<SyntheticClassroomProjection | null>(null);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +61,18 @@ export function HostRoomPage() {
       const next = await api.getRoom(roomId);
       setRoom(next);
       setError(null);
+      if (next.status === "lobby" || next.status === "answering") {
+        try {
+          setSyntheticClassroom(await api.getSyntheticClassroom(roomId));
+        } catch (reason) {
+          setSyntheticClassroom(null);
+          if (!(reason instanceof ApiError && reason.status === 404)) {
+            setError(readableError(reason));
+          }
+        }
+      } else {
+        setSyntheticClassroom(null);
+      }
       if (next.status === "published") {
         try {
           setGroups(await api.getGroups(roomId));
@@ -111,22 +127,28 @@ export function HostRoomPage() {
 
   if (loading) {
     return (
-      <AppShell wide>
-        <LoadingSkeleton count={8} />
+      <AppShell variant="host">
+        <div className={styles.roomColumn}>
+          <LoadingSkeleton count={8} />
+        </div>
       </AppShell>
     );
   }
 
   if (!room) {
     return (
-      <AppShell>
-        <h1>Room unavailable</h1>
-        <InlineNotice tone="error" title="Junto couldn’t open this room">
-          {error ?? "The host link may be incomplete or no longer available."}
-        </InlineNotice>
-        <Button variant="secondary" onClick={() => navigate("/")}>
-          Return home
-        </Button>
+      <AppShell variant="host">
+        <ContentStack className={styles.roomColumn}>
+          <h1>Room unavailable</h1>
+          <InlineNotice tone="error" title="Junto couldn’t open this room">
+            {error ?? "The host link may be incomplete or no longer available."}
+          </InlineNotice>
+          <ContentActions>
+            <Button variant="secondary" onClick={() => navigate("/")}>
+              Return home
+            </Button>
+          </ContentActions>
+        </ContentStack>
       </AppShell>
     );
   }
@@ -134,7 +156,7 @@ export function HostRoomPage() {
   return (
     <AppShell
       context={room.title}
-      wide
+      variant="host"
       actions={
         <RoomState status={room.status}>
           {room.status === "answering" && remaining !== null
@@ -149,54 +171,83 @@ export function HostRoomPage() {
         </RoomState>
       }
     >
-      {error ? (
-        <InlineNotice tone="error" title="Action needed">
-          {error}
-        </InlineNotice>
-      ) : null}
-      {setupWarning ? (
-        <InlineNotice tone="warning" title="Draft needs review">
-          {setupWarning}
-        </InlineNotice>
-      ) : null}
+      <ContentStack>
+        {error ? (
+          <InlineNotice tone="error" title="Action needed">
+            {error}
+          </InlineNotice>
+        ) : null}
+        {setupWarning ? (
+          <InlineNotice tone="warning" title="Draft needs review">
+            {setupWarning}
+          </InlineNotice>
+        ) : null}
 
-      {room.status === "draft" ? (
-        <DraftRoom room={room} working={working} onOpen={() => void run(() => api.openRoom(roomId))} />
-      ) : null}
+        {room.status === "draft" ? (
+          <DraftRoom room={room} working={working} onOpen={() => void run(() => api.openRoom(roomId))} />
+        ) : null}
 
-      {room.status === "lobby" ? (
-        <Lobby
-          room={room}
-          inviteUrl={inviteUrl}
-          copied={copied}
-          working={working}
-          onCopy={copy}
-          onStart={() => void run(() => api.startActivity(roomId))}
-          onRemove={(participantId) => void run(() => api.removeParticipant(roomId, participantId))}
-        />
-      ) : null}
+        {room.status === "lobby" ? (
+          <Lobby
+            room={room}
+            inviteUrl={inviteUrl}
+            copied={copied}
+            working={working}
+            onCopy={copy}
+            onStart={() => void run(() => api.startActivity(roomId))}
+            onRemove={(participantId) => void run(() => api.removeParticipant(roomId, participantId))}
+            syntheticClassroom={syntheticClassroom}
+            onConfigureSynthetic={(targetSize) =>
+              run(async () => {
+                setSyntheticClassroom(await api.configureSyntheticCohort(roomId, { targetSize }));
+              })
+            }
+          />
+        ) : null}
 
-      {room.status === "answering" ? (
-        <CollectionView
-          room={room}
-          remaining={remaining}
-          working={working}
-          onEnd={() => void run(() => api.startAnalysis(roomId))}
-        />
-      ) : null}
+        {room.status === "answering" ? (
+          <CollectionView
+            room={room}
+            remaining={remaining}
+            working={working}
+            onEnd={() => void run(() => api.startAnalysis(roomId))}
+            syntheticClassroom={syntheticClassroom}
+            onGenerateSynthetic={(source) =>
+              run(async () => {
+                const result = await api.generateSyntheticResponses(roomId, { source });
+                setSyntheticClassroom(result.simulation);
+              })
+            }
+          />
+        ) : null}
 
-      {room.status === "analyzing" ? <AnalysisView /> : null}
+        {room.status === "analyzing" ? <AnalysisView mode={room.analysisMode} phase={room.analysisPhase} /> : null}
 
-      {room.status === "published" ? <AllGroupsView room={room} result={groups} /> : null}
+        {room.status === "published" ? <AllGroupsView room={room} result={groups} /> : null}
 
-      {room.status === "failed" ? (
-        <EmptyState
-          icon={<Icon name="alert-circle" size={28} />}
-          title="Group formation stopped"
-          description={room.lastError ?? "Junto couldn’t complete this run. The room’s submitted answers are unchanged."}
-          action={<Button variant="secondary" onClick={() => void loadRoom()}>Check status</Button>}
-        />
-      ) : null}
+        {room.status === "failed" ? (
+          <div className={styles.roomColumn}>
+            <EmptyState
+              icon={<Icon name="alert-circle" size={28} />}
+              title="Group formation stopped"
+              description={
+                room.lastError ?? "Junto couldn’t complete this run. The room’s submitted answers are unchanged."
+              }
+              action={
+                room.allowedActions.includes("retryAnalysis") ? (
+                  <Button loading={working} onClick={() => void run(() => api.retryAnalysis(roomId))}>
+                    Retry group formation
+                  </Button>
+                ) : (
+                  <Button variant="secondary" onClick={() => void loadRoom()}>
+                    Check status
+                  </Button>
+                )
+              }
+            />
+          </div>
+        ) : null}
+      </ContentStack>
     </AppShell>
   );
 }
@@ -224,15 +275,7 @@ function RoomState({ children, status }: { children: string; status: HostRoom["s
   );
 }
 
-function DraftRoom({
-  room,
-  working,
-  onOpen,
-}: {
-  room: HostRoom;
-  working: boolean;
-  onOpen: () => void;
-}) {
+function DraftRoom({ room, working, onOpen }: { room: HostRoom; working: boolean; onOpen: () => void }) {
   return (
     <div className={styles.roomColumn}>
       <header className={styles.pageHeader}>
@@ -246,14 +289,25 @@ function DraftRoom({
         </Button>
       </header>
       <dl className={styles.definitionList} aria-label="Activity setup">
-        <div><dt>Questions</dt><dd>{room.questions.length}</dd></div>
-        <div><dt>Response time</dt><dd>{formatDuration(room.durationMinutes ?? 20)}</dd></div>
-        <div><dt>Reference files</dt><dd>{room.materials.length}</dd></div>
+        <div>
+          <dt>Questions</dt>
+          <dd>{room.questions.length}</dd>
+        </div>
+        <div>
+          <dt>Response time</dt>
+          <dd>{formatDuration(room.durationMinutes)}</dd>
+        </div>
+        <div>
+          <dt>Reference files</dt>
+          <dd>{room.materials.length}</dd>
+        </div>
       </dl>
       <section className={styles.questionPreview}>
         <h2>Questions</h2>
         <ol>
-          {room.questions.map((question) => <li key={question.id}>{question.prompt}</li>)}
+          {room.questions.map((question) => (
+            <li key={question.id}>{question.prompt}</li>
+          ))}
         </ol>
       </section>
     </div>
@@ -268,6 +322,8 @@ function Lobby({
   onCopy,
   onStart,
   onRemove,
+  syntheticClassroom,
+  onConfigureSynthetic,
 }: {
   room: HostRoom;
   inviteUrl: string;
@@ -276,14 +332,10 @@ function Lobby({
   onCopy: (value: string, type: "code" | "link") => void;
   onStart: () => void;
   onRemove: (participantId: string) => void;
+  syntheticClassroom: SyntheticClassroomProjection | null;
+  onConfigureSynthetic: (targetSize: number) => Promise<void>;
 }) {
-  const minimum = room.groupSize.minimum;
-  const feasibleCapacity = hasFeasibleGroupCount(
-    room.progress.participantCount,
-    room.groupSize.minimum,
-    room.groupSize.maximum,
-  );
-  const canStart = feasibleCapacity && room.allowedActions.includes("startActivity");
+  const canStart = room.startEligibility.eligible && room.allowedActions.includes("startActivity");
   return (
     <div className={styles.roomColumn}>
       <header className={styles.pageHeader}>
@@ -325,24 +377,33 @@ function Lobby({
         <section className={styles.startSection} aria-labelledby="start-title">
           <h2 id="start-title">Start when the room is ready</h2>
           <dl>
-            <div><dt>Joined</dt><dd>{room.progress.participantCount}</dd></div>
-            <div><dt>Response window</dt><dd>{formatDuration(room.durationMinutes ?? 20)}</dd></div>
-            <div><dt>Questions</dt><dd>{room.questions.length}</dd></div>
+            <div>
+              <dt>Joined</dt>
+              <dd>{room.progress.participantCount}</dd>
+            </div>
+            <div>
+              <dt>Response window</dt>
+              <dd>{formatDuration(room.durationMinutes)}</dd>
+            </div>
+            <div>
+              <dt>Questions</dt>
+              <dd>{room.questions.length}</dd>
+            </div>
           </dl>
           <Button fullWidth loading={working} onClick={onStart} disabled={!canStart}>
             Start activity
           </Button>
-          {room.progress.participantCount < minimum ? (
-            <p>At least {minimum} participants must join before the activity can start.</p>
-          ) : !feasibleCapacity ? (
-            <p>
-              {room.progress.participantCount} participants can’t be divided into groups of {room.groupSize.minimum}–{room.groupSize.maximum}. Wait for another participant or remove one.
-            </p>
-          ) : (
-            <p>Starting freezes the participant list and begins everyone’s shared timer.</p>
-          )}
+          <p>{room.startEligibility.message}</p>
         </section>
       </div>
+
+      {syntheticClassroom ? (
+        <SyntheticClassroomSection
+          projection={syntheticClassroom}
+          working={working}
+          onConfigure={onConfigureSynthetic}
+        />
+      ) : null}
 
       <ParticipantRoster room={room} canRemove onRemove={onRemove} />
     </div>
@@ -354,11 +415,15 @@ function CollectionView({
   remaining,
   working,
   onEnd,
+  syntheticClassroom,
+  onGenerateSynthetic,
 }: {
   room: HostRoom;
   remaining: number | null;
   working: boolean;
   onEnd: () => void;
+  syntheticClassroom: SyntheticClassroomProjection | null;
+  onGenerateSynthetic: (source: SyntheticResponseSource) => Promise<void>;
 }) {
   const [confirmEnd, setConfirmEnd] = useState(false);
   const total = room.progress.possibleResponseCount;
@@ -382,13 +447,19 @@ function CollectionView({
       <section className={styles.responseProgress} aria-labelledby="response-progress-title">
         <div>
           <h2 id="response-progress-title">Response progress</h2>
-          <span>{answered} of {total} question responses saved</span>
+          <span>
+            {answered} of {total} question responses saved
+          </span>
         </div>
         <strong>{percent}%</strong>
         <div className={styles.progressTrack} aria-hidden="true">
           <span style={{ width: `${percent}%` }} />
         </div>
       </section>
+
+      {syntheticClassroom ? (
+        <SyntheticClassroomSection projection={syntheticClassroom} working={working} onGenerate={onGenerateSynthetic} />
+      ) : null}
 
       {room.allowedActions.includes("startAnalysis") ? (
         <section className={styles.endResponses} aria-labelledby="end-responses-title">
@@ -397,8 +468,8 @@ function CollectionView({
               <div>
                 <h2 id="end-responses-title">End responses now?</h2>
                 <p>
-                  Participants will be unable to make further changes. Junto will use every answer
-                  saved so far and begin preparing groups immediately.
+                  Participants will be unable to make further changes. Junto will use every answer saved so far and
+                  begin preparing groups immediately.
                 </p>
               </div>
               <div className={styles.endResponseActions}>
@@ -475,45 +546,205 @@ function ParticipantRoster({
   );
 }
 
-function AnalysisView() {
+function AnalysisView({ mode, phase }: { mode: HostRoom["analysisMode"]; phase: HostRoom["analysisPhase"] }) {
+  const coverageCopy =
+    phase === "forming_groups"
+      ? {
+          title: "Forming coverage-aware groups",
+          body: optimizerAnalysisBody,
+          note: "Coverage is fixed before the selected Teach or Explore policy is used as a tie-breaker.",
+        }
+      : {
+          title: "Interpreting the response set",
+          body: interpretationAnalysisBody,
+          note: "An approach never grants coverage that an individual answer did not support.",
+        };
+  const copy =
+    mode === "coverage_aware"
+      ? coverageCopy
+      : {
+          title: "Preparing groups",
+          body: "Junto is balancing the frozen participant roster into valid group sizes.",
+          note: "This room uses deterministic capacity grouping and does not interpret response meaning.",
+        };
   return (
     <div className={styles.analysisView}>
       <p>Group preparation</p>
-      <h1>Preparing groups</h1>
-      <span>Junto is balancing the frozen participant roster into valid group sizes.</span>
-      <div className={styles.analysisRule} aria-hidden="true"><span /></div>
-      <p className={styles.analysisNote}>
-        This build uses deterministic placeholder grouping. Semantic analysis and optimization are intentionally not implemented yet.
-      </p>
+      <h1>{copy.title}</h1>
+      <span>{copy.body}</span>
+      <div className={styles.analysisRule} aria-hidden="true">
+        <span />
+      </div>
+      <p className={styles.analysisNote}>{copy.note}</p>
     </div>
   );
 }
 
 function AllGroupsView({ room, result }: { room: HostRoom; result: HostGroupsResponse | null }) {
   if (!result) return <LoadingSkeleton count={7} label="Loading group rosters" />;
+  if (result.generationMode === "placeholder") {
+    return (
+      <div className={styles.groupsView}>
+        <header className={styles.pageHeader}>
+          <div>
+            <p>Room results</p>
+            <h1>Discussion groups</h1>
+            <span>
+              {result.groups.length} {result.groups.length === 1 ? "group" : "groups"} formed from{" "}
+              {room.progress.participantCount} {room.progress.participantCount === 1 ? "participant" : "participants"}.
+            </span>
+          </div>
+        </header>
+
+        <ContentStack>
+          <InlineNotice tone="info" title="Capacity grouping">
+            This room used stable roster order and valid group sizes. Responses were not interpreted.
+          </InlineNotice>
+          <div className={styles.groupList}>
+            {result.groups.map((group, index) => (
+              <section key={group.id} aria-labelledby={`group-${group.id}`}>
+                <div className={styles.groupTitleRow}>
+                  <h2 id={`group-${group.id}`}>Group {index + 1}</h2>
+                  <span>{group.members.length} members</span>
+                </div>
+                <ol>
+                  {group.members.map((member) => (
+                    <li key={member.participantId}>{member.displayName}</li>
+                  ))}
+                </ol>
+              </section>
+            ))}
+          </div>
+        </ContentStack>
+      </div>
+    );
+  }
+
+  const complete = result.coverageReport.fullyCoveredGroupQuestions;
+  const total = result.coverageReport.totalGroupQuestions;
+  const solverMessage =
+    result.solver.status === "optimal"
+      ? "The solver proved every listed objective before moving to the next priority."
+      : result.solver.status === "feasible"
+        ? feasibleSolverMessage
+        : fallbackSolverMessage;
+  const feasibilityMessage =
+    result.solver.completeCoverageStatus === "feasible"
+      ? "A complete-coverage partition was found."
+      : result.solver.completeCoverageStatus === "infeasible"
+        ? "The solver proved that complete coverage is impossible for this cohort and these group sizes."
+        : "Complete-coverage feasibility was not resolved within the solve limit.";
+
   return (
     <div className={styles.groupsView}>
       <header className={styles.pageHeader}>
         <div>
           <p>Room results</p>
-          <h1>Discussion groups</h1>
+          <h1>Coverage-aware groups</h1>
           <span>
-            {result.groups.length} {result.groups.length === 1 ? "group" : "groups"} formed from{" "}
-            {room.progress.participantCount} {room.progress.participantCount === 1 ? "participant" : "participants"}.
+            {complete} of {total} group-question discussions include every approved coverage unit.
           </span>
         </div>
       </header>
 
-      <div className={styles.groupList}>
+      <section className={styles.resultSummary} aria-labelledby="result-summary-title">
+        <h2 id="result-summary-title">What this result guarantees</h2>
+        <p>
+          {feasibilityMessage} {solverMessage}
+        </p>
+        <dl>
+          <div>
+            <dt>Coverage achieved</dt>
+            <dd>
+              {complete} / {total}
+            </dd>
+          </div>
+          <div>
+            <dt>Groups</dt>
+            <dd>{result.groups.length}</dd>
+          </div>
+          <div>
+            <dt>Grouping policy</dt>
+            <dd>{result.policy === "teach" ? "Teach each other" : "Explore approaches"}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <div className={styles.coverageGroupList}>
         {result.groups.map((group, index) => (
-          <section key={group.id} aria-labelledby={`group-${group.id}`}>
+          <section className={styles.coverageGroup} key={group.id} aria-labelledby={`group-${group.id}`}>
             <div className={styles.groupTitleRow}>
               <h2 id={`group-${group.id}`}>Group {index + 1}</h2>
               <span>{group.members.length} members</span>
             </div>
-            <ol>
-              {group.members.map((member) => <li key={member.participantId}>{member.displayName}</li>)}
-            </ol>
+            <ul className={styles.groupMembers} aria-label={`Group ${index + 1} members`}>
+              {group.members.map((member) => (
+                <li key={member.participantId}>{member.displayName}</li>
+              ))}
+            </ul>
+            <div className={styles.questionResults}>
+              {group.questions.map((question) => {
+                const unitById = new Map(question.units.map((unit) => [unit.id, unit.text]));
+                return (
+                  <section key={question.questionId} aria-labelledby={`${group.id}-${question.questionId}`}>
+                    <div className={styles.questionResultHeading}>
+                      <div>
+                        <span>Question {question.position + 1}</span>
+                        <h3 id={`${group.id}-${question.questionId}`}>{question.prompt}</h3>
+                      </div>
+                      <strong>{question.fullyCovered ? "Complete coverage" : "Coverage gap"}</strong>
+                    </div>
+                    <ul className={styles.coverageRows}>
+                      {question.units.map((unit) => (
+                        <li key={unit.id} data-covered={unit.covered}>
+                          <span aria-hidden="true">{unit.covered ? "✓" : "—"}</span>
+                          <div>
+                            <strong>{unit.text}</strong>
+                            <span>
+                              {unit.carriers.length
+                                ? `Supported by ${unit.carriers.map((carrier) => carrier.displayName).join(", ")}`
+                                : "No submitted answer clearly supported this unit"}
+                            </span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                    {question.representedFamilies.length ? (
+                      <div className={styles.familySummary}>
+                        <h4>Approaches represented</h4>
+                        <dl>
+                          {question.representedFamilies.map((family) => (
+                            <div key={family.id}>
+                              <dt>{family.label}</dt>
+                              <dd>{family.members.map((member) => member.displayName).join(", ")}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </div>
+                    ) : null}
+                    <details className={styles.responseAudit}>
+                      <summary>Review answer classifications</summary>
+                      <div>
+                        {(question.responseAudit ?? []).map((response) => (
+                          <article key={response.participant.participantId}>
+                            <header>
+                              <strong>{response.participant.displayName}</strong>
+                              <span>{response.family?.label ?? "No clear approach family"}</span>
+                            </header>
+                            <p>
+                              {response.coveredUnitIds.length
+                                ? `Coverage: ${response.coveredUnitIds.map((id) => unitById.get(id) ?? id).join("; ")}`
+                                : "No approved coverage unit was supported."}
+                            </p>
+                            <blockquote>{response.answer ?? "No answer submitted."}</blockquote>
+                          </article>
+                        ))}
+                      </div>
+                    </details>
+                  </section>
+                );
+              })}
+            </div>
           </section>
         ))}
       </div>

@@ -1,29 +1,128 @@
 .joinPage {
-  max-width: 34rem;
+  min-height: calc(100vh - 4.5rem);
+  background: var(--white);
+}
+
+.joinPage > [aria-label="Loading invitation"],
+.joinPage > h1,
+.joinPage > :global([role="alert"]),
+.joinPage > button {
+  width: min(calc(100% - 3rem), 38rem);
   margin-inline: auto;
 }
 
+.joinPage > [aria-label="Loading invitation"] {
+  padding-top: var(--space-16);
+}
+
+.joinPage > h1 {
+  padding-top: var(--space-16);
+}
+
+.joinPage > button {
+  display: flex;
+  margin-top: var(--space-6);
+}
+
+.joinLayout {
+  display: grid;
+  grid-template-columns: minmax(24rem, 0.92fr) minmax(30rem, 1.08fr);
+  min-height: calc(100vh - 4.5rem);
+}
+
+.header,
+.joinPanel {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(3rem, 7vw, 7rem);
+}
+
 .header {
-  padding-bottom: var(--space-8);
+  color: var(--white);
+  background: var(--green-950);
+}
+
+.header > div,
+.activityFacts {
+  width: min(100%, 36rem);
+  margin-left: auto;
+}
+
+.inviteLine {
+  margin-bottom: var(--space-4);
+  color: color-mix(in oklch, var(--white) 68%, transparent);
+  font-size: 0.84rem;
+  font-weight: 720;
+}
+
+.header h1 {
+  max-width: 13ch;
+  margin-bottom: var(--space-5);
+  color: var(--white);
+  font-size: clamp(2.65rem, 5vw, 4.25rem);
+  font-weight: 720;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.header > div > p:last-child {
+  max-width: 49ch;
+  margin: 0;
+  color: color-mix(in oklch, var(--white) 72%, transparent);
+}
+
+.activityFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  padding-top: var(--space-8);
+  margin-top: var(--space-10);
+  margin-bottom: 0;
+  border-top: 1px solid color-mix(in oklch, var(--white) 22%, transparent);
+}
+
+.activityFacts dt {
+  color: color-mix(in oklch, var(--white) 56%, transparent);
+  font-size: 0.76rem;
+  font-weight: 680;
+}
+
+.activityFacts dd {
+  margin: var(--space-1) 0 0;
+  color: var(--white);
+  font-size: 1.05rem;
+  font-weight: 720;
+}
+
+.joinPanel {
+  align-items: flex-start;
+  background: var(--white);
+}
+
+.joinPanel > * {
+  width: min(100%, 31rem);
+}
+
+.formHeading {
+  padding-bottom: var(--space-6);
   margin-bottom: var(--space-8);
   border-bottom: 1px solid var(--line);
 }
 
-.inviteLine {
-  margin-bottom: var(--space-2);
+.formHeading p {
+  margin-bottom: var(--space-1);
   color: var(--green-800);
-  font-size: 0.9rem;
-  font-weight: 700;
+  font-size: 0.8rem;
+  font-weight: 720;
 }
 
-.header h1 {
-  margin-bottom: var(--space-3);
-  font-size: 2.1rem;
-  overflow-wrap: anywhere;
-}
-
-.header p:last-child {
+.formHeading h2 {
   margin: 0;
+  font-size: 2rem;
+  letter-spacing: -0.04em;
 }
 
 .form {
@@ -33,27 +132,66 @@
 }
 
 .disclosure {
-  padding: var(--space-4);
-  background: var(--surface-subtle);
-  border-radius: var(--radius-control);
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
 .disclosure p {
   margin: 0;
-  color: var(--ink-secondary);
-  font-size: 0.8rem;
-  line-height: 1.5;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
 }
 
 .codeLine {
-  margin-top: var(--space-8);
+  padding-top: var(--space-5);
+  margin: var(--space-8) 0 0;
+  border-top: 1px solid var(--line);
   color: var(--ink-muted);
-  font-size: 0.8rem;
-  text-align: center;
+  font-size: 0.78rem;
 }
 
 .codeLine strong {
   margin-left: var(--space-1);
-  color: var(--ink-secondary);
-  letter-spacing: 0.08em;
+  color: var(--green-900);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.1em;
+}
+
+@media (max-width: 860px) {
+  .joinLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .header,
+  .joinPanel {
+    padding: var(--space-16) clamp(var(--space-6), 8vw, var(--space-16));
+  }
+
+  .header > div,
+  .activityFacts,
+  .joinPanel > * {
+    width: 100%;
+    margin-inline: 0;
+  }
+
+  .header h1 {
+    max-width: 17ch;
+  }
+}
+
+@media (max-width: 520px) {
+  .header,
+  .joinPanel {
+    padding: var(--space-12) var(--space-5);
+  }
+
+  .header h1 {
+    font-size: 2.55rem;
+  }
+
+  .activityFacts {
+    gap: var(--space-4);
+  }
 }

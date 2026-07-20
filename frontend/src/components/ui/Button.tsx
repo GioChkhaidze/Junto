@@ -1,16 +1,18 @@
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import styles from "./Button.module.css";
 
-export type ButtonVariant = "primary" | "secondary" | "quiet" | "danger";
-export type ButtonSize = "default" | "compact";
+type ButtonVariant = "primary" | "secondary" | "quiet" | "danger";
+type ButtonSize = "default" | "compact";
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;
   loadingLabel?: string;
   leadingIcon?: ReactNode;
+  trailingIcon?: ReactNode;
   fullWidth?: boolean;
+  iconOnly?: boolean;
 }
 
 function classNames(...values: Array<string | false | undefined>): string {
@@ -23,10 +25,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     className,
     disabled,
     fullWidth = false,
+    iconOnly = false,
     leadingIcon,
     loading = false,
     loadingLabel = "Working",
     size = "default",
+    trailingIcon,
     type = "button",
     variant = "primary",
     ...props
@@ -45,6 +49,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         styles[variant],
         styles[size],
         fullWidth && styles.fullWidth,
+        iconOnly && styles.iconOnly,
         className,
       )}
     >
@@ -55,7 +60,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
           {leadingIcon}
         </span>
       ) : null}
-      <span>{children}</span>
+      <span className={iconOnly ? styles.visuallyHidden : undefined}>{children}</span>
+      {!loading && trailingIcon ? (
+        <span className={styles.icon} aria-hidden="true">
+          {trailingIcon}
+        </span>
+      ) : null}
       {loading ? <span className={styles.visuallyHidden}>{loadingLabel}</span> : null}
     </button>
   );

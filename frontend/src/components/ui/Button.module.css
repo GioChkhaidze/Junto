@@ -92,6 +92,11 @@
   width: 100%;
 }
 
+.iconOnly {
+  width: 2.75rem;
+  padding-inline: 0;
+}
+
 .icon,
 .spinner {
   flex: 0 0 auto;

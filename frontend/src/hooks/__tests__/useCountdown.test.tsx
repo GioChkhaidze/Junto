@@ -29,13 +29,7 @@ describe("useCountdown", () => {
   });
 
   it("uses server time to avoid relying on the participant's local clock", () => {
-    const { result } = renderHook(() =>
-      useCountdown(
-        "2026-07-18T08:01:00.000Z",
-        "2026-07-18T08:00:00.000Z",
-        null,
-      ),
-    );
+    const { result } = renderHook(() => useCountdown("2026-07-18T08:01:00.000Z", "2026-07-18T08:00:00.000Z", null));
 
     expect(result.current).toBe(60);
   });

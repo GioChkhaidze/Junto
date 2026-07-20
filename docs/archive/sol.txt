@@ -1,1 +1,0 @@
-Junto is the classroom discussion orchestration and learning-optimization layer.

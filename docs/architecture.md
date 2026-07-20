@@ -1,211 +1,254 @@
 # Architecture
 
-## Goal
+## System boundary
 
-The first slice favors one understandable web application, explicit module boundaries, and a complete room workflow. It avoids accounts, browser-to-database access, realtime infrastructure, durable jobs, and premature service separation.
-
-This document distinguishes the code that exists now from the adapters planned for the coverage-aware product.
-
-## Implemented system
+Junto is one browser application, one FastAPI application process, one PostgreSQL database, one configured semantic
+provider, and an in-process OR-Tools optimizer. It deliberately avoids accounts, browser-to-database access, WebSockets,
+a queue, and a second backend runtime.
 
 ```text
 Browser
-  - React + TypeScript
-  - Vite and Tailwind CSS
-  - feature pages and reusable UI components
-  - typed fetch client
-  - ordinary forms and short polling
-          |
-          v
+  React + TypeScript + Vite + CSS Modules
+  feature pages, typed fetch client, ordinary polling
+                    |
+                    v
 FastAPI application
-  - JSON routes and Pydantic schemas
-  - signed room-session access and CSRF checks
-  - room workflow service
-  - reference text extraction
-  - in-process deadline scheduler
-  - deterministic grouping placeholder
-          |
-          v
-RoomRepository protocol
-          |
-          v
-Thread-safe in-memory implementation
+  Pydantic HTTP contracts
+  signed room capabilities + CSRF
+  room workflow + bounded reference extraction
+  semantic compiler -> coverage-first CP-SAT
+       |                              |
+       v                              v
+PostgreSQL                    OpenAI Responses API
+six relational tables        two independent structured calls/question
++ two room-local JSON artifacts
 ```
 
-The current repository has no external database, model call, optimizer process, queue, WebSocket server, or second backend runtime.
+`placeholder`, `recorded`, `openrouter`, and `openai` are explicit engine modes. The latter three use the real
+optimizer; `placeholder` is a labelled capacity-only development adapter. OpenRouter uses a server-owned pinned model
+pool and is development-only. Production still refuses to start without PostgreSQL and the live OpenAI mode.
 
-## Planned replacements
-
-The important behaviors sit behind narrow seams:
-
-```text
-RoomRepository        InMemoryRoomRepository -> PostgreSQL repository
-GroupingService       placeholder            -> semantic compiler + CP-SAT optimizer
-ReferenceTextExtractor default implementation remains replaceable for testing
-Scheduler             thread timer           -> durable scheduling only if required
-```
-
-PostgreSQL, the OpenAI API, and OR-Tools are the target stack, but none is currently wired into the runtime. Adding them should replace adapters rather than change browser routes or room behavior unnecessarily.
-
-## Frontend structure
+## Frontend
 
 ```text
 frontend/src/
-  api/                 same-origin HTTP and room endpoint functions
-  domain/              TypeScript DTOs and room/activity types
+  api/                 same-origin HTTP client and room endpoints
+  domain/              TypeScript wire and UI types
   components/
-    layout/            application shell
-    system/            error boundary
+    layout/            shared page shell
+    system/            error and application boundaries
     ui/                reusable controls and state components
   features/
-    home/              entry page
-    host/create/       sequential room authoring
+    home/              create-or-join entry
+    host/create/       material-first authoring sequence
     host/room/         lobby, progress, analysis, and all groups
-    participant/join/  code and display-name entry
-    participant/room/  waiting, questionnaire, review, and own group
-  hooks/               countdown, polling, connectivity, and document title
-  styles/              design tokens and global rules
+    participant/join/  invite disclosure and display-name entry
+    participant/room/  waiting, questionnaire, review, and own agenda
+  hooks/               countdown, polling, connectivity, document title
+  styles/              tokens and global rules
 ```
 
-Feature pages coordinate API calls and page state. `api/` owns transport details, `domain/` owns shared TypeScript shapes, and reusable components do not perform room requests. Backend Pydantic models remain the wire authority; the hand-maintained TypeScript DTOs mirror them and are checked by the frontend build. OpenAPI type generation is a future hardening step.
+Feature pages coordinate page state and API calls. `api/` owns transport, `domain/` owns shared shapes, and reusable UI
+components do not reach into room endpoints. Backend Pydantic schemas are the wire authority; TypeScript mirrors them
+and the frontend build catches drift.
 
 Browser routes are:
 
-| Route | Purpose |
-|---|---|
-| `/` | Create-or-join entry |
-| `/create` | Host authoring sequence |
-| `/host/:roomId` | Host lobby and room lifecycle |
-| `/join/:joinCode` | Participant name entry |
-| `/room/:roomId` | Participant waiting, answers, and own group |
+| Route             | Purpose                                        |
+| ----------------- | ---------------------------------------------- |
+| `/`               | Create-or-join entry                           |
+| `/create`         | Host authoring flow                            |
+| `/host/:roomId`   | Host room lifecycle and all-group result       |
+| `/join/:joinCode` | Participant disclosure and name entry          |
+| `/room/:roomId`   | Participant questionnaire and own-group agenda |
 
-The UI follows [DESIGN.md](../DESIGN.md). CSS modules keep feature styling local; Tailwind supplies the build integration and utilities where useful. Shared colors, spacing, typography, focus, and motion rules live in the style layer.
+The UI follows [DESIGN.md](../DESIGN.md): a white academic canvas, restrained green for state and action, conventional
+controls, ruled lists, clear hierarchy, and no decorative AI styling. CSS Modules localize feature rules without a
+utility-framework build layer.
 
-## Backend structure
+## Backend
 
 ```text
 backend/junto/
-  api/           HTTP translation, schemas, and role-specific presenters
-  access/        signed-session grants and CSRF verification
-  services/      room use cases, reference extraction, and scheduling
-  domain/        entities, errors, capacity logic, and grouping interface
-  repositories/  repository protocol and current memory adapter
-  config.py      bounded runtime settings
-  main.py        dependency assembly and application shell
+  api/           routes, Pydantic schemas, role-specific presenters
+  access/        session grants, CSRF, origins, limits, headers, telemetry
+  services/      room use cases, authoring assistance, analysis orchestration, scheduling, extraction
+  domain/        room entities, workflow errors, capacity seam
+  engine/        provider adapter, prompts, compiler, artifacts, optimizer
+  repositories/  repository protocol, memory adapter, PostgreSQL adapter
+  persistence/   SQLAlchemy models, mappers, engine/session construction
+  config.py      validated environment configuration
+  main.py        dependency assembly and SPA serving
 ```
 
-Dependency direction is inward:
+Dependency direction stays inward:
 
-- routes translate HTTP into application calls and never own workflow rules;
-- services coordinate state transitions through the repository protocol;
-- domain code has no FastAPI, browser, or storage dependency;
-- presenters expose only the projection allowed for the caller;
-- `main.py` chooses concrete adapters.
+- routes translate HTTP and enforce grants; they do not own workflow rules;
+- services coordinate state transitions through `RoomRepository`;
+- engine modules accept typed inputs and do not depend on FastAPI;
+- presenters derive only the projection allowed for the caller;
+- persistence mappers translate the room aggregate without leaking ORM records inward;
+- `main.py` chooses adapters from explicit settings.
 
-This arrangement lets tests inject a clock, scheduler, repository, extractor, or grouping implementation without running a server or calling an external system.
+Tests can inject a clock, scheduler, repository, extractor, provider, optimizer, or complete analysis pipeline.
+
+Development may also compose a synthetic-classroom service beside the room workflow. It replaces only the simulated
+lobby roster in one transaction and later commits an entire generated answer matrix in one answering transaction. The
+local patterned provider is network-free. The OpenRouter provider batches students, validates exact identifiers, denies
+provider data collection, and uses only the configured pinned model pool. Neither path changes the persistence model.
 
 ## Runtime paths
 
-### Draft authoring
+### Authoring and collection
 
 ```text
-React authoring page
-  -> typed API function
-  -> FastAPI route + host grant + CSRF check
+React form
+  -> typed API call
+  -> route + room grant + CSRF
   -> RoomService
-  -> RoomRepository transaction
+  -> row-locked repository transaction
 ```
 
-Material upload adds one real extraction step before storing the room aggregate:
+Material uploads are bounded before Starlette can spool an unbounded multipart body. The extractor also bounds raw
+bytes, PDF page count, DOCX expanded archive size, and extracted characters before saving metadata and normalized text.
+Original file bytes are discarded.
+
+AI-assisted authoring is deliberately outside the room aggregate because it can run before a room exists:
 
 ```text
-multipart file
-  -> request-body middleware bound before multipart spooling
-  -> 5 MiB bounded file read
-  -> PDF page / DOCX expanded-size guard
-  -> extension-specific TXT/MD/PDF/DOCX parser
-  -> normalized readable text
-  -> attachment metadata + extracted text in the room aggregate
+uploaded file or pasted reference + complete browser draft
+  -> multipart POST /api/authoring/suggestions + CSRF
+  -> bounded extraction when a file is supplied
+  -> AuthoringService
+  -> OpenAI Responses API structured output (store=false, no tools)
+  -> apply only the requested question or coverage target in browser state
+  -> host review and ordinary room creation
 ```
 
-The original file bytes are not retained by the current repository. Uploaded metadata and extracted text disappear with every other room value on process restart.
+The request is session-scoped, per-source rate-limited, and never grants room access. It contains the activity title,
+the selected target/index, every current prompt and coverage-unit row, and extracted or pasted reference text. It
+contains no room, participant, answer, invite-code, grouping, or solver data. Suggestions are transient and do not write
+to the repository; persistence begins only when the host creates the activity through the normal room endpoints.
 
-### Timed collection
+Opening the lobby freezes authoring. Starting validates a feasible capacity partition, freezes ordered cohort IDs,
+records UTC `startedAt` and `deadlineAt`, and schedules the deadline callback. Browser countdowns derive from
+`serverTime`, `deadlineAt`, and `remainingSeconds`; the server remains authoritative.
 
-Starting from `lobby` validates capacity, freezes cohort IDs, records UTC `startedAt` and `deadlineAt`, and schedules an in-process deadline callback. Browser countdowns use `serverTime`, `deadlineAt`, and `remainingSeconds`; client clocks are display helpers, not authority.
+Answer navigation performs an ordinary `PUT` and waits for a receipt. Small role-specific views are polled while state
+is non-terminal. There is no collaborative document, presence channel, or realtime protocol.
 
-Answer navigation performs an ordinary `PUT` and waits for its receipt. Polling retrieves small role-specific status projections. There is no shared document, presence channel, chat, WebSocket, or database-change subscription.
+### Coverage-aware analysis
 
-### Analysis placeholder
+Collection is claimed once by all submissions, deadline, or host action:
 
-Collection is claimed once by one of three triggers:
-
-- every frozen participant submitted;
-- the server deadline became due;
-- the host ended collection early.
-
-The room moves to `analyzing`. An in-process scheduler advances two descriptive phases and calls `GroupingService`. The default implementation ignores questions and answers, calculates feasible balanced capacities, partitions stable join order, commits the complete result, and moves directly to `published`.
-
-The default stage delay is zero. The UI must not invent progress percentages, provider activity, or optimizer work. If grouping raises an exception, the room becomes `failed` with a sanitized message.
-
-## State and transaction model
-
-The memory repository stores a complete `Room` aggregate and protects copies with one re-entrant lock. Its transaction context copies the aggregate, applies a service operation, then replaces the stored value. This is sufficient for deterministic local tests and single-process prototype behavior.
-
-It is not durable and cannot coordinate multiple processes. The next persistence adapter must preserve the same service-level atomic boundaries with PostgreSQL transactions and row locking, especially:
-
-- start and cohort freeze;
-- answer save versus deadline/analysis claim;
-- single final submission;
-- analysis result commit and publication.
-
-Until that adapter exists, run one FastAPI process and treat every restart as deleting all rooms.
-
-## Room-scoped access
-
-FastAPI uses Starlette's signed session cookie. The cookie contains a CSRF secret and bounded grants similar to:
-
-```json
-{
-  "nonce": "opaque-browser-session-value",
-  "csrf": "opaque-random-value",
-  "grants": [
-    {
-      "roomId": "room-uuid",
-      "host": true,
-      "participantId": "participant-uuid"
-    }
-  ]
-}
+```text
+frozen room aggregate
+  -> build one input batch per question
+  -> coverage classification ----------+
+  -> independent family clustering ----+-> validate and merge by participant ID
+  -> immutable SemanticArtifact
+  -> CoverageFirstOptimizer
+  -> immutable GroupingArtifact
+  -> atomic artifact storage + published state
 ```
 
-The browser-session nonce makes joining one room idempotent even when the browser repeats a request. The cookie is signed, not encrypted, so it contains identifiers only: never names, answers, material, join codes, or group content. Mutations require the matching `X-CSRF-Token`. Missing grants return caller-safe not-found responses so UUID knowledge alone grants nothing.
+The coverage call receives the prompt, relevant reference text, approved units, opaque participant IDs, and non-empty
+answers. The family call receives only the prompt, opaque IDs, and answers. It cannot see units, references, or coverage
+results. Display names, join codes, cookies, group sizes, and tentative groups are not sent to either call.
 
-Development generates a random process-local signing secret and uses non-secure cookies on localhost. `JUNTO_ENV=production` requires a supplied secret of at least 32 characters and enables secure cookies by default; startup fails if the secret is missing or weak. HTTPS remains a deployment requirement. This capability model is convenient and accountless but is not cross-device recovery.
+The OpenAI adapter uses the Responses API with Pydantic Structured Outputs, `store=false`, no tools, explicit request
+timeouts, no SDK retries, and one compiler-owned transient retry. Coverage and family outputs each receive one bounded
+repair opportunity after schema or domain failure. A process-wide limiter bounds provider concurrency.
 
-## Data exposure
+All-empty questions skip provider calls and receive explicit empty assignments. Evidence quotes are validated as literal
+substrings in memory, then discarded; the stored semantic artifact contains only family and covered-unit IDs.
 
-- Host projections include draft questions, coverage units, material metadata, roster, progress, and all published groups.
-- Participant projections include public room timing, prompts, that participant's answers and submission state, then only that participant's published group.
-- Participants do not receive extracted reference text, coverage units, other answers, all-group enumeration, or host errors.
-- Model-provider data handling does not yet exist because there is no provider integration.
+The CP-SAT optimizer interprets no prose. It fixes balanced capacities, tests complete-coverage feasibility, optimizes
+normalized coverage lexicographically, then applies Teach or Explore objectives. It always retains a deterministic
+capacity-valid fallback and distinguishes proven infeasibility from unknown/time-limited search.
 
-## Development and built serving
+Only a complete artifact pair is published. A failed attempt clears both artifacts, stores a sanitized failure, and
+allows a bounded retry against the same frozen cohort and saved responses.
 
-During development, Vite runs on port `5173` and proxies `/api` to Uvicorn on port `8000`.
+### Placeholder and recorded modes
 
-For a built application, `npm run build` writes `frontend/dist`. FastAPI serves its assets and returns `index.html` for browser routes. API paths are excluded from the SPA fallback so unknown API requests remain JSON `404` responses.
+- `placeholder` skips the semantic pipeline and partitions stable join order into valid balanced groups. Its wire result
+  says `generationMode: "placeholder"` and contains no coverage or solver claims.
+- `recorded` resolves reviewed semantic fixture outputs without network access, passes the resulting validated artifact
+  to the real optimizer, and publishes the normal coverage-aware projection.
+- `openai` uses the live provider adapter and otherwise follows the same compiler, optimizer, persistence, and
+  presentation paths.
+- `openrouter` uses strict JSON-schema Chat Completions, denies provider data collection, and uses a server-owned pinned
+  model pool; it is development-only.
 
-Node.js is not needed at runtime once assets are built. The current repository does not yet include a production database, migrations, container deployment, backup strategy, rate limiting, or operational recovery.
+## Persistence
 
-## Scaling and durability triggers
+The product model has four core collaboration records: room, question, participant, and response. PostgreSQL uses six
+normalized tables because coverage-unit ordering and extracted reference material have their own constraints and
+lifecycle:
+
+| Table                 | Purpose                                                                   |
+| --------------------- | ------------------------------------------------------------------------- |
+| `rooms`               | workflow, timing, policy, group bounds, analysis metadata, JSON artifacts |
+| `questions`           | ordered prompts and optional question-specific reference text             |
+| `coverage_units`      | ordered host-approved units scoped to a question                          |
+| `reference_materials` | upload metadata and extracted text; no source bytes                       |
+| `participants`        | room-local name, browser-session nonce, cohort position, submission time  |
+| `responses`           | sparse participant-question answer rows                                   |
+
+`analysis_result` and `grouping_result` are versioned JSONB columns on `rooms`. They are generated together, consumed
+together, and replaced together, so normalizing response families, assignments, groups, or diagnostics would add
+synchronization cost without serving a current cross-room query. Host and participant diagnostics are derived at read
+time from the artifact pair.
+
+There are no user, teacher, profile, OAuth, job, analysis-version, group-member, or unit-explainer tables.
+
+Every mutation locks the parent room row with `SELECT ... FOR UPDATE`, hydrates the aggregate, applies one service
+operation, then commits the room and children together. This serializes cohort freeze, answer/deadline races, final
+submission, analysis claims, and publication. Database constraints enforce join-code uniqueness, room-scoped foreign
+keys, valid state values, sparse non-empty responses, ordering, and cascades.
+
+Alembic owns schema changes and is run as a separate release operation. Readiness probes PostgreSQL without calling the
+model or solver. Development may omit the database URL and use the thread-safe memory adapter; production cannot.
+
+## Access and privacy
+
+Starlette signs one HTTP-only, SameSite=Lax room-session cookie. It contains a random browser nonce, CSRF value, and a
+bounded list of room IDs with host and/or participant grants. It contains no names, answers, material, join codes, or
+group content. The cookie is signed, not encrypted.
+
+All mutations require the matching `X-CSRF-Token`. A browser-session nonce plus a database uniqueness constraint makes
+repeated joins to the same room idempotent. Missing room grants return caller-safe not-found responses. Trusted-origin
+middleware rejects foreign browser mutations; production requires explicit HTTPS origins and secure cookies.
+
+Public invite lookup exposes only title, duration, question count, lobby state, and analysis mode. Host projections
+include authoring data, roster, progress, all groups, and the coverage audit. Participant projections include their own
+identity, prompts, their own answers, and only their published group. Extracted reference text has no public API field.
+
+Synthetic answer generation receives only the title, participant-visible prompts, opaque participant IDs, and synthetic
+behavioral profiles. It never receives coverage units, question reference material, or uploaded extracted text. Its
+endpoints are host-scoped, CSRF-protected, and disabled in production.
+
+Request telemetry replaces UUIDs and invite codes with route templates and excludes bodies, cookies, model inputs, and
+database values. One-process sliding-window limits cover anonymous room creation, authoring suggestions, joining, and
+analysis/retry. These controls are suitable for the documented demo boundary, not a general anti-abuse service.
+
+## Process and deployment model
+
+The production image builds the SPA in a Node stage, installs a pinned Python runtime closure, then runs FastAPI as a
+non-root user without Node. FastAPI serves `frontend/dist` and returns `index.html` for browser routes while unknown
+`/api` paths remain JSON 404 responses.
+
+Analysis and deadline callbacks run inside the one FastAPI process. PostgreSQL preserves rooms, deadlines, answers, and
+published artifacts across restarts; startup maintenance marks stale `analyzing` rooms as `failed` and deletes expired
+rooms. In-flight provider execution itself is not durable, so the start script enforces one web worker and the host
+retry is the recovery path.
 
 Add infrastructure only for a demonstrated requirement:
 
-- PostgreSQL is required before rooms must survive restarts or multiple app processes.
-- A durable queue is required before interrupted analyses need retries across deployments.
-- Server-sent events or WebSockets are justified only if status polling becomes material.
-- Accounts are justified only when people need saved history or cross-device room recovery.
-- Normalized semantic tables are justified only when cross-room reporting needs them.
+- a durable queue/worker before horizontal web workers or guaranteed in-flight analysis recovery;
+- SSE or WebSockets only if classroom polling becomes material;
+- accounts only for saved cross-device history;
+- normalized semantic tables only for real cross-room analytics.
 
-The intended architecture remains one frontend, one FastAPI application, one PostgreSQL database, one model provider, and one optimizer library.
+Operational configuration, migrations, retention, recovery, and release checks are in [operations.md](operations.md).

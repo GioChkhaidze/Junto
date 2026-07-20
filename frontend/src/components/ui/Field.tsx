@@ -1,10 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useId,
-  type AriaAttributes,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useId, type AriaAttributes, type ReactNode } from "react";
 import styles from "./Field.module.css";
 
 interface FieldContextValue {
@@ -16,7 +10,7 @@ interface FieldContextValue {
 
 const FieldContext = createContext<FieldContextValue | null>(null);
 
-export interface FieldProps {
+interface FieldProps {
   children: ReactNode;
   label: ReactNode;
   hint?: ReactNode;
@@ -26,7 +20,7 @@ export interface FieldProps {
   className?: string;
 }
 
-export interface FieldControlOptions {
+interface FieldControlOptions {
   id?: string;
   describedBy?: string;
   invalid?: AriaAttributes["aria-invalid"];
@@ -60,15 +54,7 @@ export function useFieldControl(options: FieldControlOptions): ResolvedFieldCont
   };
 }
 
-export function Field({
-  children,
-  className,
-  controlId,
-  error,
-  hint,
-  label,
-  required = false,
-}: FieldProps) {
+export function Field({ children, className, controlId, error, hint, label, required = false }: FieldProps) {
   const generatedId = useId();
   const resolvedControlId = controlId ?? `field-${generatedId}`;
   const hintId = hint ? `${resolvedControlId}-hint` : undefined;
@@ -76,14 +62,7 @@ export function Field({
   const describedBy = joinIds(hintId, errorId);
 
   return (
-    <FieldContext.Provider
-      value={{
-        controlId: resolvedControlId,
-        describedBy,
-        invalid: Boolean(error),
-        required,
-      }}
-    >
+    <FieldContext.Provider value={{ controlId: resolvedControlId, describedBy, invalid: Boolean(error), required }}>
       <div className={[styles.field, className].filter(Boolean).join(" ")}>
         <label className={styles.label} htmlFor={resolvedControlId}>
           <span>{label}</span>

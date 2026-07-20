@@ -3,7 +3,7 @@ import { useFieldControl } from "./Field";
 import { Icon } from "./Icon";
 import styles from "./Field.module.css";
 
-export type SelectProps = SelectHTMLAttributes<HTMLSelectElement>;
+type SelectProps = SelectHTMLAttributes<HTMLSelectElement>;
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select(
   { "aria-describedby": describedBy, "aria-invalid": invalid, className, id, required, ...props },
@@ -20,12 +20,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         required={field.required}
         aria-describedby={field.describedBy}
         aria-invalid={field.invalid}
-        className={[
-          styles.control,
-          styles.select,
-          field.isInvalid && styles.controlInvalid,
-          className,
-        ]
+        className={[styles.control, styles.select, field.isInvalid && styles.controlInvalid, className]
           .filter(Boolean)
           .join(" ")}
       />

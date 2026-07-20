@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { AppShell } from "../layout";
+import { AppShell, ContentActions, ContentStack } from "../layout";
 import { Button, InlineNotice } from "../ui";
 
 interface Props {
@@ -25,16 +25,18 @@ export class AppErrorBoundary extends Component<Props, State> {
     if (!this.state.error) return this.props.children;
     return (
       <AppShell>
-        <h1>Junto couldn’t open this page</h1>
-        <InlineNotice tone="error" title="Something went wrong">
-          Refresh the page and try again. Your saved room and responses are kept on the server.
-        </InlineNotice>
-        <div style={{ display: "flex", gap: "0.75rem", marginTop: "1.5rem" }}>
-          <Button onClick={() => window.location.reload()}>Refresh page</Button>
-          <Button variant="secondary" onClick={() => window.location.assign("/")}>
-            Return home
-          </Button>
-        </div>
+        <ContentStack>
+          <h1>Junto couldn’t open this page</h1>
+          <InlineNotice tone="error" title="Something went wrong">
+            Refresh the page and try again. Your saved room and responses are kept on the server.
+          </InlineNotice>
+          <ContentActions>
+            <Button onClick={() => window.location.reload()}>Refresh page</Button>
+            <Button variant="secondary" onClick={() => window.location.assign("/")}>
+              Return home
+            </Button>
+          </ContentActions>
+        </ContentStack>
       </AppShell>
     );
   }

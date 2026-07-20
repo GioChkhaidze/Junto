@@ -1,18 +1,14 @@
-import type {
-  ActivityTiming,
-  AnalysisPhase,
-  EntityId,
-  GroupingPolicy,
-  GroupSize,
-  IsoDateTime,
-  RoomAction,
-  RoomStatus,
-} from "./common";
+import type { AnalysisPhase, EntityId, GroupingPolicy, GroupSize, IsoDateTime, RoomAction, RoomStatus } from "./common";
 
-export interface SessionDto {
-  csrfToken: string;
-  hostRoomIds: EntityId[];
-  participantRoomIds: EntityId[];
+export type AnalysisMode = "placeholder" | "coverage_aware";
+
+interface RoomTiming {
+  durationMinutes: number;
+  serverTime: IsoDateTime;
+  startedAt: IsoDateTime | null;
+  deadlineAt: IsoDateTime | null;
+  remainingSeconds: number | null;
+  activityStarted: boolean;
 }
 
 export interface CoverageUnit {
@@ -70,7 +66,13 @@ export interface ParticipantSummary {
   submittedAt: IsoDateTime | null;
 }
 
-export interface HostRoom extends ActivityTiming {
+export interface StartEligibility {
+  eligible: boolean;
+  reasonCode: "room_not_in_lobby" | "minimum_participants" | "group_size_infeasible" | null;
+  message: string;
+}
+
+export interface HostRoom extends RoomTiming {
   id: EntityId;
   joinCode: string;
   title: string;
@@ -80,10 +82,12 @@ export interface HostRoom extends ActivityTiming {
   questions: HostQuestion[];
   materials: ReferenceAttachment[];
   progress: RoomProgress;
+  startEligibility: StartEligibility;
   allowedActions: RoomAction[];
   lastError: string | null;
   participants: ParticipantSummary[];
   analysisPhase: AnalysisPhase;
+  analysisMode: AnalysisMode;
 }
 
 export interface CreateRoomRequest {
@@ -106,15 +110,12 @@ export interface UpdateRoomRequest {
   durationMinutes?: number;
 }
 
-export type OpenRoomResponse = HostRoom;
-
-export type StartActivityResponse = HostRoom;
-
 export interface PublicJoinRoom {
   title: string;
   status: "lobby";
   durationMinutes: number;
   questionCount: number;
+  analysisMode: AnalysisMode;
 }
 
 export interface JoinRoomRequest {
@@ -127,15 +128,11 @@ export interface JoinRoomResponse {
   displayName: string;
 }
 
-export interface ParticipantRoom extends ActivityTiming {
+export interface ParticipantRoom extends RoomTiming {
   roomId: EntityId;
   title: string;
   status: RoomStatus;
-  participant: {
-    participantId: EntityId;
-    displayName: string;
-    submittedAt: IsoDateTime | null;
-  };
+  participant: { participantId: EntityId; displayName: string; submittedAt: IsoDateTime | null };
   questions: ParticipantQuestion[];
   answeredQuestionCount: number;
   questionCount: number;
@@ -143,13 +140,13 @@ export interface ParticipantRoom extends ActivityTiming {
   submittedAt: IsoDateTime | null;
   submitted: boolean;
   analysisPhase: AnalysisPhase;
+  analysisMode: AnalysisMode;
 }
 
 export interface SaveAnswerRequest {
   text: string;
 }
 
-/** Older servers return 204; the prototype may return this receipt. */
 export interface SaveAnswerReceipt {
   questionId: EntityId;
   text: string;
@@ -157,7 +154,7 @@ export interface SaveAnswerReceipt {
   answeredQuestionCount: number;
 }
 
-export interface SubmitResponsesResponse extends ActivityTiming {
+export interface SubmitResponsesResponse {
   status: RoomStatus;
   submittedAt: IsoDateTime;
   answeredQuestionCount: number;
@@ -165,9 +162,10 @@ export interface SubmitResponsesResponse extends ActivityTiming {
   analysisStarted: boolean;
 }
 
-export interface RoomStatusProjection extends ActivityTiming {
+export interface RoomStatusProjection extends RoomTiming {
   status: RoomStatus;
   allowedActions: RoomAction[];
+  startEligibility?: StartEligibility;
   participantCount?: number;
   submittedResponseCount?: number;
   answeredResponseCount?: number;
@@ -178,6 +176,7 @@ export interface RoomStatusProjection extends ActivityTiming {
   submittedAt?: IsoDateTime | null;
   submitted?: boolean;
   analysisPhase: AnalysisPhase;
+  analysisMode: AnalysisMode;
 }
 
 export interface StartAnalysisResponse {
@@ -187,4 +186,24 @@ export interface StartAnalysisResponse {
 
 export interface ReferenceMaterialUploadResponse {
   material: ReferenceAttachment;
+}
+
+export type AuthoringSuggestionTarget = "question" | "coverage";
+
+export interface AuthoringQuestionDraft {
+  prompt: string;
+  coverageUnits: string[];
+}
+
+export interface AuthoringSuggestionRequest {
+  activityTitle: string;
+  target: AuthoringSuggestionTarget;
+  targetQuestionIndex: number;
+  questions: AuthoringQuestionDraft[];
+  referenceText?: string;
+}
+
+export interface AuthoringSuggestionResponse {
+  questionPrompt: string;
+  coverageUnits: string[];
 }

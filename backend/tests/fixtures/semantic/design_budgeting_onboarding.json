@@ -1,0 +1,333 @@
+{
+  "schemaVersion": 1,
+  "fixtureId": "design-privacy-budgeting-onboarding",
+  "subject": "design",
+  "questionId": "44444444-4444-4444-8444-444444444444",
+  "questionPrompt": "Design onboarding for a privacy-conscious budgeting app. Should the default be automatic bank connection, manual setup, or a staged hybrid? Make a recommendation and explain the important tradeoffs.",
+  "referenceMaterial": "Research participants want useful feedback quickly but hesitate to share financial data before they trust the product. Automatic import reduces typing and keeps balances fresh. Manual setup offers control but can increase effort, error, and drop-off. The app must never collect bank credentials directly.",
+  "coverageUnits": [
+    {
+      "id": "u_need",
+      "text": "Connects the onboarding choice to users' need for both privacy control and early value"
+    },
+    {
+      "id": "u_auto",
+      "text": "Explains a concrete benefit of automatic bank import"
+    },
+    {
+      "id": "u_manual",
+      "text": "Explains a concrete benefit of manual or no-connection setup"
+    },
+    {
+      "id": "u_tradeoff",
+      "text": "Compares setup friction or data completeness against access and consent costs"
+    },
+    {
+      "id": "u_risk",
+      "text": "Addresses a specific security, trust, permission, or revocation risk"
+    },
+    {
+      "id": "u_validation",
+      "text": "Proposes an evaluation that measures more than initial onboarding completion"
+    }
+  ],
+  "participants": [
+    {
+      "participantId": "44444444-4444-4444-8444-444444444201",
+      "answer": "Use a staged hybrid. Start with a manual sample budget so privacy-conscious users get immediate value without sharing financial data, then offer bank connection after the benefit is clear. Automatic import reduces typing and keeps balances current; manual entry preserves control and avoids broad account access. The tradeoff is extra setup friction versus faster, more complete data. Explain read-only permissions, never request bank credentials directly, and let users revoke access. Test manual-first and connection-first variants using completion, day-seven retention, and connection opt-in rather than completion alone."
+    },
+    {
+      "participantId": "44444444-4444-4444-8444-444444444202",
+      "answer": "Use progressive disclosure: let people explore with sample transactions, then invite a read-only bank link. This delays the trust decision, while automatic import later keeps transactions current."
+    },
+    {
+      "participantId": "44444444-4444-4444-8444-444444444203",
+      "answer": "Default to manual setup. Privacy-sensitive users need visible control before convenience, yet they still need a quick path to a useful budget. Bank connection would reduce typing and improve transaction freshness, while manual entry limits financial-data exposure and makes consent explicit. This choice accepts more setup effort in exchange for lower access risk. Offer an optional read-only connection only after onboarding, never collect credentials, and compare both defaults on completion and seven-day retained use."
+    },
+    {
+      "participantId": "44444444-4444-4444-8444-444444444204",
+      "answer": "Default to automatic bank connection because imported transactions show useful categories immediately, while still offering manual setup for people who value control over convenience. Automatic setup lowers typing but asks for sensitive access sooner; manual setup limits exposure but may increase errors and abandonment. Use a trusted read-only provider, explain scopes before consent, and allow revocation. An A/B test should compare activation and day-seven retention, segmented by users who decline connection."
+    },
+    {
+      "participantId": "44444444-4444-4444-8444-444444444205",
+      "answer": "Do not ask users to type banking credentials into the app; use a revocable read-only connection if they opt in."
+    },
+    {
+      "participantId": "44444444-4444-4444-8444-444444444206",
+      "answer": ""
+    }
+  ],
+  "expectedCoverage": {
+    "assignments": [
+      {
+        "participantId": "44444444-4444-4444-8444-444444444201",
+        "coveredUnitIds": [
+          "u_need",
+          "u_auto",
+          "u_manual",
+          "u_tradeoff",
+          "u_risk",
+          "u_validation"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_need",
+            "quotes": [
+              "privacy-conscious users get immediate value without sharing financial data"
+            ]
+          },
+          {
+            "unitId": "u_auto",
+            "quotes": [
+              "Automatic import reduces typing and keeps balances current"
+            ]
+          },
+          {
+            "unitId": "u_manual",
+            "quotes": [
+              "manual entry preserves control and avoids broad account access"
+            ]
+          },
+          {
+            "unitId": "u_tradeoff",
+            "quotes": [
+              "The tradeoff is extra setup friction versus faster, more complete data."
+            ]
+          },
+          {
+            "unitId": "u_risk",
+            "quotes": [
+              "Explain read-only permissions, never request bank credentials directly, and let users revoke access."
+            ]
+          },
+          {
+            "unitId": "u_validation",
+            "quotes": [
+              "Test manual-first and connection-first variants using completion, day-seven retention, and connection opt-in rather than completion alone."
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "44444444-4444-4444-8444-444444444202",
+        "coveredUnitIds": [
+          "u_need",
+          "u_auto",
+          "u_manual"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_need",
+            "quotes": [
+              "let people explore with sample transactions, then invite a read-only bank link",
+              "This delays the trust decision"
+            ]
+          },
+          {
+            "unitId": "u_auto",
+            "quotes": [
+              "automatic import later keeps transactions current"
+            ]
+          },
+          {
+            "unitId": "u_manual",
+            "quotes": [
+              "let people explore with sample transactions"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "44444444-4444-4444-8444-444444444203",
+        "coveredUnitIds": [
+          "u_need",
+          "u_auto",
+          "u_manual",
+          "u_tradeoff",
+          "u_risk",
+          "u_validation"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_need",
+            "quotes": [
+              "Privacy-sensitive users need visible control before convenience, yet they still need a quick path to a useful budget."
+            ]
+          },
+          {
+            "unitId": "u_auto",
+            "quotes": [
+              "Bank connection would reduce typing and improve transaction freshness"
+            ]
+          },
+          {
+            "unitId": "u_manual",
+            "quotes": [
+              "manual entry limits financial-data exposure and makes consent explicit"
+            ]
+          },
+          {
+            "unitId": "u_tradeoff",
+            "quotes": [
+              "accepts more setup effort in exchange for lower access risk"
+            ]
+          },
+          {
+            "unitId": "u_risk",
+            "quotes": [
+              "Offer an optional read-only connection only after onboarding, never collect credentials"
+            ]
+          },
+          {
+            "unitId": "u_validation",
+            "quotes": [
+              "compare both defaults on completion and seven-day retained use"
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "44444444-4444-4444-8444-444444444204",
+        "coveredUnitIds": [
+          "u_need",
+          "u_auto",
+          "u_manual",
+          "u_tradeoff",
+          "u_risk",
+          "u_validation"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_need",
+            "quotes": [
+              "imported transactions show useful categories immediately",
+              "people who value control over convenience"
+            ]
+          },
+          {
+            "unitId": "u_auto",
+            "quotes": [
+              "imported transactions show useful categories immediately"
+            ]
+          },
+          {
+            "unitId": "u_manual",
+            "quotes": [
+              "manual setup limits exposure"
+            ]
+          },
+          {
+            "unitId": "u_tradeoff",
+            "quotes": [
+              "Automatic setup lowers typing but asks for sensitive access sooner; manual setup limits exposure but may increase errors and abandonment."
+            ]
+          },
+          {
+            "unitId": "u_risk",
+            "quotes": [
+              "Use a trusted read-only provider, explain scopes before consent, and allow revocation."
+            ]
+          },
+          {
+            "unitId": "u_validation",
+            "quotes": [
+              "An A/B test should compare activation and day-seven retention, segmented by users who decline connection."
+            ]
+          }
+        ]
+      },
+      {
+        "participantId": "44444444-4444-4444-8444-444444444205",
+        "coveredUnitIds": [
+          "u_risk"
+        ],
+        "evidence": [
+          {
+            "unitId": "u_risk",
+            "quotes": [
+              "Do not ask users to type banking credentials into the app; use a revocable read-only connection"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "expectedFamilies": {
+    "families": [
+      {
+        "label": "Staged hybrid onboarding"
+      },
+      {
+        "label": "Manual-first onboarding"
+      },
+      {
+        "label": "Automatic-connection-first onboarding"
+      }
+    ],
+    "assignments": [
+      {
+        "participantId": "44444444-4444-4444-8444-444444444201",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "44444444-4444-4444-8444-444444444202",
+        "familyIndex": 0
+      },
+      {
+        "participantId": "44444444-4444-4444-8444-444444444203",
+        "familyIndex": 1
+      },
+      {
+        "participantId": "44444444-4444-4444-8444-444444444204",
+        "familyIndex": 2
+      },
+      {
+        "participantId": "44444444-4444-4444-8444-444444444205",
+        "familyIndex": null
+      }
+    ]
+  },
+  "expectedRelationships": {
+    "sameFamily": [
+      {
+        "participantIds": [
+          "44444444-4444-4444-8444-444444444201",
+          "44444444-4444-4444-8444-444444444202"
+        ],
+        "reason": "Both defer bank connection through staged disclosure, though p2 covers only three units."
+      }
+    ],
+    "differentFamily": [
+      {
+        "participantIds": [
+          "44444444-4444-4444-8444-444444444201",
+          "44444444-4444-4444-8444-444444444203"
+        ],
+        "reason": "They cover the same six units but choose hybrid and manual-first defaults."
+      },
+      {
+        "participantIds": [
+          "44444444-4444-4444-8444-444444444203",
+          "44444444-4444-4444-8444-444444444204"
+        ],
+        "reason": "They cover the same six units while recommending opposing defaults."
+      }
+    ],
+    "nullFamilyWithCoverage": [
+      "44444444-4444-4444-8444-444444444205"
+    ],
+    "emptyAnswerParticipantIds": [
+      "44444444-4444-4444-8444-444444444206"
+    ],
+    "validDisagreement": [
+      {
+        "participantIds": [
+          "44444444-4444-4444-8444-444444444201",
+          "44444444-4444-4444-8444-444444444203",
+          "44444444-4444-4444-8444-444444444204"
+        ],
+        "reason": "All three recommendations address the required design evidence; their family difference records a product judgment, not semantic correctness."
+      }
+    ]
+  }
+}

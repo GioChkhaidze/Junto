@@ -32,8 +32,6 @@ describe("HomePage", () => {
 
     await user.click(continueButton);
 
-    expect(
-      screen.getByRole("heading", { level: 1, name: "Joining J7KM4P" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Joining J7KM4P" })).toBeInTheDocument();
   });
 });

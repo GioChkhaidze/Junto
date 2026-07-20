@@ -1,11 +1,5 @@
-import type { SessionDto } from "../domain";
-
-export interface ApiErrorBody {
-  error: {
-    code: string;
-    message: string;
-    details: Record<string, unknown>;
-  };
+interface ApiErrorBody {
+  error: { code: string; message: string; details: Record<string, unknown> };
 }
 
 export class ApiError extends Error {
@@ -13,12 +7,7 @@ export class ApiError extends Error {
   readonly code: string;
   readonly details: Record<string, unknown>;
 
-  constructor(
-    status: number,
-    code: string,
-    message: string,
-    details: Record<string, unknown> = {},
-  ) {
+  constructor(status: number, code: string, message: string, details: Record<string, unknown> = {}) {
     super(message);
     this.name = "ApiError";
     this.status = status;
@@ -27,7 +16,7 @@ export class ApiError extends Error {
   }
 }
 
-export interface ApiRequestOptions {
+interface ApiRequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   formData?: FormData;
@@ -36,7 +25,13 @@ export interface ApiRequestOptions {
 }
 
 const SAFE_METHODS = new Set(["GET"]);
-let sessionPromise: Promise<SessionDto> | undefined;
+interface Session {
+  csrfToken: string;
+  hostRoomIds: string[];
+  participantRoomIds: string[];
+}
+
+let sessionPromise: Promise<Session> | undefined;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -66,11 +61,7 @@ async function readJson(response: Response): Promise<unknown> {
   try {
     return JSON.parse(text) as unknown;
   } catch {
-    throw new ApiError(
-      response.status,
-      "INVALID_API_RESPONSE",
-      "The server returned a response Junto could not read.",
-    );
+    throw new ApiError(response.status, "INVALID_API_RESPONSE", "The server returned a response Junto could not read.");
   }
 }
 
@@ -87,12 +78,7 @@ async function errorFromResponse(response: Response): Promise<ApiError> {
   }
 
   if (isApiErrorBody(payload)) {
-    return new ApiError(
-      response.status,
-      payload.error.code,
-      payload.error.message,
-      payload.error.details,
-    );
+    return new ApiError(response.status, payload.error.code, payload.error.message, payload.error.details);
   }
 
   return new ApiError(
@@ -109,7 +95,7 @@ function apiPath(path: string): string {
   return path;
 }
 
-async function fetchSession(): Promise<SessionDto> {
+async function fetchSession(): Promise<Session> {
   const response = await fetch("/api/session", {
     method: "GET",
     credentials: "same-origin",
@@ -129,11 +115,7 @@ async function fetchSession(): Promise<SessionDto> {
     !Array.isArray(payload.participantRoomIds) ||
     !payload.participantRoomIds.every((value) => typeof value === "string")
   ) {
-    throw new ApiError(
-      response.status,
-      "INVALID_SESSION_RESPONSE",
-      "The server returned an invalid session response.",
-    );
+    throw new ApiError(response.status, "INVALID_SESSION_RESPONSE", "The server returned an invalid session response.");
   }
 
   return {
@@ -143,7 +125,7 @@ async function fetchSession(): Promise<SessionDto> {
   };
 }
 
-export function getSession(options: { refresh?: boolean } = {}): Promise<SessionDto> {
+function getSession(options: { refresh?: boolean } = {}): Promise<Session> {
   if (!options.refresh && sessionPromise !== undefined) {
     return sessionPromise;
   }
@@ -162,10 +144,7 @@ export function invalidateSession(): void {
   sessionPromise = undefined;
 }
 
-export async function apiRequest<T>(
-  path: string,
-  options: ApiRequestOptions = {},
-): Promise<T> {
+export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const method = options.method ?? "GET";
   if (options.body !== undefined && options.formData !== undefined) {
     throw new Error("An API request cannot contain both JSON and FormData.");

@@ -9,17 +9,20 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "format": "cd .. && prettier --write . --ignore-path .prettierignore",
+    "format:check": "cd .. && prettier --check . --ignore-path .prettierignore",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@fontsource-variable/mona-sans": "^5.3.0",
+    "@fontsource-variable/newsreader": "^5.3.0",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "react-router-dom": "7.18.1"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "4.3.3",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "14.6.1",
@@ -27,7 +30,7 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.3",
     "jsdom": "29.1.1",
-    "tailwindcss": "4.3.3",
+    "prettier": "3.9.5",
     "typescript": "7.0.2",
     "vite": "8.1.5",
     "vitest": "4.1.10"

@@ -1,15 +1,10 @@
-export { AppMark, type AppMarkProps } from "./AppMark";
-export {
-  Button,
-  type ButtonProps,
-  type ButtonSize,
-  type ButtonVariant,
-} from "./Button";
-export { EmptyState, type EmptyStateProps } from "./EmptyState";
-export { Field, type FieldProps } from "./Field";
-export { Icon, type IconName, type IconProps } from "./Icon";
-export { InlineNotice, type InlineNoticeProps, type NoticeTone } from "./InlineNotice";
-export { Input, type InputProps } from "./Input";
-export { LoadingSkeleton, type LoadingSkeletonProps } from "./LoadingSkeleton";
-export { Select, type SelectProps } from "./Select";
-export { TextArea, type TextAreaProps } from "./TextArea";
+export { AppMark } from "./AppMark";
+export { Button } from "./Button";
+export { EmptyState } from "./EmptyState";
+export { Field } from "./Field";
+export { Icon } from "./Icon";
+export { InlineNotice } from "./InlineNotice";
+export { Input } from "./Input";
+export { LoadingSkeleton } from "./LoadingSkeleton";
+export { Select } from "./Select";
+export { TextArea } from "./TextArea";

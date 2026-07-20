@@ -1,0 +1,79 @@
+name: junto
+
+x-database-environment: &database-environment
+  DATABASE_URL: postgresql+psycopg://junto:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres:5432/junto
+
+services:
+  postgres:
+    image: postgres:17.5-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: junto
+      POSTGRES_USER: junto
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - junto-postgres:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U junto -d junto"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+
+  release:
+    profiles: ["release"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      <<: *database-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["python", "/app/backend/scripts/release.py"]
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *database-environment
+      APP_ENV: production
+      SESSION_SECRET: ${SESSION_SECRET:?Set SESSION_SECRET}
+      TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:-https://junto.example.test}
+      ANALYSIS_ENGINE: openai
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.6-sol}
+      OPENAI_REASONING_EFFORT: ${OPENAI_REASONING_EFFORT:-low}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      FORWARDED_ALLOW_IPS: ${FORWARDED_ALLOW_IPS:-127.0.0.1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${PORT:-8000}:8000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=16777216,mode=1777
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/ready', timeout=2).read()",
+        ]
+      interval: 15s
+      timeout: 3s
+      retries: 4
+      start_period: 20s
+
+volumes:
+  junto-postgres:
