@@ -1,15 +1,14 @@
 import { useState } from "react";
 import { LoadingSkeleton } from "../../../components/ui";
-import type {
-  CoverageAwareHostGroupsResponse,
-  GroupQuestionResult,
-  HostGroupsResponse,
-  HostRoom,
-} from "../../../domain";
+import type { CoverageAwareHostGroupsResponse, GroupQuestionResult, HostGroupsResponse } from "../../../domain";
 import styles from "./HostResults.module.css";
 
+interface ResultRoom {
+  progress: { participantCount: number };
+}
+
 interface HostResultsProps {
-  room: HostRoom;
+  room: ResultRoom;
   result: HostGroupsResponse | null;
 }
 
@@ -17,7 +16,7 @@ function memberNames(members: Array<{ displayName: string }>): string {
   return members.map((member) => member.displayName).join(", ");
 }
 
-function resultScale(room: HostRoom, result: HostGroupsResponse): string {
+function resultScale(room: ResultRoom, result: HostGroupsResponse): string {
   const groups = `${result.groups.length} ${result.groups.length === 1 ? "group" : "groups"}`;
   const participants = room.progress.participantCount;
   return `${groups} · ${participants} ${participants === 1 ? "participant" : "participants"}`;
@@ -128,7 +127,7 @@ function QuestionDetail({ groupId, question }: { groupId: string; question: Grou
   );
 }
 
-function CoverageAwareResults({ room, result }: { room: HostRoom; result: CoverageAwareHostGroupsResponse }) {
+function CoverageAwareResults({ room, result }: { room: ResultRoom; result: CoverageAwareHostGroupsResponse }) {
   const [openGroupId, setOpenGroupId] = useState<string | null>(null);
   const [openQuestionKey, setOpenQuestionKey] = useState<string | null>(null);
 
@@ -159,7 +158,7 @@ function CoverageAwareResults({ room, result }: { room: HostRoom; result: Covera
                 aria-controls={groupRegionId}
                 onClick={() => toggleGroup(group.id)}
               >
-                <strong>Group {groupIndex + 1}:</strong> {memberNames(group.members)}
+                <strong>Group {groupIndex + 1}:</strong> {memberNames(group.members)}.
               </button>
               {groupOpen ? (
                 <div id={groupRegionId} className={styles.groupDetail}>
@@ -216,7 +215,7 @@ export function HostResults({ room, result }: HostResultsProps) {
       <ol className={styles.placeholderGroups}>
         {result.groups.map((group, index) => (
           <li key={group.id}>
-            <strong>Group {index + 1}:</strong> {memberNames(group.members)}
+            <strong>Group {index + 1}:</strong> {memberNames(group.members)}.
           </li>
         ))}
       </ol>

@@ -21,13 +21,16 @@ const JoinRoomPage = lazy(() =>
 const ParticipantRoomPage = lazy(() =>
   import("./features/participant/room/ParticipantRoomPage").then((module) => ({ default: module.ParticipantRoomPage })),
 );
+const ActivityResultPage = lazy(() =>
+  import("./features/host/history/ActivityResultPage").then((module) => ({ default: module.ActivityResultPage })),
+);
 const NotFoundPage = lazy(() =>
   import("./features/not-found/NotFoundPage").then((module) => ({ default: module.NotFoundPage })),
 );
 
 export function RouteLoading() {
   const { pathname } = useLocation();
-  const hostRoom = pathname.startsWith("/host/");
+  const hostRoom = pathname.startsWith("/host/") || pathname.startsWith("/activities/");
   const variant =
     pathname === "/create"
       ? "authoring"
@@ -72,6 +75,7 @@ export function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/create" element={<CreateRoomPage />} />
           <Route path="/activities" element={<ActivityHistoryPage />} />
+          <Route path="/activities/:roomId" element={<ActivityResultPage />} />
           <Route path="/host/:roomId" element={<HostRoomPage />} />
           <Route path="/join/:joinCode" element={<JoinRoomPage />} />
           <Route path="/join" element={<Navigate to="/" replace />} />

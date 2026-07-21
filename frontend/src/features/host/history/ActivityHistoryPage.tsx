@@ -171,7 +171,10 @@ export function ActivityHistoryPage() {
           <ol className={styles.activities}>
             {history.activities.map((activity) => (
               <li key={activity.roomId}>
-                <Link className={styles.activityLink} to={`/host/${activity.roomId}`}>
+                <Link
+                  className={styles.activityLink}
+                  to={activity.status === "published" ? `/activities/${activity.roomId}` : `/host/${activity.roomId}`}
+                >
                   <span className={styles.identity}>
                     <strong>{activity.title}</strong>
                     <time dateTime={activity.createdAt}>{dateFormatter.format(new Date(activity.createdAt))}</time>

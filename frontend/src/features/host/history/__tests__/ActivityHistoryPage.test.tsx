@@ -58,11 +58,13 @@ describe("ActivityHistoryPage", () => {
     expect(await screen.findByRole("heading", { name: "Activities" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Dynamic programming review/ })).toHaveAttribute(
       "href",
-      "/host/room-published",
+      "/activities/room-published",
     );
+    expect(screen.getByRole("link", { name: /Ethics seminar/ })).toHaveAttribute("href", "/host/room-draft");
     expect(screen.getByText("20 participants · 5 groups")).toBeInTheDocument();
     expect(screen.getByText("14 of 15 fully covered")).toBeInTheDocument();
     expect(screen.getByText("Draft")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^Delete / })).toHaveLength(2);
     expect(screen.queryByText(/browser|expire/i)).not.toBeInTheDocument();
   });
 

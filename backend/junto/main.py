@@ -120,7 +120,7 @@ def create_app(
     session_cookie=app_settings.session_cookie_name,
     same_site="lax",
     https_only=app_settings.secure_cookies,
-    max_age=14 * 24 * 60 * 60,
+    max_age=365 * 24 * 60 * 60,
   )
   application.add_middleware(
     MaterialUploadLimitMiddleware,

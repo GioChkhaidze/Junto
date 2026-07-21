@@ -108,6 +108,10 @@ class RoomService:
       raise not_found()
     return room
 
+  def list_published_rooms(self) -> list[Room]:
+    self.run_maintenance()
+    return self._repository.list_published()
+
   def repository_ready(self) -> bool:
     try:
       return self._repository.ping()

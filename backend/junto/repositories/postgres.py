@@ -60,6 +60,15 @@ class PostgresRoomRepository:
       record = session.scalar(select(RoomRecord).where(RoomRecord.join_code == join_code))
       return load_room_aggregate(session, record) if record is not None else None
 
+  def list_published(self) -> list[Room]:
+    with self._session_factory() as session:
+      records = session.scalars(
+        select(RoomRecord)
+        .where(RoomRecord.status == "published")
+        .order_by(RoomRecord.created_at.desc(), RoomRecord.id.desc())
+      ).all()
+      return [load_room_aggregate(session, record) for record in records]
+
   def ping(self) -> bool:
     try:
       with self._session_factory() as session:

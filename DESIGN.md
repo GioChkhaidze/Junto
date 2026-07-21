@@ -181,6 +181,7 @@ Join waiting, submitted, analysis, failure, and group-result states extend Edito
 | Join invitation                      | Public split        | Forest activity context + white name form         |
 | Create activity                      | Seminar console     | Forest workflow rail + white editor               |
 | Activity history                     | Seminar report      | Compact host activity, result, and deletion index |
+| Published activity result            | Seminar report      | Read-only all-group result in any browser         |
 | Host draft/lobby/answering           | Seminar console     | Forest header + one white room workspace          |
 | Host analysis/failure/results        | Seminar console     | Forest header + restrained process/report surface |
 | Participant lobby/submitted/analysis | Editorial focus     | White reading measure with explicit live state    |

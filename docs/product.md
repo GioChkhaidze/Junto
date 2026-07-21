@@ -88,8 +88,8 @@ A participant exists only inside one room. Their browser session can:
   group.
 
 There are no profiles, email addresses, passwords, OAuth providers, teacher accounts, or cross-room participant
-identities. Room access is not recoverable on another device unless its signed browser session is transferred, which the
-product does not support.
+identities. Draft and live rooms remain private to their host browser. Once published, an activity becomes a durable,
+read-only result in the shared Activities index so it can be reviewed from another browser without granting host access.
 
 ## Experience
 
@@ -111,8 +111,8 @@ reference text, and complete current question-and-unit draft so the suggestion c
 The interface applies only the requested target, keeps the result editable, and asks the host to review it.
 
 Generated questions contain one central task and are limited to 32 words and 280 characters. Generated coverage units
-are atomic phrases limited to 10 words and 80 characters, with no more than five returned for one question. These tighter
-limits apply to AI suggestions; hosts can still edit the draft through the ordinary authoring limits.
+are atomic phrases limited to 10 words and 80 characters, with no more than five returned for one question. These
+tighter limits apply to AI suggestions; hosts can still edit the draft through the ordinary authoring limits.
 
 This remains an authoring editor, not an automatic quiz generator. AI suggestions never open a room, persist a question
 by themselves, or become approved coverage units without the host continuing through review and creation. Hosts own the
@@ -174,9 +174,9 @@ The host first sees each group as one compact roster line. Opening a group revea
 reveals numbered coverage units, their short descriptions and carriers, plus a family-to-student map. The answer audit
 is an explicit third layer and refers to covered units by number so their full text is not repeated.
 
-The Activities page lists rooms created by the same signed browser session and links back to each room's current state
-or published grouping. It also provides manual deletion. This is not an account, cross-device history, or
-submission-event log.
+The Activities page lists every published result stored in PostgreSQL plus draft or live rooms granted to the current
+browser. Published rows open read-only group reports in any browser. Host-granted rows also expose manual deletion. This
+is an activity-result index, not an account or submission-event log.
 
 Each participant sees only their own group and a concise discussion agenda. Participants do not receive other groups or
 a raw-answer audit.

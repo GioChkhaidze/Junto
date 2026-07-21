@@ -143,10 +143,10 @@ The structured response is:
 
 The response always contains one focused prompt and one to five valid units so the pair is coherent. Generated questions
 are limited to 32 words and 280 characters; generated units are atomic phrases limited to 10 words and 80 characters.
-The browser applies only the requested target. A successful response creates no room, grant, question, coverage unit, or stored model
-artifact; it becomes persistent only if the host later completes the ordinary create-activity workflow. The endpoint is
-available when either provider key is configured and is independent from the selected analysis engine. OpenRouter is
-preferred when both keys exist; direct OpenAI is the fallback. Without either credential it returns
+The browser applies only the requested target. A successful response creates no room, grant, question, coverage unit, or
+stored model artifact; it becomes persistent only if the host later completes the ordinary create-activity workflow. The
+endpoint is available when either provider key is configured and is independent from the selected analysis engine.
+OpenRouter is preferred when both keys exist; direct OpenAI is the fallback. Without either credential it returns
 `AUTHORING_ASSIST_UNAVAILABLE`.
 
 ### Participants and answers
@@ -184,7 +184,10 @@ presence state.
 
 The cookie contains a random browser nonce, CSRF value, and at most the configured number of room grants. Creating a
 room adds a host grant; joining adds a participant grant. The nonce plus a room-scoped database uniqueness constraint
-makes repeat joins idempotent.
+makes repeat joins idempotent. Host grants persist in the cookie for up to one year.
+
+Published activity summaries and results are public, read-only resources. All unfinished room projections and every
+mutation remain protected by the matching room-scoped host or participant grant.
 
 Every mutation requires `X-CSRF-Token`. Browser mutations with a supplied foreign Origin or Referer are rejected.
 Production requires a session secret of at least 32 characters, HTTPS-only cookies, explicit HTTPS trusted origins,
@@ -274,7 +277,8 @@ word or sentence boundary to the 1,500-character domain limit before that studen
 | Method   | Path                                               | State/result                              |
 | -------- | -------------------------------------------------- | ----------------------------------------- |
 | `POST`   | `/api/rooms`                                       | create draft and host grant               |
-| `GET`    | `/api/activities`                                  | summaries for this browser's host grants  |
+| `GET`    | `/api/activities`                                  | published summaries plus hosted rooms     |
+| `GET`    | `/api/activities/{roomId}`                         | public read-only published result         |
 | `GET`    | `/api/rooms/{roomId}`                              | full host projection                      |
 | `PATCH`  | `/api/rooms/{roomId}`                              | update draft settings                     |
 | `DELETE` | `/api/rooms/{roomId}`                              | confirm invite code, cascade deletion     |
@@ -341,10 +345,12 @@ partition, not a semantic optimum.
 
 ### Activity history
 
-`GET /api/activities` returns newest-first summaries only for rooms whose host grant exists in the current signed
-browser session. Each summary contains the invite code, room state, created/published times, participant/question/group
-counts, generation mode, and aggregate coverage counts. Missing or manually deleted rooms are omitted. No answers,
-participant names, coverage-unit text, or activity-event records are returned.
+`GET /api/activities` returns newest-first summaries for every published room plus unfinished rooms whose host grant is
+in the current browser. `canManage` tells the UI whether it may show host controls. Summaries contain no answers,
+participant names, coverage-unit text, or event records.
+
+`GET /api/activities/{roomId}` returns the title, creation time, participant count, groups, coverage diagnostics,
+families, and answer audit only when the room is published. It requires no browser grant and permits no mutation.
 
 `DELETE /api/rooms/{roomId}` requires the signed host grant, CSRF validation, and `{"confirmationCode": "ABC123"}`. The
 code must match the room's invite code case-insensitively. A successful deletion cascades through the room aggregate and

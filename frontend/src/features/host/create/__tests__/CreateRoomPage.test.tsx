@@ -124,6 +124,43 @@ describe("CreateRoomPage", () => {
     expect(screen.getByRole("button", { name: "Improve coverage for question 1" })).toBeInTheDocument();
   });
 
+  it("creates an Explore activity when the host selects that grouping approach", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);
+    apiMocks.createRoom.mockResolvedValue({ roomId: "room-1", joinCode: "J7KM4P", status: "draft" });
+    apiMocks.createQuestion.mockResolvedValue({});
+    apiMocks.openRoom.mockResolvedValue({ status: "lobby" });
+
+    render(
+      <MemoryRouter initialEntries={["/create"]}>
+        <CreateRoomPage />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Continue without material" }));
+    expect(screen.getByRole("radio", { name: /Teach/i })).toBeChecked();
+    await user.type(screen.getByRole("textbox", { name: /Activity title/i }), "Perspectives seminar");
+    await user.click(screen.getByRole("radio", { name: /Explore/i }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.type(screen.getByRole("textbox", { name: "Question prompt" }), "Compare the two positions.");
+    await user.type(
+      screen.getByRole("textbox", { name: "Coverage unit 1 for question 1" }),
+      "Identifies the central disagreement",
+    );
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(screen.getByText("Grouping approach").nextElementSibling).toHaveTextContent("Explore");
+    await user.click(screen.getByRole("button", { name: "Create activity" }));
+
+    await waitFor(() => expect(apiMocks.openRoom).toHaveBeenCalledWith("room-1"));
+    expect(apiMocks.createRoom).toHaveBeenCalledWith({
+      title: "Perspectives seminar",
+      policy: "explore",
+      groupSize: { minimum: 3, preferred: 4, maximum: 5 },
+      durationMinutes: 20,
+    });
+  });
+
   it("resumes a partially created room without duplicating a question", async () => {
     const user = userEvent.setup();
     vi.spyOn(window, "scrollTo").mockImplementation(() => undefined);

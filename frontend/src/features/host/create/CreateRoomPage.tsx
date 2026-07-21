@@ -8,6 +8,7 @@ import { formatDuration, formatFileSize } from "../../../lib/format";
 import { scrollPageToTop } from "../../../lib/motion";
 import type {
   AuthoringSuggestionTarget,
+  GroupingPolicy,
   GroupSize,
   HostQuestion,
   QuestionMutation,
@@ -25,6 +26,7 @@ interface QuestionDraft {
 
 interface ActivityDraft {
   title: string;
+  policy: GroupingPolicy;
   durationMinutes: number;
   preferredGroupSize: number;
   materialFile: File | null;
@@ -147,6 +149,7 @@ export function CreateRoomPage() {
   const [skipReference, setSkipReference] = useState(false);
   const [draft, setDraft] = useState<ActivityDraft>({
     title: "",
+    policy: "teach",
     durationMinutes: 20,
     preferredGroupSize: 4,
     materialFile: null,
@@ -371,7 +374,7 @@ export function CreateRoomPage() {
       if (!roomId) {
         const created = await api.createRoom({
           title: draft.title.trim(),
-          policy: "teach",
+          policy: draft.policy,
           groupSize: groupSizeFor(draft.preferredGroupSize),
           durationMinutes: draft.durationMinutes,
         });
@@ -382,14 +385,14 @@ export function CreateRoomPage() {
         const settingsChanged =
           savedRoom.title !== draft.title.trim() ||
           savedRoom.durationMinutes !== draft.durationMinutes ||
-          savedRoom.policy !== "teach" ||
+          savedRoom.policy !== draft.policy ||
           savedRoom.groupSize.minimum !== desiredGroupSize.minimum ||
           savedRoom.groupSize.preferred !== desiredGroupSize.preferred ||
           savedRoom.groupSize.maximum !== desiredGroupSize.maximum;
         if (settingsChanged) {
           savedRoom = await api.updateRoom(roomId, {
             title: draft.title.trim(),
-            policy: "teach",
+            policy: draft.policy,
             groupSize: desiredGroupSize,
             durationMinutes: draft.durationMinutes,
           });
@@ -594,6 +597,39 @@ export function CreateRoomPage() {
                     placeholder="e.g. Ethics seminar: responsibility"
                   />
                 </Field>
+
+                <fieldset className={styles.policyFieldset}>
+                  <legend>Grouping approach</legend>
+                  <p>Coverage remains the first priority. Choose what should distinguish equally strong groupings.</p>
+                  <div className={styles.policyOptions}>
+                    <label className={draft.policy === "teach" ? styles.selectedPolicy : undefined}>
+                      <input
+                        type="radio"
+                        name="grouping-policy"
+                        value="teach"
+                        checked={draft.policy === "teach"}
+                        onChange={() => updateDraft("policy", "teach")}
+                      />
+                      <span>
+                        <strong>Teach</strong>
+                        <small>Distribute participants who can carry the required ideas across groups.</small>
+                      </span>
+                    </label>
+                    <label className={draft.policy === "explore" ? styles.selectedPolicy : undefined}>
+                      <input
+                        type="radio"
+                        name="grouping-policy"
+                        value="explore"
+                        checked={draft.policy === "explore"}
+                        onChange={() => updateDraft("policy", "explore")}
+                      />
+                      <span>
+                        <strong>Explore</strong>
+                        <small>Mix different response families and perspectives when coverage is equally strong.</small>
+                      </span>
+                    </label>
+                  </div>
+                </fieldset>
 
                 <div className={styles.twoColumns}>
                   <Field label="Response time" hint="The countdown begins when you start the activity." required>
@@ -874,6 +910,10 @@ export function CreateRoomPage() {
                 <div>
                   <dt>Group size</dt>
                   <dd>About {draft.preferredGroupSize} people</dd>
+                </div>
+                <div>
+                  <dt>Grouping approach</dt>
+                  <dd>{draft.policy === "teach" ? "Teach" : "Explore"}</dd>
                 </div>
                 <div>
                   <dt>Reference material</dt>

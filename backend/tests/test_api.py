@@ -166,7 +166,7 @@ def test_session_establishes_csrf_and_host_grant(harness: AppHarness) -> None:
   assert session.json()["participantRoomIds"] == []
 
 
-def test_activity_history_lists_only_rooms_hosted_in_this_browser(harness: AppHarness) -> None:
+def test_activity_history_lists_only_rooms_hosted_in_the_current_browser(harness: AppHarness) -> None:
   with TestClient(harness.app) as host, TestClient(harness.app) as other_browser:
     csrf = get_csrf(host)
     draft = create_room(host, csrf)
@@ -211,7 +211,39 @@ def test_activity_history_lists_only_rooms_hosted_in_this_browser(harness: AppHa
   assert activities[1]["status"] == "draft"
   assert activities[1]["groupCount"] == 0
   assert other_history.status_code == 200
-  assert other_history.json()["activities"] == []
+  assert other_history.json() == {"activities": []}
+
+
+def test_published_results_are_read_only_across_browsers_but_drafts_are_not_public(harness: AppHarness) -> None:
+  with TestClient(harness.app) as host, TestClient(harness.app) as other_browser:
+    csrf = get_csrf(host)
+    draft = create_room(host, csrf)
+    published, question = create_open_room(host, csrf)
+    participants = [join_room(harness.app, published["joinCode"], name) for name in ("Maya", "Alex")]
+    try:
+      start_room(host, csrf, published["roomId"])
+      for index, (client, participant_csrf, _) in enumerate(participants):
+        submit_answer(client, participant_csrf, published["roomId"], question["id"], f"Answer {index + 1}")
+      assert harness.scheduler.run_ready() == 2
+
+      result = other_browser.get(f"/api/activities/{published['roomId']}")
+      private_draft = other_browser.get(f"/api/activities/{draft['roomId']}")
+      unavailable_host_view = other_browser.get(f"/api/rooms/{published['roomId']}")
+    finally:
+      for client, _, _ in participants:
+        client.close()
+
+  assert result.status_code == 200
+  assert result.json()["roomId"] == published["roomId"]
+  assert result.json()["participantCount"] == 2
+  members = result.json()["result"]["groups"][0]["members"]
+  assert {member["displayName"] for member in members} == {"Maya", "Alex"}
+  assert {member["participantId"] for member in members} == {
+    participants[0][2]["participantId"],
+    participants[1][2]["participantId"],
+  }
+  assert private_draft.status_code == 404
+  assert unavailable_host_view.status_code == 404
 
 
 def test_host_deletion_requires_the_room_invite_code(harness: AppHarness) -> None:

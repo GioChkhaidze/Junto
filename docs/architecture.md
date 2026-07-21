@@ -41,7 +41,7 @@ frontend/src/
   features/
     home/              create-or-join entry
     host/create/       material-first authoring sequence
-    host/history/      browser-scoped room and result index
+    host/history/      shared published results and host-scoped unfinished rooms
     host/results/      progressive all-group result report
     host/room/         lobby, progress, and analysis lifecycle
     participant/join/  invite disclosure and display-name entry
@@ -56,14 +56,15 @@ and the frontend build catches drift.
 
 Browser routes are:
 
-| Route             | Purpose                                        |
-| ----------------- | ---------------------------------------------- |
-| `/`               | Create-or-join entry                           |
-| `/create`         | Host authoring flow                            |
-| `/activities`     | Rooms hosted by this browser session           |
-| `/host/:roomId`   | Host room lifecycle and all-group result       |
-| `/join/:joinCode` | Participant disclosure and name entry          |
-| `/room/:roomId`   | Participant questionnaire and own-group agenda |
+| Route                 | Purpose                                        |
+| --------------------- | ---------------------------------------------- |
+| `/`                   | Create-or-join entry                           |
+| `/create`             | Host authoring flow                            |
+| `/activities`         | Published results and this browser's rooms     |
+| `/activities/:roomId` | Public read-only published result              |
+| `/host/:roomId`       | Private host room lifecycle                    |
+| `/join/:joinCode`     | Participant disclosure and name entry          |
+| `/room/:roomId`       | Participant questionnaire and own-group agenda |
 
 The UI follows [DESIGN.md](../DESIGN.md): a white academic canvas, restrained green for state and action, conventional
 controls, ruled lists, clear hierarchy, and no decorative AI styling. CSS Modules localize feature rules without a
@@ -228,11 +229,15 @@ model or solver. Development may omit the database URL and use the thread-safe m
 
 Starlette signs one HTTP-only, SameSite=Lax room-session cookie. It contains a random browser nonce, CSRF value, and a
 bounded list of room IDs with host and/or participant grants. It contains no names, answers, material, join codes, or
-group content. The cookie is signed, not encrypted.
+group content. The cookie is signed, not encrypted, and retains grants for up to one year.
 
 All mutations require the matching `X-CSRF-Token`. A browser-session nonce plus a database uniqueness constraint makes
 repeated joins to the same room idempotent. Missing room grants return caller-safe not-found responses. Trusted-origin
 middleware rejects foreign browser mutations; production requires explicit HTTPS origins and secure cookies.
+
+Published activity summaries and results are intentionally read-only and public to the deployment. Draft, lobby,
+answering, analyzing, and failed rooms remain host-scoped. Deletion and every other mutation still require the host
+grant and CSRF token.
 
 The frontend caches the current session projection. If a backend restart or session rotation causes a mutation to fail
 with `CSRF_INVALID`, the shared HTTP transport refreshes `/api/session` and retries that mutation once. Concurrent stale
@@ -268,7 +273,7 @@ Add infrastructure only for a demonstrated requirement:
 
 - a durable queue/worker before horizontal web workers or guaranteed in-flight analysis recovery;
 - SSE or WebSockets only if classroom polling becomes material;
-- accounts only for saved cross-device history;
+- optional accounts only if private cross-device ownership or per-host history becomes a requirement;
 - normalized semantic tables only for real cross-room analytics.
 
 Operational configuration, migrations, deletion, recovery, and release checks are in [operations.md](operations.md).

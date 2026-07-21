@@ -15,6 +15,7 @@ import type {
   JoinRoomResponse,
   MyGroupResponse,
   ParticipantRoom,
+  PublishedActivity,
   PublicJoinRoom,
   QuestionMutation,
   ReferenceMaterialUploadResponse,
@@ -45,6 +46,10 @@ export function suggestAuthoring(input: AuthoringSuggestionRequest, file?: File)
 
 export function getActivities(signal?: AbortSignal): Promise<ActivityHistory> {
   return apiRequest<ActivityHistory>("/api/activities", { signal });
+}
+
+export function getPublishedActivity(roomId: EntityId, signal?: AbortSignal): Promise<PublishedActivity> {
+  return apiRequest<PublishedActivity>(`/api/activities/${pathSegment(roomId)}`, { signal });
 }
 
 export async function deleteRoom(roomId: EntityId, confirmationCode: string): Promise<void> {

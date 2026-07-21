@@ -40,6 +40,11 @@ class InMemoryRoomRepository:
         return None
       return deepcopy(self._rooms[room_id])
 
+  def list_published(self) -> list[Room]:
+    with self._lock:
+      rooms = [deepcopy(room) for room in self._rooms.values() if room.status == RoomStatus.PUBLISHED]
+    return sorted(rooms, key=lambda room: (room.created_at, str(room.id)), reverse=True)
+
   @contextmanager
   def transaction(self, room_id: UUID) -> Iterator[Room]:
     with self._lock:

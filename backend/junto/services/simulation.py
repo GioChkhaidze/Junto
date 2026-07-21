@@ -32,6 +32,7 @@ from junto.services.rooms import RoomService
 
 SyntheticSource = Literal["patterned", "openrouter"]
 SyntheticGenerationStatus = Literal["running", "failed", "complete"]
+ResponseMode = Literal["strong", "partial", "misconception", "biased", "adjacent", "empty"]
 SyntheticAnswerReady = Callable[[UUID, Mapping[UUID, str]], None]
 _MAX_SIMULATION_CONTEXT_CHARACTERS = 60_000
 _MAX_SYNTHETIC_QUESTIONS = 8
@@ -207,6 +208,7 @@ class OpenRouterSyntheticAnswerProvider:
       return SyntheticGenerationResult("openrouter", {}, ())
     output_type = _synthetic_student_output_type(len(questions))
     max_tokens = _maximum_output_tokens(len(questions))
+    response_plans = _response_plans(questions, students)
     semaphore = asyncio.Semaphore(self._max_concurrency)
 
     async def complete(
@@ -217,7 +219,13 @@ class OpenRouterSyntheticAnswerProvider:
           try:
             completion = await self._client.complete(
               model=self._model,
-              messages=_student_messages(room_title, simulation_context, questions, student),
+              messages=_student_messages(
+                room_title,
+                simulation_context,
+                questions,
+                student,
+                response_plans[student.participant_id],
+              ),
               output_type=output_type,
               max_tokens=max_tokens,
               temperature=0.65,
@@ -228,7 +236,11 @@ class OpenRouterSyntheticAnswerProvider:
             if attempt == 0 and _is_retryable_synthetic_failure(error):
               continue
             raise
-          answers = _validated_student_answers(completion.value, questions)
+          answers = _validated_student_answers(
+            completion.value,
+            questions,
+            response_plans[student.participant_id],
+          )
           if on_student_ready is not None:
             on_student_ready(student.participant_id, answers)
           return student, completion, answers
@@ -515,11 +527,15 @@ def _student_messages(
   simulation_context: str | None,
   questions: Sequence[SyntheticQuestion],
   student: SyntheticStudent,
+  response_modes: Sequence[ResponseMode],
 ) -> list[dict[str, str]]:
   payload = {
     "activityTitle": room_title,
     "simulationContext": simulation_context,
-    "questions": [question.prompt for question in questions],
+    "questions": [
+      {"prompt": question.prompt, "responseMode": mode}
+      for question, mode in zip(questions, response_modes, strict=True)
+    ],
     "studentTraits": _persona_traits(student.persona),
   }
   serialized = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
@@ -528,13 +544,17 @@ def _student_messages(
     {
       "role": "developer",
       "content": (
-        "Simulate the supplied student and write the answers that student would actually submit. "
-        "Directly answer the specific question with concrete domain content: use the relevant claims, facts, "
-        "calculations, examples, evidence, or reasoning rather than generic advice about how someone should answer. "
-        "Do not fall back to stock phrases about a central claim, evidence, assumptions, or tradeoffs unless the "
-        "question itself asks about them. Use simulationContext when supplied, but do not quote long passages. Base "
-        "depth, confidence, completeness, and occasional mistakes on each private profile. Advanced or proficient "
-        "students should usually be substantively strong; developing and novice students may be partial or wrong. "
+        "Simulate the supplied student and write what that student would actually submit. Every question has a "
+        "mandatory responseMode. Follow it literally even when you know a better answer. strong: give a natural, "
+        "substantively correct answer that addresses most of the question without sounding exhaustive. partial: "
+        "correctly address only one important part and omit other requested parts without announcing the omission. "
+        "misconception: make one plausible material domain error, rely on it sincerely, and never correct or flag it. "
+        "biased: take a one-sided position, select supporting evidence, and underweight the strongest counterpoint; "
+        "for an objective question, overcommit to one approach and omit at least one requested part. adjacent: answer "
+        "a related question while missing the central request. empty: return an empty string. "
+        "ResponseMode controls correctness and completeness; the private traits control voice and should influence "
+        "the mistake only when compatible. Use concrete domain claims, calculations, evidence, or reasoning rather "
+        "than generic advice. Use simulationContext when supplied, but do not quote long passages. "
         f"Keep every answer concise and no longer than {_SYNTHETIC_TARGET_ANSWER_CHARACTERS:,} characters. Preserve "
         "genuine disagreement on open questions and avoid making students echo the same wording. Selective or sparse "
         "students may leave an answer empty. Never reveal or name profile traits, simulation, models, rubrics, hidden "
@@ -558,6 +578,39 @@ def _persona_traits(persona: SyntheticPersona) -> dict[str, str]:
     "error_tendency": persona.error_tendency,
     "participation": persona.participation,
   }
+
+
+def _response_plans(
+  questions: Sequence[SyntheticQuestion],
+  students: Sequence[SyntheticStudent],
+) -> dict[UUID, tuple[ResponseMode, ...]]:
+  plans: dict[UUID, list[ResponseMode]] = {student.participant_id: [] for student in students}
+  for question in questions:
+    ranked = sorted(students, key=lambda student: _question_competence(student, question))
+    for rank, student in enumerate(ranked):
+      plans[student.participant_id].append(_response_mode(rank, len(ranked)))
+  return {participant_id: tuple(modes) for participant_id, modes in plans.items()}
+
+
+def _question_competence(student: SyntheticStudent, question: SyntheticQuestion) -> tuple[int, str]:
+  knowledge = {"novice": 0, "developing": 1, "proficient": 2, "advanced": 3}[student.persona.knowledge_level]
+  familiarity = sha256(f"{student.persona.id}:{question.id}".encode()).digest()[0]
+  return knowledge * 128 + familiarity, str(student.participant_id)
+
+
+def _response_mode(rank: int, cohort_size: int) -> ResponseMode:
+  quantile = (rank + 0.5) / cohort_size
+  if quantile <= 0.05:
+    return "empty"
+  if quantile <= 0.15:
+    return "adjacent"
+  if quantile <= 0.35:
+    return "misconception"
+  if quantile <= 0.65:
+    return "partial"
+  if quantile <= 0.75:
+    return "biased"
+  return "strong"
 
 
 def _room_source_context(room: Room) -> str | None:
@@ -596,14 +649,16 @@ def _is_retryable_synthetic_failure(error: OpenRouterError) -> bool:
 def _validated_student_answers(
   output: SyntheticStudentOutput,
   questions: Sequence[SyntheticQuestion],
+  response_modes: Sequence[ResponseMode],
 ) -> dict[UUID, str]:
-  if len(output.answers) != len(questions):
+  if len(output.answers) != len(questions) or len(response_modes) != len(questions):
     raise invalid(
       "SYNTHETIC_OUTPUT_INVALID",
       "The simulated response set omitted or added a question answer.",
     )
   return {
-    question.id: _normalize_synthetic_answer(text) for question, text in zip(questions, output.answers, strict=True)
+    question.id: "" if mode == "empty" else _normalize_synthetic_answer(text)
+    for question, text, mode in zip(questions, output.answers, response_modes, strict=True)
   }
 
 

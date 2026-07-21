@@ -47,6 +47,7 @@ from junto.api.schemas import (
   MaterialUploadResponse,
   MyGroupView,
   ParticipantRoomView,
+  PublishedActivityView,
   QuestionCreate,
   QuestionPatch,
   QuestionView,
@@ -112,7 +113,6 @@ def build_router(
   @router.get("/activities", response_model=ActivityHistoryView)
   def activity_history(request: Request) -> ActivityHistoryView:
     host_room_ids, _ = room_grants(request)
-    service.run_maintenance()
     rooms = []
     for room_id in host_room_ids:
       try:
@@ -121,8 +121,19 @@ def build_router(
         if error.status_code != 404:
           raise
     rooms.sort(key=lambda room: (room.created_at, str(room.id)), reverse=True)
-    return ActivityHistoryView(
-      activities=[activity_summary_view(room) for room in rooms],
+    return ActivityHistoryView(activities=[activity_summary_view(room) for room in rooms])
+
+  @router.get("/activities/{room_id}", response_model=PublishedActivityView)
+  def published_activity(room_id: UUID) -> PublishedActivityView:
+    room = service.get_room(room_id)
+    if room.status.value != "published":
+      raise not_found("This activity result is unavailable.")
+    return PublishedActivityView(
+      roomId=room.id,
+      title=room.title,
+      createdAt=room.created_at,
+      participantCount=len(room.participants),
+      result=groups_view(room),
     )
 
   @router.post(

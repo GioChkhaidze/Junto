@@ -48,7 +48,7 @@ demonstration, but it is ignored by Git and must never be committed.
 - `APP_ENV` — `production`. Enables strict production validation.
 - `DATABASE_URL` — required. SQLAlchemy PostgreSQL URL using the `psycopg` driver.
 - `SESSION_SECRET` — required, with at least 32 random characters. Signs anonymous room capabilities. Rotate it only
-  with an accepted logout of every browser session.
+  when every browser session may be logged out. Published activities remain in PostgreSQL.
 - `TRUSTED_ORIGINS` — exact HTTPS origin list. Rejects browser requests from outside the deployment. Do not use `*`.
 - `OPENAI_API_KEY` — required for live OpenAI analysis and used for authoring when OpenRouter is not configured. This
   credential never reaches the browser or database.

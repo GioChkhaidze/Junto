@@ -487,3 +487,11 @@ class CoverageMyGroupView(ApiModel):
 
 GroupsView = PlaceholderGroupsView | CoverageGroupsView
 MyGroupView = PlaceholderMyGroupView | CoverageMyGroupView
+
+
+class PublishedActivityView(ApiModel):
+  roomId: UUID
+  title: str
+  createdAt: datetime
+  participantCount: int = Field(ge=0)
+  result: GroupsView

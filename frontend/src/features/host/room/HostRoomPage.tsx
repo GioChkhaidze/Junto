@@ -142,7 +142,7 @@ export function HostRoomPage() {
         <ContentStack className={styles.roomColumn}>
           <h1>Room unavailable</h1>
           <InlineNotice tone="error" title="Junto couldn’t open this room">
-            {error ?? "The host link may be incomplete or no longer available."}
+            {error ?? "This browser does not have host access to the room."}
           </InlineNotice>
           <ContentActions>
             <Button variant="secondary" onClick={() => navigate("/")}>

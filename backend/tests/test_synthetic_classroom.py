@@ -34,6 +34,7 @@ from junto.services.simulation import (
   SyntheticStudentOutput,
   _maximum_output_tokens,
   _normalize_synthetic_answer,
+  _response_plans,
   _synthetic_student_output_type,
 )
 from tests.conftest import CapturingScheduler, ManualClock, join_participant, mutate
@@ -741,13 +742,15 @@ def test_openrouter_uses_one_private_request_per_student_and_maps_answers_server
   assert all(call["temperature"] == 0.65 for call in client.calls)
   assert all(call["reasoning_max_tokens"] == 1_024 for call in client.calls)
   assert all(call["exclude_reasoning"] is True for call in client.calls)
+  response_modes: list[str] = []
   for call, student in zip(client.calls, students, strict=True):
     user_content = call["messages"][1]["content"]
     wire_payload = json.loads(user_content.splitlines()[1])
     assert set(wire_payload) == {"activityTitle", "questions", "simulationContext", "studentTraits"}
     assert wire_payload["activityTitle"] == "Fallback test"
     assert wire_payload["simulationContext"] == simulation_context
-    assert wire_payload["questions"] == ["Explain the tradeoff."]
+    assert wire_payload["questions"][0]["prompt"] == "Explain the tradeoff."
+    response_modes.append(wire_payload["questions"][0]["responseMode"])
     assert set(wire_payload["studentTraits"]) == {
       "knowledge_level",
       "confidence",
@@ -764,6 +767,8 @@ def test_openrouter_uses_one_private_request_per_student_and_maps_answers_server
     assert '"students"' not in serialized_messages
     assert simulation_context in serialized_messages
     assert "no longer than 1,200 characters" in serialized_messages
+    assert "mandatory responseMode" in serialized_messages
+    assert "never correct or flag it" in serialized_messages
     for trait in (
       student.persona.knowledge_level,
       student.persona.confidence,
@@ -772,8 +777,35 @@ def test_openrouter_uses_one_private_request_per_student_and_maps_answers_server
       student.persona.participation,
     ):
       assert trait in serialized_messages
+  assert set(response_modes) == {"misconception", "biased"}
   assert result.answers == {student.participant_id: {question.id: "A bounded answer"} for student in students}
   assert result.models == ("test/model",)
+
+
+@pytest.mark.parametrize(
+  ("cohort_size", "expected"),
+  [
+    (10, {"strong": 2, "partial": 3, "misconception": 2, "biased": 1, "adjacent": 1, "empty": 1}),
+    (20, {"strong": 5, "partial": 6, "misconception": 4, "biased": 2, "adjacent": 2, "empty": 1}),
+  ],
+)
+def test_response_plans_enforce_a_realistic_question_level_mix(
+  cohort_size: int,
+  expected: dict[str, int],
+) -> None:
+  students = tuple(
+    SyntheticStudent(participant_id=uuid4(), persona=persona) for persona in synthetic_personas(cohort_size)
+  )
+  questions = (
+    SyntheticQuestion(id=uuid4(), prompt="Define the state and recurrence."),
+    SyntheticQuestion(id=uuid4(), prompt="Explain the time complexity."),
+  )
+
+  plans = _response_plans(questions, students)
+
+  for question_index in range(len(questions)):
+    modes = [plans[student.participant_id][question_index] for student in students]
+    assert {mode: modes.count(mode) for mode in set(modes)} == expected
 
 
 @pytest.mark.parametrize(
@@ -843,6 +875,7 @@ def test_openrouter_limits_default_parallel_requests_to_five() -> None:
   assert len(client.calls) == 20
   assert client.maximum_active_calls == 5
   assert len(result.answers) == 20
+  assert sum(answer[question.id] == "" for answer in result.answers.values()) == 1
 
 
 @pytest.mark.parametrize("reason", ["transport", "finish_error"])

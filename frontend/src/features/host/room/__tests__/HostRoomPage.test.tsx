@@ -118,6 +118,8 @@ describe("HostRoomPage", () => {
       '[aria-live="polite"], [aria-live="assertive"], [role="status"]:not([aria-live="off"])',
     );
 
+    expect(screen.getByRole("link", { name: "Activities" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Copy host link" })).not.toBeInTheDocument();
     expect(liveAncestor).toBeNull();
   });
 

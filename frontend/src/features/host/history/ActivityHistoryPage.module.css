@@ -103,10 +103,10 @@
 .deleteAction {
   min-height: 2.75rem;
   padding: var(--space-2) var(--space-3);
-  margin-right: var(--space-1);
   color: var(--ink-muted);
   font-size: 0.8rem;
   font-weight: 680;
+  margin-right: var(--space-1);
 }
 
 .deleteAction:hover {
@@ -198,13 +198,13 @@
     grid-template-columns: 1fr;
   }
 
-  .activityLink {
-    grid-template-columns: 1fr;
-  }
-
   .deleteAction {
     justify-self: start;
     margin: 0 0 var(--space-3);
+  }
+
+  .activityLink {
+    grid-template-columns: 1fr;
   }
 
   .identity,
