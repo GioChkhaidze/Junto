@@ -100,6 +100,10 @@ cd backend
 Vite proxies `/api` to FastAPI in development. A production frontend build is served directly by FastAPI from
 `frontend/dist`.
 
+The hackathon deployment runs the same image in one Cloudflare Container with Neon PostgreSQL and a Worker-level judge
+login. See [Cloudflare Containers + Neon](docs/operations.md#cloudflare-containers--neon-hackathon-deployment) for the
+live architecture, secret names, release order, and verification commands.
+
 ## Verify
 
 ```powershell

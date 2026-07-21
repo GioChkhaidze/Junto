@@ -6,6 +6,10 @@
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+.wrangler/
+**/.mypy_cache/
+**/.pytest_cache/
+**/.ruff_cache/
 backend/.venv/
 backend/**/__pycache__/
 backend/tests/fixtures/**/*.json
@@ -14,6 +18,7 @@ docs/evidence/**/*.json
 frontend/dist/
 frontend/node_modules/
 frontend/package-lock.json
+worker-configuration.d.ts
 output/
 .env
 .env.*

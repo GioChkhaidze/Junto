@@ -99,8 +99,10 @@ The authoring route uses the seminar-console composition:
 4. a bright, spacious editor plane;
 5. a stable bottom decision row for Back/Cancel and Continue/Create.
 
-The four steps remain reference material, activity details, questions, and review. Completed steps are revisitable.
-Future steps are visible but inactive. The rail becomes one horizontal four-step sequence below tablet width.
+The five steps are reference material, activity details, questions, discussion groups, and review. The discussion-groups
+step asks hosts in plain language whether members should teach complementary knowledge or compare different approaches.
+Completed steps are revisitable. Future steps are visible but inactive. The rail becomes one horizontal five-step
+sequence below tablet width.
 
 Questions remain proper form content, not decorative cards. Every question includes a multiline prompt, explicit editing
 actions, coverage-unit rows, limits, validation, and an add-question action. One room-wide duration controls the

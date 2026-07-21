@@ -1,0 +1,22 @@
+{
+  "name": "junto-deployment",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "cloudflare:types": "wrangler types",
+    "cloudflare:check": "tsc --project cloudflare/tsconfig.json --noEmit",
+    "cloudflare:test": "node --experimental-strip-types --test cloudflare/src/auth.test.ts",
+    "cloudflare:dry-run": "wrangler deploy --dry-run",
+    "cloudflare:deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "0.3.7"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260721.1",
+    "@types/node": "26.1.1",
+    "typescript": "7.0.2",
+    "wrangler": "4.112.0"
+  }
+}

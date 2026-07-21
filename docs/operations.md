@@ -50,16 +50,20 @@ demonstration, but it is ignored by Git and must never be committed.
 - `SESSION_SECRET` — required, with at least 32 random characters. Signs anonymous room capabilities. Rotate it only
   when every browser session may be logged out. Published activities remain in PostgreSQL.
 - `TRUSTED_ORIGINS` — exact HTTPS origin list. Rejects browser requests from outside the deployment. Do not use `*`.
-- `OPENAI_API_KEY` — required for live OpenAI analysis and used for authoring when OpenRouter is not configured. This
-  credential never reaches the browser or database.
+- `OPENAI_API_KEY` — required for live OpenAI analysis and used for authoring only when OpenRouter is not configured.
+  This credential never reaches the browser or database.
 - `ANALYSIS_ENGINE` — `openai` in production. Selects analysis but does not gate AI-assisted authoring. Production
   rejects `recorded` and `placeholder`.
 - `OPENAI_MODEL` — `gpt-5.6-luna`. The structured-output model for OpenAI analysis and fallback authoring. Review
   changes before deployment.
 - `OPENAI_REASONING_EFFORT` — `high`. Quality-first reasoning for OpenAI analysis and fallback authoring.
-- `OPENROUTER_API_KEY` — unset. Enables preferred authoring assistance plus development semantic and synthetic calls.
-- `OPENROUTER_MODEL` — `google/gemini-2.5-flash`. This single server-owned full model handles OpenRouter authoring,
-  development semantic evaluation, and synthetic generation.
+- `OPENROUTER_API_KEY` — required for the judging deployment. It enables preferred AI-suggested questions,
+  AI-suggested coverage units, and host-triggered simulated students. It does not replace OpenAI analysis.
+- `OPENROUTER_MODEL` — `google/gemini-2.5-flash`. This server-owned model handles authoring suggestions and synthetic
+  generation. The model identifier and credential never reach the browser.
+- `SYNTHETIC_CLASSROOM_ENABLED` — `true` for the password-protected judging deployment and `false` by default elsewhere.
+  The simulation control is host-only and generated participants remain visibly labeled as simulated.
+- `SYNTHETIC_MAX_COHORT_SIZE` — `12` for the judging deployment. The application rejects values outside `1..20`.
 - `PORT` — `8000`. Internal HTTP port.
 - `LOG_LEVEL` — `info`. Application log level; default Uvicorn access logs are disabled.
 - `FORWARDED_ALLOW_IPS` — `127.0.0.1`. Reverse proxies trusted to supply forwarded client metadata.
@@ -70,10 +74,10 @@ For a local development checkout, Junto reads the repository-root `.env` without
 values explicitly supplied to the backend process take precedence. Test and production processes never auto-load this
 workstation file and must receive configuration from their runtime environment.
 
-Cookie behavior, provider concurrency, synthetic cohort shape, solver limits, retries, and request-rate limits are typed
-application defaults rather than deployment variables. Change them in reviewed code with matching tests and
-documentation. Keep the documented classroom ceiling at 60 participants unless a new load run establishes another
-supported limit.
+Cookie behavior, provider concurrency, solver limits, retries, and request-rate limits are typed application defaults
+rather than deployment variables. The synthetic classroom feature flag and its bounded cohort cap are explicit runtime
+variables so a normal deployment can keep simulation disabled. Keep the documented classroom ceiling at 60 participants
+unless a new load run establishes another supported limit.
 
 Live semantic analysis allows 90 seconds per provider request inside one 240-second room deadline. The deadline includes
 limiter waits and every coverage batch, family call, repair, or transport retry. Each OpenAI response is capped at 8,000
@@ -113,6 +117,66 @@ not fall back to the in-memory repository in production.
 The Compose port binds to loopback. Put an HTTPS reverse proxy in front of it and forward only the configured hostname.
 Cookie security derives from `APP_ENV`: production always uses secure cookies, while a local development browser can use
 loopback HTTP.
+
+## Cloudflare Containers + Neon hackathon deployment
+
+The public hackathon deployment uses the tracked `wrangler.jsonc` configuration:
+
+```text
+browser -- HTTPS + Basic Auth --> Cloudflare Worker --> one 1 GiB Junto Container
+                                                        |        |          |
+                                                        v        v          v
+                                                   Neon SQL   OpenAI   OpenRouter
+```
+
+The Worker owns the judge gate and removes the `Authorization` header before proxying to FastAPI. Every response is
+marked private, non-cacheable, and non-indexable. The Container remains the same one-process image described above; its
+ephemeral disk is not used for durable data. `max_instances` stays at one because in-process analysis has not been
+designed for horizontal execution.
+
+The production URL is `https://junto.georgechkhaidze10.workers.dev`. Preview URLs are disabled. Cloudflare
+Workers Paid and Docker Desktop are required to publish Container images.
+
+Install the root deployment dependencies and validate the Worker before publishing:
+
+```powershell
+npm install
+npm run cloudflare:types
+npm run cloudflare:check
+npm run cloudflare:test
+npm run cloudflare:dry-run
+```
+
+The following values are required Cloudflare secrets and must never be placed in `wrangler.jsonc`:
+
+- `DATABASE_URL` — the pooled Neon connection string used by the running application;
+- `OPENAI_API_KEY` — the production analysis credential;
+- `OPENROUTER_API_KEY` — the authoring and simulated-student credential;
+- `SESSION_SECRET` — an independently generated session-signing value;
+- `TRUSTED_ORIGINS` — the exact production URL above;
+- `JUDGE_USERNAME` and `JUDGE_PASSWORD` — HTTP Basic credentials known only to the demo operator and judges.
+
+Configure or rotate a value interactively with `npx wrangler secret put NAME`. Use `npx wrangler secret list` to inspect
+names only. Wrangler validates that every declared secret exists before deployment.
+
+Neon project metadata is linked through `.neon`; credentials are not stored there. Use a direct Neon connection for the
+explicit Alembic release operation and the pooled connection for the runtime. This follows Neon's transaction-pooler
+boundary and keeps schema changes separate from web startup. After a successful migration, publish with:
+
+```powershell
+npm run cloudflare:deploy
+npx wrangler containers list
+```
+
+The security and readiness smoke checks are:
+
+1. an unauthenticated request to `/` returns `401` with `WWW-Authenticate`, `Cache-Control: private, no-store`, and
+   `X-Robots-Tag: noindex, nofollow, noarchive`;
+2. an authenticated request to `/` returns the production SPA;
+3. an authenticated `GET /api/ready` returns `200` and `{"status":"ready"}`, proving that PostgreSQL accepts a probe.
+
+Rotate the judge password immediately if it is shared outside the judging panel. Delete completed rooms through the host
+UI; turning off the Container does not delete Neon data.
 
 ### Release order
 

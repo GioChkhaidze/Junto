@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "junto",
+  "main": "cloudflare/src/index.ts",
+  "compatibility_date": "2026-07-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "secrets": {
+    "required": [
+      "DATABASE_URL",
+      "JUDGE_PASSWORD",
+      "JUDGE_USERNAME",
+      "OPENAI_API_KEY",
+      "OPENROUTER_API_KEY",
+      "SESSION_SECRET",
+      "TRUSTED_ORIGINS",
+    ],
+  },
+  "containers": [
+    {
+      "name": "junto-hackathon-juntocontainer",
+      "class_name": "JuntoContainer",
+      "image": "./Dockerfile",
+      "max_instances": 1,
+      "instance_type": "basic",
+    },
+  ],
+  "durable_objects": { "bindings": [{ "name": "JUNTO_CONTAINER", "class_name": "JuntoContainer" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["JuntoContainer"] }],
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+}

@@ -24,6 +24,8 @@ RUN python -m pip install --requirement /tmp/requirements.runtime.lock \
 
 FROM python:3.12.11-slim-bookworm AS runtime
 
+LABEL org.opencontainers.image.title="Junto"
+
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app/backend \

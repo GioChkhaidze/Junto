@@ -7,6 +7,8 @@
 .pytest_cache
 .mypy_cache
 .ruff_cache
+.wrangler
+.neon
 output
 
 **/__pycache__
@@ -15,15 +17,19 @@ output
 **/htmlcov
 **/.venv
 
+node_modules
 frontend/node_modules
 frontend/dist
 frontend/coverage
 frontend/*.tsbuildinfo
 
+backend/tests
+docs
+
 .env
 .env.*
 !.env.example
 *.log
+*.pid
 Thumbs.db
 .DS_Store
-

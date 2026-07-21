@@ -16,7 +16,7 @@ import type {
 } from "../../../domain";
 import styles from "./CreateRoomPage.module.css";
 
-type WizardStep = "material" | "details" | "questions" | "review";
+type WizardStep = "material" | "details" | "questions" | "groups" | "review";
 
 interface QuestionDraft {
   clientId: string;
@@ -48,6 +48,7 @@ const steps: Array<{ id: WizardStep; label: string }> = [
   { id: "material", label: "Reference material" },
   { id: "details", label: "Activity details" },
   { id: "questions", label: "Questions" },
+  { id: "groups", label: "Discussion groups" },
   { id: "review", label: "Review" },
 ];
 
@@ -598,39 +599,6 @@ export function CreateRoomPage() {
                   />
                 </Field>
 
-                <fieldset className={styles.policyFieldset}>
-                  <legend>Grouping approach</legend>
-                  <p>Coverage remains the first priority. Choose what should distinguish equally strong groupings.</p>
-                  <div className={styles.policyOptions}>
-                    <label className={draft.policy === "teach" ? styles.selectedPolicy : undefined}>
-                      <input
-                        type="radio"
-                        name="grouping-policy"
-                        value="teach"
-                        checked={draft.policy === "teach"}
-                        onChange={() => updateDraft("policy", "teach")}
-                      />
-                      <span>
-                        <strong>Teach</strong>
-                        <small>Distribute participants who can carry the required ideas across groups.</small>
-                      </span>
-                    </label>
-                    <label className={draft.policy === "explore" ? styles.selectedPolicy : undefined}>
-                      <input
-                        type="radio"
-                        name="grouping-policy"
-                        value="explore"
-                        checked={draft.policy === "explore"}
-                        onChange={() => updateDraft("policy", "explore")}
-                      />
-                      <span>
-                        <strong>Explore</strong>
-                        <small>Mix different response families and perspectives when coverage is equally strong.</small>
-                      </span>
-                    </label>
-                  </div>
-                </fieldset>
-
                 <div className={styles.twoColumns}>
                   <Field label="Response time" hint="The countdown begins when you start the activity." required>
                     <Select
@@ -887,6 +855,63 @@ export function CreateRoomPage() {
             </section>
           ) : null}
 
+          {step === "groups" ? (
+            <section aria-labelledby="groups-title">
+              <header className={styles.sectionHeader}>
+                <div>
+                  <h1 id="groups-title" ref={stepHeadingRef} tabIndex={-1}>
+                    What kind of discussion should each group have?
+                  </h1>
+                  <p>
+                    Choose whether groups should combine complementary knowledge or compare different ways of thinking.
+                  </p>
+                </div>
+              </header>
+
+              <fieldset className={styles.policyFieldset}>
+                <legend>Choose a group goal</legend>
+                <p>
+                  Junto always tries to spread useful ideas from the submitted answers across the room. This choice
+                  guides how it forms groups when several arrangements work equally well.
+                </p>
+                <div className={styles.policyOptions}>
+                  <label className={draft.policy === "teach" ? styles.selectedPolicy : undefined}>
+                    <input
+                      type="radio"
+                      name="grouping-policy"
+                      value="teach"
+                      checked={draft.policy === "teach"}
+                      onChange={() => updateDraft("policy", "teach")}
+                    />
+                    <span>
+                      <strong>Teach each other</strong>
+                      <small>
+                        Spread people with different pieces of the answer across groups, so members can explain what
+                        others may have missed.
+                      </small>
+                    </span>
+                  </label>
+                  <label className={draft.policy === "explore" ? styles.selectedPolicy : undefined}>
+                    <input
+                      type="radio"
+                      name="grouping-policy"
+                      value="explore"
+                      checked={draft.policy === "explore"}
+                      onChange={() => updateDraft("policy", "explore")}
+                    />
+                    <span>
+                      <strong>Explore different approaches</strong>
+                      <small>
+                        Mix people who answered in different ways, so each group can compare methods, interpretations,
+                        or perspectives.
+                      </small>
+                    </span>
+                  </label>
+                </div>
+              </fieldset>
+            </section>
+          ) : null}
+
           {step === "review" ? (
             <section aria-labelledby="review-title">
               <header className={styles.sectionHeader}>
@@ -912,8 +937,8 @@ export function CreateRoomPage() {
                   <dd>About {draft.preferredGroupSize} people</dd>
                 </div>
                 <div>
-                  <dt>Grouping approach</dt>
-                  <dd>{draft.policy === "teach" ? "Teach" : "Explore"}</dd>
+                  <dt>Discussion goal</dt>
+                  <dd>{draft.policy === "teach" ? "Teach each other" : "Explore different approaches"}</dd>
                 </div>
                 <div>
                   <dt>Reference material</dt>

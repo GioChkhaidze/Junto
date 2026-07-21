@@ -105,6 +105,47 @@ def test_synthetic_classroom_can_use_openai_analysis() -> None:
   assert settings.engine_mode == "openai"
 
 
+def test_production_can_enable_bounded_openrouter_synthetic_classrooms() -> None:
+  settings = Settings.from_environment(
+    {
+      "APP_ENV": "production",
+      "SESSION_SECRET": "x" * 48,
+      "DATABASE_URL": "postgresql+psycopg://junto:secret@database/junto",
+      "ANALYSIS_ENGINE": "openai",
+      "OPENAI_API_KEY": "test-openai-key",
+      "OPENROUTER_API_KEY": "test-openrouter-key",
+      "SYNTHETIC_CLASSROOM_ENABLED": "true",
+      "SYNTHETIC_MAX_COHORT_SIZE": "12",
+      "TRUSTED_ORIGINS": "https://junto.example",
+    }
+  )
+
+  assert settings.synthetic_classroom_enabled is True
+  assert settings.synthetic_max_cohort_size == 12
+  assert settings.engine_mode == "openai"
+
+
+def test_production_synthetic_classroom_requires_openrouter() -> None:
+  with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
+    Settings.from_environment(
+      {
+        "APP_ENV": "production",
+        "SESSION_SECRET": "x" * 48,
+        "DATABASE_URL": "postgresql+psycopg://junto:secret@database/junto",
+        "ANALYSIS_ENGINE": "openai",
+        "OPENAI_API_KEY": "test-openai-key",
+        "SYNTHETIC_CLASSROOM_ENABLED": "true",
+        "TRUSTED_ORIGINS": "https://junto.example",
+      }
+    )
+
+
+@pytest.mark.parametrize("value", ["", "enabled", "2"])
+def test_synthetic_classroom_environment_flag_is_strict(value: str) -> None:
+  with pytest.raises(RuntimeError, match="SYNTHETIC_CLASSROOM_ENABLED"):
+    Settings.from_environment({"APP_ENV": "test", "SYNTHETIC_CLASSROOM_ENABLED": value})
+
+
 def test_conventional_environment_names_are_loaded(monkeypatch: pytest.MonkeyPatch) -> None:
   monkeypatch.setenv("APP_ENV", "test")
   monkeypatch.setenv("ANALYSIS_ENGINE", "recorded")

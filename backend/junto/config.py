@@ -25,6 +25,28 @@ def _environment_origins(environment: Mapping[str, str]) -> tuple[str, ...]:
   return origins
 
 
+def _environment_boolean(environment: Mapping[str, str], name: str, *, default: bool) -> bool:
+  raw = environment.get(name)
+  if raw is None:
+    return default
+  normalized = raw.strip().lower()
+  if normalized in {"1", "true", "yes", "on"}:
+    return True
+  if normalized in {"0", "false", "no", "off"}:
+    return False
+  raise RuntimeError(f"{name} must be true or false.")
+
+
+def _environment_integer(environment: Mapping[str, str], name: str, *, default: int) -> int:
+  raw = environment.get(name)
+  if raw is None:
+    return default
+  try:
+    return int(raw.strip())
+  except ValueError:
+    raise RuntimeError(f"{name} must be an integer.") from None
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
   environment: str = "development"
@@ -94,8 +116,8 @@ class Settings:
       raise RuntimeError("openrouter_model must not be empty.")
     if self.environment != "production":
       return
-    if self.synthetic_classroom_enabled:
-      raise RuntimeError("Synthetic classroom controls cannot be enabled in production.")
+    if self.synthetic_classroom_enabled and self.openrouter_api_key is None:
+      raise RuntimeError("OPENROUTER_API_KEY is required when synthetic classrooms are enabled in production.")
     if self.engine_mode != "openai":
       raise RuntimeError("Production requires the OpenAI analysis engine.")
     if len(self.session_secret) < 32:
@@ -117,6 +139,12 @@ class Settings:
       raise RuntimeError("ANALYSIS_ENGINE must be placeholder, recorded, openai, or openrouter.")
     openai_api_key = source.get("OPENAI_API_KEY") or None
     openrouter_api_key = source.get("OPENROUTER_API_KEY") or None
+    synthetic_classroom_enabled = _environment_boolean(
+      source,
+      "SYNTHETIC_CLASSROOM_ENABLED",
+      default=environment == "development",
+    )
+    synthetic_max_cohort_size = _environment_integer(source, "SYNTHETIC_MAX_COHORT_SIZE", default=20)
     reasoning_effort = source.get("OPENAI_REASONING_EFFORT", "high").strip().lower()
     if reasoning_effort not in REASONING_EFFORTS:
       raise RuntimeError("OPENAI_REASONING_EFFORT must be none, low, medium, high, xhigh, or max.")
@@ -155,7 +183,8 @@ class Settings:
       openai_reasoning_effort=reasoning_effort,
       openrouter_api_key=openrouter_api_key,
       openrouter_model=source.get("OPENROUTER_MODEL", "google/gemini-2.5-flash").strip(),
-      synthetic_classroom_enabled=environment == "development",
+      synthetic_classroom_enabled=synthetic_classroom_enabled,
+      synthetic_max_cohort_size=synthetic_max_cohort_size,
       trusted_origins=trusted_origins,
     )
 

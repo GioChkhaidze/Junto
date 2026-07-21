@@ -280,6 +280,7 @@
 }
 
 .policyFieldset {
+  max-width: 58rem;
   padding: 0;
   margin: 0;
   border: 0;
@@ -288,15 +289,16 @@
 .policyFieldset legend {
   padding: 0;
   color: var(--ink);
-  font-size: 0.925rem;
+  font-size: 1.05rem;
   font-weight: 700;
 }
 
 .policyFieldset > p {
   max-width: 65ch;
-  margin: var(--space-1) 0 var(--space-4);
-  color: var(--ink-muted);
-  font-size: 0.82rem;
+  margin: var(--space-2) 0 var(--space-5);
+  color: var(--ink-secondary);
+  font-size: 0.9rem;
+  line-height: 1.55;
 }
 
 .policyOptions {
@@ -309,10 +311,10 @@
 .policyOptions label {
   display: flex;
   min-width: 0;
-  min-height: 5.5rem;
+  min-height: 8.5rem;
   align-items: flex-start;
   gap: var(--space-3);
-  padding: var(--space-4);
+  padding: var(--space-6);
   background: var(--white);
   cursor: pointer;
   transition: background-color 170ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -354,14 +356,14 @@
 
 .policyOptions strong {
   color: var(--ink);
-  font-size: 0.925rem;
+  font-size: 1.05rem;
 }
 
 .policyOptions small {
   max-width: 42ch;
   color: var(--ink-secondary);
-  font-size: 0.82rem;
-  line-height: 1.45;
+  font-size: 0.9rem;
+  line-height: 1.55;
 }
 
 .twoColumns {
@@ -597,7 +599,7 @@
 
   .stepRail ol {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     margin-bottom: 0;
   }
 

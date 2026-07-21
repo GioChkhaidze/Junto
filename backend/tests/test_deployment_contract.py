@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from argparse import Namespace
 from collections import Counter
 from pathlib import Path
@@ -10,6 +11,7 @@ import pytest
 from scripts import load_demo, release, start
 
 BACKEND_DIRECTORY = Path(__file__).resolve().parents[1]
+REPOSITORY_DIRECTORY = BACKEND_DIRECTORY.parent
 
 
 def test_runtime_command_is_one_process_and_privacy_safe(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -42,6 +44,47 @@ def test_runtime_dependency_closure_is_pinned_without_test_tools() -> None:
   names = {line.split("==", 1)[0].lower() for line in lines}
   assert {"fastapi", "openai", "ortools", "psycopg", "sqlalchemy", "uvicorn"} <= names
   assert names.isdisjoint({"hypothesis", "mypy", "pytest", "ruff"})
+
+
+def test_cloudflare_deployment_is_single_instance_private_and_secret_driven() -> None:
+  raw_configuration = (REPOSITORY_DIRECTORY / "wrangler.jsonc").read_text(encoding="utf-8")
+  configuration = json.loads(re.sub(r",(?=\s*[}\]])", "", raw_configuration))
+
+  assert configuration["workers_dev"] is True
+  assert configuration["preview_urls"] is False
+  assert configuration["secrets"]["required"] == [
+    "DATABASE_URL",
+    "JUDGE_PASSWORD",
+    "JUDGE_USERNAME",
+    "OPENAI_API_KEY",
+    "OPENROUTER_API_KEY",
+    "SESSION_SECRET",
+    "TRUSTED_ORIGINS",
+  ]
+  assert configuration["containers"] == [
+    {
+      "name": "junto-hackathon-juntocontainer",
+      "class_name": "JuntoContainer",
+      "image": "./Dockerfile",
+      "max_instances": 1,
+      "instance_type": "basic",
+    }
+  ]
+  assert configuration["migrations"] == [{"tag": "v1", "new_sqlite_classes": ["JuntoContainer"]}]
+
+  worker_source = (REPOSITORY_DIRECTORY / "cloudflare" / "src" / "index.ts").read_text(encoding="utf-8")
+  assert 'upstreamRequest.headers.delete("Authorization")' in worker_source
+  assert 'headers.set("Cache-Control", "private, no-store")' in worker_source
+  assert 'headers.set("X-Robots-Tag", "noindex, nofollow, noarchive")' in worker_source
+  assert 'OPENROUTER_MODEL: "google/gemini-2.5-flash"' in worker_source
+  assert 'SYNTHETIC_CLASSROOM_ENABLED: "true"' in worker_source
+  assert 'SYNTHETIC_MAX_COHORT_SIZE: "12"' in worker_source
+
+
+def test_docker_context_excludes_local_secrets_and_tool_state() -> None:
+  ignored = set((REPOSITORY_DIRECTORY / ".dockerignore").read_text(encoding="utf-8").splitlines())
+
+  assert {".env", ".env.*", ".wrangler", "node_modules"} <= ignored
 
 
 def test_demo_loader_rejects_non_loopback_target() -> None:

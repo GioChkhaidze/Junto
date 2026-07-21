@@ -13,6 +13,7 @@ SKIPPED_DIRECTORIES = {
   ".tmp",
   ".venv",
   ".vite",
+  ".wrangler",
   "__pycache__",
   "build",
   "coverage",
@@ -23,8 +24,9 @@ SKIPPED_DIRECTORIES = {
   "playwright-report",
   "test-results",
 }
-SKIPPED_FILES = {"package-lock.json", "requirements.runtime.lock"}
-# Locks are generator-owned; frozen JSON fixtures contain indivisible prose strings whose wrapping would change data.
+SKIPPED_FILES = {"package-lock.json", "requirements.runtime.lock", "worker-configuration.d.ts"}
+# Locks and Worker declarations are generator-owned; frozen JSON fixtures contain indivisible prose strings whose
+# wrapping would change data.
 TEXT_SUFFIXES = {".css", ".html", ".ini", ".json", ".md", ".py", ".toml", ".ts", ".tsx", ".txt", ".yaml", ".yml"}
 TEXT_FILENAMES = {
   ".dockerignore",
