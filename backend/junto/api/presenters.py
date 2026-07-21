@@ -93,7 +93,7 @@ def host_room_view(room: Room, *, now: datetime) -> HostRoomView:
   )
 
 
-def activity_summary_view(room: Room) -> ActivitySummaryView:
+def activity_summary_view(room: Room, *, can_delete: bool = True) -> ActivitySummaryView:
   result = room.grouping_result
   group_count = len(result.groups) if result is not None else 0
   generation_mode: Literal["placeholder", "coverage_aware"] | None = None
@@ -107,7 +107,8 @@ def activity_summary_view(room: Room) -> ActivitySummaryView:
       total = len(coverage_groups) * len(room.questions)
   return ActivitySummaryView(
     roomId=room.id,
-    joinCode=room.join_code,
+    joinCode=room.join_code if can_delete else None,
+    canDelete=can_delete,
     title=room.title,
     status=room.status,
     createdAt=room.created_at,

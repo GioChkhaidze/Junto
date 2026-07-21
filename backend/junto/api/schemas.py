@@ -209,7 +209,8 @@ class SessionView(ApiModel):
 
 class ActivitySummaryView(ApiModel):
   roomId: UUID
-  joinCode: str
+  joinCode: str | None
+  canDelete: bool
   title: str
   status: RoomStatus
   createdAt: datetime

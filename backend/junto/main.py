@@ -10,7 +10,6 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.sessions import SessionMiddleware
 
 from junto.access.middleware import (
   RequestTelemetryMiddleware,
@@ -19,6 +18,7 @@ from junto.access.middleware import (
   TrustedOriginMiddleware,
 )
 from junto.access.request_limits import MaterialUploadLimitMiddleware
+from junto.access.session_middleware import WriteOnChangeSessionMiddleware
 from junto.api.routes import build_router
 from junto.config import Settings, settings
 from junto.domain.errors import DomainError
@@ -115,7 +115,7 @@ def create_app(
   application.state.database_engine = database_engine
   application.state.synthetic_classroom = synthetic_classroom
   application.add_middleware(
-    SessionMiddleware,
+    WriteOnChangeSessionMiddleware,
     secret_key=app_settings.session_secret,
     session_cookie=app_settings.session_cookie_name,
     same_site="lax",

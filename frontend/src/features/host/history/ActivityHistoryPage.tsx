@@ -184,14 +184,16 @@ export function ActivityHistoryPage() {
                     {activityState(activity)}
                   </span>
                 </Link>
-                <button
-                  type="button"
-                  className={styles.deleteAction}
-                  aria-label={`Delete ${activity.title}`}
-                  onClick={() => setActivityToDelete(activity)}
-                >
-                  Delete
-                </button>
+                {activity.canDelete ? (
+                  <button
+                    type="button"
+                    className={styles.deleteAction}
+                    aria-label={`Delete ${activity.title}`}
+                    onClick={() => setActivityToDelete(activity)}
+                  >
+                    Delete
+                  </button>
+                ) : null}
               </li>
             ))}
           </ol>

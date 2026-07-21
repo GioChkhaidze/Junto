@@ -31,6 +31,7 @@ export function JoinRoomPage() {
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const resuming = room !== null && room.status !== "lobby";
   useDocumentTitle(room?.title ? `Join ${room.title}` : "Join activity");
 
   useEffect(() => {
@@ -103,8 +104,8 @@ export function JoinRoomPage() {
 
             <div className={styles.joinPanel}>
               <div className={styles.formHeading}>
-                <p>Before you begin</p>
-                <h2>Join the activity</h2>
+                <p>{resuming ? "Welcome back" : "Before you begin"}</p>
+                <h2>{resuming ? "Resume the activity" : "Join the activity"}</h2>
               </div>
               <form className={styles.form} onSubmit={submit}>
                 <Field
@@ -142,10 +143,10 @@ export function JoinRoomPage() {
                   type="submit"
                   fullWidth
                   loading={joining}
-                  loadingLabel="Joining activity"
+                  loadingLabel={resuming ? "Resuming activity" : "Joining activity"}
                   disabled={displayName.trim().length < 2}
                 >
-                  Join activity
+                  {resuming ? "Resume activity" : "Join activity"}
                 </Button>
               </form>
               <p className={styles.codeLine}>

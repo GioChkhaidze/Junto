@@ -4,7 +4,8 @@ import type { HostGroupsResponse } from "./groups";
 
 export interface ActivitySummary {
   roomId: EntityId;
-  joinCode: string;
+  joinCode: string | null;
+  canDelete: boolean;
   title: string;
   status: RoomStatus;
   createdAt: IsoDateTime;

@@ -166,7 +166,16 @@ def test_session_establishes_csrf_and_host_grant(harness: AppHarness) -> None:
   assert session.json()["participantRoomIds"] == []
 
 
-def test_activity_history_lists_only_rooms_hosted_in_the_current_browser(harness: AppHarness) -> None:
+def test_read_only_session_requests_do_not_reissue_the_cookie(harness: AppHarness) -> None:
+  with TestClient(harness.app) as client:
+    initialized = client.get("/api/session")
+    unchanged = client.get("/api/session")
+
+  assert initialized.headers.get("set-cookie") is not None
+  assert unchanged.headers.get("set-cookie") is None
+
+
+def test_activity_history_lists_published_rooms_and_browser_owned_drafts(harness: AppHarness) -> None:
   with TestClient(harness.app) as host, TestClient(harness.app) as other_browser:
     csrf = get_csrf(host)
     draft = create_room(host, csrf)
@@ -197,6 +206,7 @@ def test_activity_history_lists_only_rooms_hosted_in_the_current_browser(harness
   assert activities[0] == {
     "roomId": published["roomId"],
     "joinCode": published["joinCode"],
+    "canDelete": True,
     "title": "Reasoning workshop",
     "status": "published",
     "createdAt": "2026-07-18T09:00:01Z",
@@ -210,8 +220,15 @@ def test_activity_history_lists_only_rooms_hosted_in_the_current_browser(harness
   }
   assert activities[1]["status"] == "draft"
   assert activities[1]["groupCount"] == 0
+  assert activities[1]["canDelete"] is True
   assert other_history.status_code == 200
-  assert other_history.json() == {"activities": []}
+  public_activities = other_history.json()["activities"]
+  assert len(public_activities) == 1
+  assert public_activities[0] == {
+    **activities[0],
+    "joinCode": None,
+    "canDelete": False,
+  }
 
 
 def test_published_results_are_read_only_across_browsers_but_drafts_are_not_public(harness: AppHarness) -> None:
@@ -386,6 +403,52 @@ def test_participant_join_start_autosave_and_final_submit(harness: AppHarness) -
       )
       assert last["analysisStarted"] is True
       assert last["status"] == "analyzing"
+
+
+def test_participant_access_recovers_when_a_stale_cookie_loses_the_join_grant(harness: AppHarness) -> None:
+  with TestClient(harness.app) as host, TestClient(harness.app) as participant, TestClient(harness.app) as second:
+    host_csrf = get_csrf(host)
+    room, _ = create_open_room(host, host_csrf)
+    participant_csrf = get_csrf(participant)
+    stale_cookie = participant.cookies.get("junto_session")
+    assert stale_cookie is not None
+
+    joined = participant.post(
+      f"/api/join/{room['joinCode']}",
+      headers={"X-CSRF-Token": participant_csrf},
+      json={"displayName": "Maya"},
+    )
+    assert joined.status_code == 201
+    second_csrf = get_csrf(second)
+    second_joined = second.post(
+      f"/api/join/{room['joinCode']}",
+      headers={"X-CSRF-Token": second_csrf},
+      json={"displayName": "Alex"},
+    )
+    assert second_joined.status_code == 201
+    start_room(host, host_csrf, room["roomId"])
+
+    stale_headers = {"Cookie": f"junto_session={stale_cookie}"}
+    stale_session = participant.get("/api/session", headers=stale_headers)
+    resume_lookup = participant.get(f"/api/join/{room['joinCode']}", headers=stale_headers)
+    resumed = participant.post(
+      f"/api/join/{room['joinCode']}",
+      headers={**stale_headers, "X-CSRF-Token": participant_csrf},
+      json={"displayName": "Ignored replacement name"},
+    )
+    recovered = participant.get(f"/api/rooms/{room['roomId']}/participant", headers=stale_headers)
+
+  assert stale_session.json()["participantRoomIds"] == []
+  assert resume_lookup.status_code == 200
+  assert resume_lookup.json()["status"] == "answering"
+  assert resumed.status_code == 201, resumed.text
+  assert resumed.json()["participantId"] == joined.json()["participantId"]
+  assert resumed.json()["displayName"] == "Maya"
+  assert recovered.status_code == 200
+  assert recovered.json()["participant"]["participantId"] == joined.json()["participantId"]
+  assert recovered.json()["status"] == "answering"
+  assert recovered.json()["questions"]
+  assert recovered.headers.get("set-cookie") is not None
 
 
 def test_join_is_idempotent_for_one_browser_session(harness: AppHarness) -> None:

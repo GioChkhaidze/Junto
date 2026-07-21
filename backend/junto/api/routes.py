@@ -14,7 +14,6 @@ from junto.access.sessions import (
   grant_host,
   grant_participant,
   optional_participant_grant,
-  participant_grant,
   require_csrf,
   require_host,
   revoke_room_grant,
@@ -64,7 +63,7 @@ from junto.api.schemas import (
   SyntheticResponsesResultView,
   SyntheticResponsesWrite,
 )
-from junto.domain.entities import GroupSize
+from junto.domain.entities import GroupSize, Room
 from junto.domain.errors import DomainError, invalid, not_found
 from junto.engine.provider import (
   ProviderInvalidOutput,
@@ -113,15 +112,19 @@ def build_router(
   @router.get("/activities", response_model=ActivityHistoryView)
   def activity_history(request: Request) -> ActivityHistoryView:
     host_room_ids, _ = room_grants(request)
-    rooms = []
+    hosted_room_ids = set(host_room_ids)
+    rooms_by_id = {room.id: room for room in service.list_published_rooms()}
     for room_id in host_room_ids:
       try:
-        rooms.append(service.get_room(room_id))
+        rooms_by_id[room_id] = service.get_room(room_id)
       except DomainError as error:
         if error.status_code != 404:
           raise
+    rooms = list(rooms_by_id.values())
     rooms.sort(key=lambda room: (room.created_at, str(room.id)), reverse=True)
-    return ActivityHistoryView(activities=[activity_summary_view(room) for room in rooms])
+    return ActivityHistoryView(
+      activities=[activity_summary_view(room, can_delete=room.id in hosted_room_ids) for room in rooms]
+    )
 
   @router.get("/activities/{room_id}", response_model=PublishedActivityView)
   def published_activity(room_id: UUID) -> PublishedActivityView:
@@ -444,8 +447,11 @@ def build_router(
     return host_room_view(service.start_activity(room_id), now=service.current_time())
 
   @router.get("/join/{join_code}", response_model=JoinLookupView)
-  def lookup_join(join_code: str) -> JoinLookupView:
-    room = service.get_public_room(join_code)
+  def lookup_join(join_code: str, request: Request) -> JoinLookupView:
+    room = service.get_join_room(
+      join_code,
+      session_nonce=browser_session_nonce(request),
+    )
     return JoinLookupView(
       title=room.title,
       status=room.status,
@@ -464,13 +470,14 @@ def build_router(
     dependencies=[Depends(require_csrf)],
   )
   def join(join_code: str, payload: JoinRequest, request: Request) -> JoinResponse:
-    room = service.get_public_room(join_code)
+    session_nonce = browser_session_nonce(request)
+    room = service.get_join_room(join_code, session_nonce=session_nonce)
     existing = optional_participant_grant(request, room.id)
     joined_room, participant = service.join_room(
       join_code,
       display_name=payload.displayName,
       existing_participant_id=existing,
-      session_nonce=browser_session_nonce(request),
+      session_nonce=session_nonce,
     )
     grant_participant(
       request,
@@ -486,9 +493,9 @@ def build_router(
 
   @router.get("/rooms/{room_id}/participant", response_model=ParticipantRoomView)
   def get_participant_room(room_id: UUID, request: Request) -> ParticipantRoomView:
-    participant_id = participant_grant(request, room_id)
+    room, participant_id = _participant_access(service, request, room_id)
     return participant_room_view(
-      service.get_room(room_id),
+      room,
       participant_id,
       now=service.current_time(),
     )
@@ -504,7 +511,7 @@ def build_router(
     payload: AnswerWrite,
     request: Request,
   ) -> AnswerReceipt:
-    participant_id = participant_grant(request, room_id)
+    _, participant_id = _participant_access(service, request, room_id)
     receipt = service.save_answer(room_id, participant_id, question_id, text=payload.text)
     return AnswerReceipt(
       questionId=receipt.question_id,
@@ -519,7 +526,7 @@ def build_router(
     dependencies=[Depends(require_csrf)],
   )
   def submit(room_id: UUID, request: Request) -> SubmissionView:
-    participant_id = participant_grant(request, room_id)
+    _, participant_id = _participant_access(service, request, room_id)
     participant, analysis_started = service.submit(room_id, participant_id)
     room = service.get_room(room_id)
     if participant.submitted_at is None:
@@ -558,9 +565,10 @@ def build_router(
       require_host(request, room_id)
       return host_status_view(room, now=service.current_time())
     except DomainError as host_error:
-      participant_id = optional_participant_grant(request, room_id)
-      if participant_id is None:
-        raise host_error
+      try:
+        room, participant_id = _participant_access(service, request, room_id)
+      except DomainError:
+        raise host_error from None
       return participant_status_view(room, participant_id, now=service.current_time())
 
   @router.post(
@@ -593,10 +601,32 @@ def build_router(
 
   @router.get("/rooms/{room_id}/my-group", response_model=MyGroupView)
   def get_my_group(room_id: UUID, request: Request) -> MyGroupView:
-    participant_id = participant_grant(request, room_id)
-    return my_group_view(service.get_room(room_id), participant_id)
+    room, participant_id = _participant_access(service, request, room_id)
+    return my_group_view(room, participant_id)
 
   return router
+
+
+def _participant_access(service: RoomService, request: Request, room_id: UUID) -> tuple[Room, UUID]:
+  room = service.get_room(room_id)
+  granted_id = optional_participant_grant(request, room_id)
+  if granted_id is not None and granted_id in room.participants:
+    return room, granted_id
+
+  session_nonce = browser_session_nonce(request)
+  participant = next(
+    (candidate for candidate in room.participants.values() if candidate.session_nonce == session_nonce),
+    None,
+  )
+  if participant is None:
+    raise not_found()
+  grant_participant(
+    request,
+    room.id,
+    participant.id,
+    maximum=service.settings.max_session_room_grants,
+  )
+  return room, participant.id
 
 
 def to_group_size(value: GroupSizeDto) -> GroupSize:

@@ -140,6 +140,15 @@ class RoomService:
       raise not_found("This invite is unavailable.")
     return room
 
+  def get_join_room(self, join_code: str, *, session_nonce: str) -> Room:
+    room = self._repository.get_by_join_code(join_code.strip().upper())
+    if room is None:
+      raise not_found("This invite is unavailable.")
+    existing = any(participant.session_nonce == session_nonce for participant in room.participants.values())
+    if not self._is_lobby(room) and not existing:
+      raise not_found("This invite is unavailable.")
+    return room
+
   def update_room(
     self,
     room_id: UUID,
@@ -331,10 +340,10 @@ class RoomService:
     existing_participant_id: UUID | None = None,
     session_nonce: str,
   ) -> tuple[Room, Participant]:
-    public = self.get_public_room(join_code)
-    with self._repository.transaction(public.id) as room:
-      if not self._is_lobby(room):
-        raise not_found("This invite is unavailable.")
+    candidate = self._repository.get_by_join_code(join_code.strip().upper())
+    if candidate is None:
+      raise not_found("This invite is unavailable.")
+    with self._repository.transaction(candidate.id) as room:
       if existing_participant_id is not None:
         existing = room.participants.get(existing_participant_id)
         if existing is not None:
@@ -345,6 +354,8 @@ class RoomService:
       )
       if existing_for_session is not None:
         return deepcopy(room), deepcopy(existing_for_session)
+      if not self._is_lobby(room):
+        raise not_found("This invite is unavailable.")
       if len(room.participants) >= self._settings.max_participants_per_room:
         raise conflict("ROOM_FULL", "This room has reached its participant limit.")
       participant = Participant(

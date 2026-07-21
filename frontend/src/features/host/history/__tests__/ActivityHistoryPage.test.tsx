@@ -21,6 +21,7 @@ describe("ActivityHistoryPage", () => {
         {
           roomId: "room-published",
           joinCode: "ABC123",
+          canDelete: true,
           title: "Dynamic programming review",
           status: "published",
           createdAt: "2026-07-19T10:00:00.000Z",
@@ -35,6 +36,7 @@ describe("ActivityHistoryPage", () => {
         {
           roomId: "room-draft",
           joinCode: "DEF456",
+          canDelete: true,
           title: "Ethics seminar",
           status: "draft",
           createdAt: "2026-07-18T10:00:00.000Z",
@@ -88,6 +90,7 @@ describe("ActivityHistoryPage", () => {
         {
           roomId: "room-published",
           joinCode: "ABC123",
+          canDelete: true,
           title: "Dynamic programming review",
           status: "published",
           createdAt: "2026-07-19T10:00:00.000Z",
@@ -118,6 +121,40 @@ describe("ActivityHistoryPage", () => {
 
     expect(apiMocks.deleteRoom).toHaveBeenCalledWith("room-published", "ABC123");
     expect(await screen.findByRole("heading", { name: "No activities yet." })).toBeInTheDocument();
+  });
+
+  it("shows shared published activities without exposing deletion controls", async () => {
+    apiMocks.getActivities.mockResolvedValue({
+      activities: [
+        {
+          roomId: "room-public",
+          joinCode: null,
+          canDelete: false,
+          title: "History reasoning workshop",
+          status: "published",
+          createdAt: "2026-07-19T10:00:00.000Z",
+          groupingPublishedAt: "2026-07-19T10:20:00.000Z",
+          participantCount: 10,
+          questionCount: 1,
+          groupCount: 3,
+          generationMode: "coverage_aware",
+          fullyCoveredGroupQuestions: 3,
+          totalGroupQuestions: 3,
+        },
+      ],
+    });
+
+    render(
+      <MemoryRouter>
+        <ActivityHistoryPage />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByRole("link", { name: /History reasoning workshop/ })).toHaveAttribute(
+      "href",
+      "/activities/room-public",
+    );
+    expect(screen.queryByRole("button", { name: /Delete History reasoning workshop/ })).not.toBeInTheDocument();
   });
 
   it("can retry a failed history request", async () => {
