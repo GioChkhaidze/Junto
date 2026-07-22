@@ -127,6 +127,19 @@ npm run build
 The recorded end-to-end activity suite does not require an API key. A live semantic-quality evaluation does, and its
 reviewed results must be reported separately from structural test results.
 
+## Built with Codex
+
+OpenAI Codex was used throughout development as a collaborative engineering agent. It helped:
+
+- turn the product idea and constraints into the product, architecture, and operations documentation;
+- implement and refine the React frontend, FastAPI backend, semantic-analysis pipeline, and OR-Tools integration;
+- write and run automated tests, investigate failures, and iterate on the UI through live browser checks; and
+- containerize the application and configure its Cloudflare Workers/Containers and Neon deployment.
+
+The human developer directed the product, selected the tradeoffs, supplied credentials, approved deployments, and
+reviewed the results. Codex is a development tool for this repository; Junto's deployed semantic features call the
+separately configured model providers described above.
+
 ## Documentation
 
 - [Product contract](docs/product.md): experience, product promise, guarantees, and non-goals.
