@@ -159,9 +159,9 @@ The following values are required Cloudflare secrets and must never be placed in
 Configure or rotate a value interactively with `npx wrangler secret put NAME`. Use `npx wrangler secret list` to inspect
 names only. Wrangler validates that every declared secret exists before deployment.
 
-Neon project metadata is linked through `.neon`; credentials are not stored there. Use a direct Neon connection for the
-explicit Alembic release operation and the pooled connection for the runtime. This follows Neon's transaction-pooler
-boundary and keeps schema changes separate from web startup. After a successful migration, publish with:
+Use a direct Neon connection for the explicit Alembic release operation and the pooled connection for the runtime. This
+follows Neon's transaction-pooler boundary and keeps schema changes separate from web startup. After a successful
+migration, publish with:
 
 ```powershell
 npm run cloudflare:deploy

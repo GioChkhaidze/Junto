@@ -27,6 +27,8 @@ worker-configuration.d.ts
 playwright-report/
 test-results/
 /output/
+/docs/evidence/
+.neon
 
 # Local configuration and runtime artifacts
 .tmp/

@@ -16,9 +16,6 @@ from scripts.evaluate_synthetic_stress import (
 )
 from tests.conftest import AppHarness, mutate
 
-COMMITTED_REPORT = Path(__file__).resolve().parents[2] / "docs" / "evidence" / ("synthetic-stress-offline.json")
-
-
 def test_offline_stress_suite_exercises_diverse_structural_cases() -> None:
   report = build_report(
     gold_directory=DEFAULT_GOLD_DIRECTORY,
@@ -102,15 +99,3 @@ def test_offline_stress_cli_writes_machine_readable_report(tmp_path: Path, monke
   report = json.loads(output.read_text(encoding="utf-8"))
   assert report["overallStatus"] == "pass"
   assert report["challengeSuite"]["semanticAccuracyClaim"] == "none"
-
-
-def test_committed_offline_report_matches_current_corpus() -> None:
-  current = build_report(
-    gold_directory=DEFAULT_GOLD_DIRECTORY,
-    challenge_fixture=DEFAULT_CHALLENGE_FIXTURE,
-  )
-  committed = json.loads(COMMITTED_REPORT.read_text(encoding="utf-8"))
-  current.pop("generatedAt")
-  committed.pop("generatedAt")
-
-  assert committed == current

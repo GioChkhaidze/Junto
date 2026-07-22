@@ -1,8 +1,34 @@
 # Junto
 
-Junto is an accountless, room-based website that turns individual answers into live discussion groups. A host defines
-the ideas or perspectives that should be present for each question; Junto classifies what each answer contributes and
-uses a coverage-first optimizer to form valid groups.
+Purposeful discussion groups, built from what participants know and think.
+
+## Inspiration
+
+Instructors know that strong discussion groups are rarely random. Students learn more when each group brings together
+complementary knowledge, reasoning, evidence, and perspectives, but reading every response and assembling those groups
+takes too much time during a live class.
+
+The name captures the product's purpose: in English, a *junto* is a small group formed around a shared goal; in Spanish,
+*junto* means "together." Junto began with a practical question: can we remove the administrative burden of grouping
+while creating more fruitful discussions?
+
+## What it does
+
+Junto is an accountless, room-based web application that forms discussion groups from participants' submitted answers.
+A host creates an activity, optionally uploads reference material, writes the questions, and defines the ideas or
+perspectives worth covering. Participants join with an invite code, enter their names, and answer independently.
+
+When responses close, Junto:
+
+1. identifies which host-defined coverage units appear in each answer;
+2. recognizes meaningful response families, such as competing positions or different approaches;
+3. uses constrained optimization to form capacity-valid groups with the strongest feasible coverage; and
+4. gives each participant their group members and a focused discussion plan showing what is represented and who can
+   introduce it.
+
+Coverage is subject-agnostic. In programming, units might include a recurrence, base case, and complexity; in history or
+literature, they might be evidence, arguments, objections, and perspectives. Junto does not assume every question has
+one correct conclusion.
 
 The product promise is deliberately bounded:
 
@@ -12,120 +38,41 @@ The product promise is deliberately bounded:
 Junto does not grade participants, guarantee that every requested idea can appear in every group, or claim that grouping
 improves learning.
 
-## What is implemented
+## How we built it
 
-- React, TypeScript, Vite, and CSS Modules SPA with material-first authoring, optional AI-assisted question and coverage
-  drafting, a timed one-question-at-a-time questionnaire, autosave, review, and role-specific results.
-- FastAPI application with Pydantic contracts, signed room-session cookies, CSRF checks, trusted-origin enforcement,
-  bounded uploads, and ordinary HTTP polling.
-- PostgreSQL persistence through SQLAlchemy and psycopg, with Alembic migrations, row-locked room transactions,
-  cascading manual deletion and stale-analysis recovery.
-- Independent semantic operations for answer coverage and response families using validated structured provider output.
-- OR-Tools CP-SAT grouping that fixes capacity first, optimizes coverage lexicographically, then applies the selected
-  Teach or Explore objective.
-- Atomic publication of validated semantic and grouping artifacts; failed analysis exposes no partial result and has one
-  bounded host retry by default.
-- A deterministic recorded-provider mode for tests and the reviewed offline activity suite.
-- Development-only synthetic cohorts with 20 varied identities, coverage-aware OpenRouter responses from the single
-  pinned full Gemini 2.5 Flash model, and labelled flow-only placeholders restricted to placeholder analysis.
-- A multistage container image and a one-process deployment profile backed by PostgreSQL.
+The frontend uses React, Vite, TypeScript, and CSS Modules. The backend uses FastAPI, PostgreSQL, Pydantic, and OR-Tools
+CP-SAT. The OpenAI API converts natural-language answers into independently validated coverage and response-family
+assignments. The model interprets language; the deterministic optimizer enforces group sizes and makes the final group
+assignments.
 
-## Runtime
+The workflow includes signed room sessions, CSRF and origin checks, bounded uploads, autosave, role-specific results,
+atomic result publication, and recovery from failed analysis. A recorded-provider mode supports repeatable offline
+tests. For demos, hosts can add clearly identified simulated participants with varied knowledge, confidence, reasoning
+styles, and mistakes; OpenRouter's Gemini 2.5 Flash generates their answers without deciding the groups.
 
-```text
-React + TypeScript + Vite + CSS Modules
-                |
-                | same-origin JSON + short polling
-                v
-             FastAPI
-      + signed room capabilities
-      + room workflow and file extraction
-      + semantic compiler
-      + OR-Tools CP-SAT
-          |              |
-          v              v
-     PostgreSQL     configured model API
-```
+The hackathon deployment runs as a Cloudflare Container with Neon PostgreSQL.
 
-The language model interprets question-local answer text but never selects groups. The optimizer receives only
-validated, discrete coverage and family assignments; a response family never owns or implies coverage units.
+## Challenges we ran into
 
-## Engine modes
+The hardest problem was defining what makes a group "good." Early versions focused too heavily on correct answers,
+which failed for subjects where disagreement is productive. Coverage units broadened the design to include concepts,
+reasoning steps, evidence, arguments, objections, and perspectives.
 
-| Mode          | Semantic source          | Grouping                         | Use                             |
-| ------------- | ------------------------ | -------------------------------- | ------------------------------- |
-| `placeholder` | none                     | deterministic capacity partition | arbitrary local UI development  |
-| `recorded`    | reviewed fixture outputs | real CP-SAT optimizer            | offline tests and scripted demo |
-| `openrouter`  | strict Chat Completions  | real CP-SAT optimizer            | authoring and development evals |
-| `openai`      | live Responses API calls | real CP-SAT optimizer            | live deployment                 |
+Other challenges included obtaining reliable structured model output, handling incomplete or mistaken answers, keeping
+latency and cost practical, and behaving sensibly when perfect coverage is mathematically impossible.
 
-Production configuration requires `openai`, PostgreSQL, a strong session secret, an OpenAI API key, secure cookies, and
-explicit HTTPS origins. The in-memory repository and placeholder engine remain development adapters, not silent
-production fallbacks.
+## Accomplishments
 
-## Local development
+Junto now supports the complete workflow from activity creation to auditable, published groups across both objective and
+open-ended subjects. It makes grouping decisions understandable through visible coverage reports and includes realistic
+simulated cohorts for repeatable demos and stress testing.
 
-Use Python 3.12 or newer and Node.js 20.19 or newer.
+## What we learned
 
-```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
-Copy-Item ..\.env.example ..\.env # once; then add local credentials as needed
-.\.venv\Scripts\python.exe -m uvicorn junto.main:app --reload --port 8000
-```
-
-In another terminal:
-
-```powershell
-cd frontend
-npm ci
-npm run dev
-```
-
-Open `http://localhost:5173`. With no database URL or engine mode set, development uses the in-memory repository and
-labelled placeholder grouping. AI-assisted authoring is independently enabled by either provider key and prefers
-OpenRouter when both are present, so it can run while analysis remains in `placeholder` or `recorded` mode. In
-development the backend reads the repository-root `.env` automatically; an explicit process environment takes
-precedence. See [Operations](docs/operations.md) to run PostgreSQL, recorded fixtures, or a live provider.
-
-For a database-backed run, set `DATABASE_URL`, migrate before starting the app, and keep the same URL for both commands:
-
-```powershell
-cd backend
-.\.venv\Scripts\python.exe -m alembic -c alembic.ini upgrade head
-.\.venv\Scripts\python.exe -m uvicorn junto.main:app --port 8000
-```
-
-Vite proxies `/api` to FastAPI in development. A production frontend build is served directly by FastAPI from
-`frontend/dist`.
-
-The hackathon deployment runs the same image in one Cloudflare Container with Neon PostgreSQL and a Worker-level judge
-login. See [Cloudflare Containers + Neon](docs/operations.md#cloudflare-containers--neon-hackathon-deployment) for the
-live architecture, secret names, release order, and verification commands.
-
-## Verify
-
-```powershell
-cd backend
-.\.venv\Scripts\python.exe -m pytest
-.\.venv\Scripts\python.exe -m ruff check junto tests
-.\.venv\Scripts\python.exe -m ruff format --check .
-.\.venv\Scripts\python.exe -m mypy junto
-```
-
-PostgreSQL integration tests run when `TEST_DATABASE_URL` points to a disposable PostgreSQL database.
-
-```powershell
-cd frontend
-npm run typecheck
-npm run format:check
-npm test
-npm run build
-```
-
-The recorded end-to-end activity suite does not require an API key. A live semantic-quality evaluation does, and its
-reviewed results must be reported separately from structural test results.
+AI is most useful here as an interpreter, not an unconstrained decision-maker. Language models recognize ideas and
+perspectives in natural language, while a solver enforces group sizes and distributes those ideas consistently. Junto
+cannot create knowledge that is absent from the room, but it can search for the strongest feasible distribution of what
+participants contributed.
 
 ## Built with Codex
 
@@ -142,20 +89,12 @@ separately configured model providers described above.
 
 ## Documentation
 
-- [Product contract](docs/product.md): experience, product promise, guarantees, and non-goals.
-- [Architecture](docs/architecture.md): runtime, module boundaries, persistence, access, and execution model.
-- [Application contracts](docs/contracts.md): state machine, API, projections, validation, and privacy boundaries.
-- [Semantic and optimization engine](docs/engine.md): model inputs, validation, solver priorities, and truth labels.
-- [Semantic evaluation](docs/evaluation.md): recorded gates, live evaluator, report contract, and human review.
-- [Operations](docs/operations.md): configuration, migration, deployment, deletion, recovery, and release checks.
-- [Demo guide](docs/demo.md): separate reviewed activities and the live-demo sequence.
-- [Design system](DESIGN.md): visual and interaction source of truth.
+Technical details live in the [product contract](docs/product.md), [architecture](docs/architecture.md),
+[semantic engine](docs/engine.md), [evaluation guide](docs/evaluation.md), and
+[operations guide](docs/operations.md).
 
-## Deliberate boundaries
+## What's next
 
-- No profiles, passwords, OAuth, permanent teacher role, or cross-room identity.
-- No browser-to-database access, WebSockets, shared document, chat, or realtime presence.
-- One application process runs analysis in-process; horizontal workers require a durable job design first.
-- Uploaded source bytes are discarded after bounded extraction; extracted text is retained only with its room.
-- Model classifications remain fallible and auditable. Solver validity does not prove semantic correctness or learning
-  impact.
+The next step is classroom evaluation: measuring participation, peer explanation, and discussion quality. Planned work
+also includes a stronger semantic benchmark, clearer host controls, improved accessibility and recovery, and optional
+learning-management-system integrations.

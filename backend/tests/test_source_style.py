@@ -47,7 +47,7 @@ def _authored_files() -> list[Path]:
       continue
     if (
       path.name in SKIPPED_FILES
-      or relative.parts[:2] in {("docs", "evidence"), ("backend", "tests")}
+      or relative.parts[:2] == ("backend", "tests")
       and path.suffix == ".json"
     ):
       continue

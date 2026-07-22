@@ -78,7 +78,7 @@ To save a fresh machine-readable report:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\evaluate_synthetic_stress.py `
-  --output ..\docs\evidence\synthetic-stress-offline.json
+  --output ..\output\synthetic-stress-offline.json
 ```
 
 The command constructs no provider client and makes zero network calls. It checks 12 subjects and question types,
@@ -89,11 +89,11 @@ each as a separate draft room.
 
 The scale matrix checks 365 answer slots across 5-by-1, 10-by-4, and two 20-by-8 classroom payloads. Its largest
 assembled stress payload is 58,456 UTF-8 bytes. This is an offline serialization measurement, not a compiler or provider
-request. The reviewed baseline is the committed [offline report](evidence/synthetic-stress-offline.json).
+request.
 
 An offline pass means the corpus is diverse and structurally within tested limits. It reports
-`semanticAccuracyClaim: "none"` by design. Use the gold evaluator for accuracy metrics and preserve live outputs as
-dated evidence rather than replacing fixture labels.
+`semanticAccuracyClaim: "none"` by design. Use the gold evaluator for accuracy metrics and keep generated reports in the
+ignored `output/` directory rather than committing them.
 
 ## Automated gates
 
