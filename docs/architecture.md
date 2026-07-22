@@ -25,8 +25,9 @@ six relational tables        authoring or semantic structured output
 ```
 
 `placeholder`, `recorded`, `openrouter`, and `openai` are explicit engine modes. The latter three use the real
-optimizer; `placeholder` is a labelled capacity-only development adapter. OpenRouter uses one server-owned, pinned full
-Gemini 2.5 Flash model and is development-only. Production still requires PostgreSQL and live OpenAI mode.
+optimizer; `placeholder` is a labelled capacity-only development adapter. OpenRouter analysis mode is development-only;
+an explicitly enabled deployment may still use the pinned Gemini 2.5 Flash model for authoring assistance and simulated
+participants. Production requires PostgreSQL and live OpenAI analysis.
 
 ## Frontend
 
@@ -96,15 +97,15 @@ Dependency direction stays inward:
 
 Tests can inject a clock, scheduler, repository, extractor, provider, optimizer, or complete analysis pipeline.
 
-Development may also compose a synthetic-classroom service beside the room workflow. It replaces only the simulated
-lobby roster in one transaction and later commits each student's complete answer set in one answering transaction. The
-local patterned provider is a network-free, flow-only adapter restricted to placeholder analysis. The OpenRouter
-provider makes one anonymous request per student, runs at most five requests concurrently, validates each ordered answer
-list against the exact question count, normalizes bounded provider overshoot to the 1,500-character domain limit, and
-maps it to room IDs on the server. It denies provider data collection and uses only the pinned full
-`google/gemini-2.5-flash` model. Completed students become visible immediately; an interrupted run keeps them submitted
-and retries only the remaining simulated students. Neither path changes the persistence schema. The complete provider
-run has a two-minute service deadline; the browser stops waiting shortly afterward.
+When enabled by explicit runtime configuration, a synthetic-classroom service is composed beside the room workflow. It
+replaces only the simulated lobby roster in one transaction and later commits each student's complete answer set in one
+answering transaction. The local patterned provider is a network-free, flow-only adapter restricted to placeholder
+analysis. The OpenRouter provider makes one anonymous request per student, runs at most five requests concurrently,
+validates each ordered answer list against the exact question count, normalizes bounded provider overshoot to the
+1,500-character domain limit, and maps it to room IDs on the server. It denies provider data collection and uses only
+the pinned full `google/gemini-2.5-flash` model. Completed students become visible immediately; an interrupted run keeps
+them submitted and retries only the remaining simulated students. Neither path changes the persistence schema. The
+complete provider run has a two-minute service deadline; the browser stops waiting shortly afterward.
 
 ## Runtime paths
 
@@ -252,7 +253,8 @@ uploaded or pasted source text. It receives no filenames, display names, persona
 participant IDs, coverage units, host-only question notes/reference, expected labels, response families, or group
 settings. Each provider response contains only one student's ordered answer list. The service validates its exact
 question count and maps it to room IDs. Human participant projections still omit extracted source text. Synthetic
-endpoints are host-scoped, CSRF-protected, and disabled in production.
+endpoints are host-scoped, CSRF-protected, and disabled by default. A production deployment must explicitly enable them,
+supply OpenRouter credentials, and set a bounded cohort cap.
 
 Request telemetry replaces UUIDs and invite codes with route templates and excludes bodies, cookies, model inputs, and
 database values. One-process sliding-window limits cover anonymous room creation, authoring suggestions, joining, and

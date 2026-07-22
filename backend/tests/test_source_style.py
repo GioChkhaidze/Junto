@@ -43,13 +43,11 @@ def _authored_files() -> list[Path]:
   files: list[Path] = []
   for path in ROOT.rglob("*"):
     relative = path.relative_to(ROOT)
-    if not path.is_file() or any(part in SKIPPED_DIRECTORIES or part.endswith(".egg-info") for part in relative.parts):
+    if any(part in SKIPPED_DIRECTORIES or part.endswith(".egg-info") for part in relative.parts):
       continue
-    if (
-      path.name in SKIPPED_FILES
-      or relative.parts[:2] == ("backend", "tests")
-      and path.suffix == ".json"
-    ):
+    if not path.is_file():
+      continue
+    if path.name in SKIPPED_FILES or relative.parts[:2] == ("backend", "tests") and path.suffix == ".json":
       continue
     if path.suffix in TEXT_SUFFIXES or path.name in TEXT_FILENAMES:
       files.append(path)

@@ -8,14 +8,14 @@ Instructors know that strong discussion groups are rarely random. Students learn
 complementary knowledge, reasoning, evidence, and perspectives, but reading every response and assembling those groups
 takes too much time during a live class.
 
-The name captures the product's purpose: in English, a *junto* is a small group formed around a shared goal; in Spanish,
-*junto* means "together." Junto began with a practical question: can we remove the administrative burden of grouping
+The name captures the product's purpose: in English, a _junto_ is a small group formed around a shared goal; in Spanish,
+_junto_ means "together." Junto began with a practical question: can we remove the administrative burden of grouping
 while creating more fruitful discussions?
 
 ## What it does
 
-Junto is an accountless, room-based web application that forms discussion groups from participants' submitted answers.
-A host creates an activity, optionally uploads reference material, writes the questions, and defines the ideas or
+Junto is an accountless, room-based web application that forms discussion groups from participants' submitted answers. A
+host creates an activity, optionally uploads reference material, writes the questions, and defines the ideas or
 perspectives worth covering. Participants join with an invite code, enter their names, and answer independently.
 
 When responses close, Junto:
@@ -54,9 +54,9 @@ The hackathon deployment runs as a Cloudflare Container with Neon PostgreSQL.
 
 ## Challenges we ran into
 
-The hardest problem was defining what makes a group "good." Early versions focused too heavily on correct answers,
-which failed for subjects where disagreement is productive. Coverage units broadened the design to include concepts,
-reasoning steps, evidence, arguments, objections, and perspectives.
+The hardest problem was defining what makes a group "good." Early versions focused too heavily on correct answers, which
+failed for subjects where disagreement is productive. Coverage units broadened the design to include concepts, reasoning
+steps, evidence, arguments, objections, and perspectives.
 
 Other challenges included obtaining reliable structured model output, handling incomplete or mistaken answers, keeping
 latency and cost practical, and behaving sensibly when perfect coverage is mathematically impossible.
@@ -90,8 +90,7 @@ separately configured model providers described above.
 ## Documentation
 
 Technical details live in the [product contract](docs/product.md), [architecture](docs/architecture.md),
-[semantic engine](docs/engine.md), [evaluation guide](docs/evaluation.md), and
-[operations guide](docs/operations.md).
+[semantic engine](docs/engine.md), [evaluation guide](docs/evaluation.md), and [operations guide](docs/operations.md).
 
 ## What's next
 

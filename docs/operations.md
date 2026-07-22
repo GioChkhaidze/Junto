@@ -57,8 +57,8 @@ demonstration, but it is ignored by Git and must never be committed.
 - `OPENAI_MODEL` — `gpt-5.6-luna`. The structured-output model for OpenAI analysis and fallback authoring. Review
   changes before deployment.
 - `OPENAI_REASONING_EFFORT` — `high`. Quality-first reasoning for OpenAI analysis and fallback authoring.
-- `OPENROUTER_API_KEY` — required for the judging deployment. It enables preferred AI-suggested questions,
-  AI-suggested coverage units, and host-triggered simulated students. It does not replace OpenAI analysis.
+- `OPENROUTER_API_KEY` — required for the judging deployment. It enables preferred AI-suggested questions, AI-suggested
+  coverage units, and host-triggered simulated students. It does not replace OpenAI analysis.
 - `OPENROUTER_MODEL` — `google/gemini-2.5-flash`. This server-owned model handles authoring suggestions and synthetic
   generation. The model identifier and credential never reach the browser.
 - `SYNTHETIC_CLASSROOM_ENABLED` — `true` for the password-protected judging deployment and `false` by default elsewhere.
@@ -134,8 +134,8 @@ marked private, non-cacheable, and non-indexable. The Container remains the same
 ephemeral disk is not used for durable data. `max_instances` stays at one because in-process analysis has not been
 designed for horizontal execution.
 
-The production URL is `https://junto.georgechkhaidze10.workers.dev`. Preview URLs are disabled. Cloudflare
-Workers Paid and Docker Desktop are required to publish Container images.
+The production URL is `https://junto.georgechkhaidze10.workers.dev`. Preview URLs are disabled. Cloudflare Workers Paid
+and Docker Desktop are required to publish Container images.
 
 Install the root deployment dependencies and validate the Worker before publishing:
 

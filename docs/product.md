@@ -153,9 +153,9 @@ data.
 The development-only placeholder mode skips semantic analysis and labels its capacity partition as `placeholder`. The
 recorded mode uses reviewed fixture outputs and the real optimizer for deterministic offline testing.
 
-Development hosts may add a deterministic set of 5, 10, or 20 simulated participants in the lobby. Coverage-aware rooms
-offer an explicit OpenRouter action when configured. It uses the single server-owned full `google/gemini-2.5-flash`
-model. Its data boundary is defined in
+When simulation is explicitly enabled, hosts may add a bounded set of simulated participants in the lobby.
+Coverage-aware rooms offer an explicit OpenRouter action when configured. It uses the single server-owned full
+`google/gemini-2.5-flash` model. Its data boundary is defined in
 [Reference material and model disclosure](#reference-material-and-model-disclosure).
 
 Patterned responses are labelled flow-only placeholders. The normal host UI does not offer them, and the backend accepts
@@ -165,8 +165,9 @@ that the semantic classifier is accurate.
 
 OpenRouter generation sends one anonymous student per request, runs at most five requests concurrently, and shows
 elapsed time while active. The server applies a two-minute deadline and the browser stops waiting shortly afterward. A
-timeout, provider failure, or malformed answer list saves no partial synthetic cohort; the host may retry the OpenRouter
-action. Success shows the source, model, participant count, and response count before analysis finishes.
+student is submitted only after their complete answer set validates. A timeout or provider failure keeps already
+submitted simulated students and lets the host retry only the remaining roster. Success shows the source, model,
+participant count, and response count before analysis finishes.
 
 ### 5. Discuss
 

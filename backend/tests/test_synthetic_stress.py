@@ -16,6 +16,7 @@ from scripts.evaluate_synthetic_stress import (
 )
 from tests.conftest import AppHarness, mutate
 
+
 def test_offline_stress_suite_exercises_diverse_structural_cases() -> None:
   report = build_report(
     gold_directory=DEFAULT_GOLD_DIRECTORY,

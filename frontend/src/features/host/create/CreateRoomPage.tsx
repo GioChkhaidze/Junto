@@ -6,33 +6,17 @@ import { Button, Field, Icon, InlineNotice, Input, Select, TextArea } from "../.
 import { useDocumentTitle } from "../../../hooks/useDocumentTitle";
 import { formatDuration, formatFileSize } from "../../../lib/format";
 import { scrollPageToTop } from "../../../lib/motion";
-import type {
-  AuthoringSuggestionTarget,
-  GroupingPolicy,
-  GroupSize,
-  HostQuestion,
-  QuestionMutation,
-  ReferenceAttachment,
-} from "../../../domain";
+import type { AuthoringSuggestionTarget } from "../../../domain";
+import {
+  activitySteps,
+  createInitialActivityDraft,
+  isActivityStepValid,
+  newQuestionDraft,
+  type ActivityDraft,
+  type WizardStep,
+} from "./activityDraft";
+import { ActivitySetupSession } from "./activitySetup";
 import styles from "./CreateRoomPage.module.css";
-
-type WizardStep = "material" | "details" | "questions" | "groups" | "review";
-
-interface QuestionDraft {
-  clientId: string;
-  prompt: string;
-  coverageUnits: string[];
-}
-
-interface ActivityDraft {
-  title: string;
-  policy: GroupingPolicy;
-  durationMinutes: number;
-  preferredGroupSize: number;
-  materialFile: File | null;
-  pastedReference: string;
-  questions: QuestionDraft[];
-}
 
 interface SuggestionFeedback {
   tone: "success" | "error";
@@ -44,14 +28,6 @@ interface SuggestingTarget {
   target: AuthoringSuggestionTarget;
 }
 
-const steps: Array<{ id: WizardStep; label: string }> = [
-  { id: "material", label: "Reference material" },
-  { id: "details", label: "Activity details" },
-  { id: "questions", label: "Questions" },
-  { id: "groups", label: "Discussion groups" },
-  { id: "review", label: "Review" },
-];
-
 const acceptedTypes = ".pdf,.docx,.txt,.md";
 const acceptedExtensions = [".pdf", ".docx", ".txt", ".md"];
 const maxFileBytes = 5 * 1024 * 1024;
@@ -61,10 +37,6 @@ const materialDescription =
 const nextStepDescription =
   "You’ll receive an invite code. Participants enter their names and wait in the lobby until you start the " +
   "shared timer.";
-
-function newQuestion(): QuestionDraft {
-  return { clientId: crypto.randomUUID(), prompt: "", coverageUnits: [""] };
-}
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -80,33 +52,6 @@ function authoringErrorMessage(error: unknown): string {
 
 function suggestionKey(clientId: string, target: AuthoringSuggestionTarget): string {
   return `${clientId}:${target}`;
-}
-
-function groupSizeFor(preferred: number): GroupSize {
-  return { minimum: Math.max(2, preferred - 1), preferred, maximum: Math.min(8, preferred + 1) };
-}
-
-function questionMutation(question: QuestionDraft, position: number): QuestionMutation {
-  return {
-    position,
-    prompt: question.prompt.trim(),
-    referenceMaterial: null,
-    coverageUnits: question.coverageUnits.map((text) => ({ text: text.trim() })),
-  };
-}
-
-function questionMatches(existing: HostQuestion, desired: QuestionMutation): boolean {
-  return (
-    existing.position === desired.position &&
-    existing.prompt === desired.prompt &&
-    existing.referenceMaterial === (desired.referenceMaterial ?? null) &&
-    existing.coverageUnits.length === desired.coverageUnits.length &&
-    existing.coverageUnits.every((unit, index) => unit.text === desired.coverageUnits[index]?.text)
-  );
-}
-
-function materialMatches(file: File, material: ReferenceAttachment): boolean {
-  return file.name === material.fileName && file.size === material.sizeBytes;
 }
 
 function ReferenceFilePicker({
@@ -139,6 +84,7 @@ export function CreateRoomPage() {
   useDocumentTitle("Create an activity");
   const navigate = useNavigate();
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const setupSessionRef = useRef(new ActivitySetupSession());
   const [step, setStep] = useState<WizardStep>("material");
   const [dragging, setDragging] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -146,19 +92,11 @@ export function CreateRoomPage() {
   const [creating, setCreating] = useState(false);
   const [suggesting, setSuggesting] = useState<SuggestingTarget | null>(null);
   const [suggestionFeedback, setSuggestionFeedback] = useState<Record<string, SuggestionFeedback>>({});
-  const [setupRoomId, setSetupRoomId] = useState<string | null>(null);
+  const [setupStarted, setSetupStarted] = useState(false);
   const [skipReference, setSkipReference] = useState(false);
-  const [draft, setDraft] = useState<ActivityDraft>({
-    title: "",
-    policy: "teach",
-    durationMinutes: 20,
-    preferredGroupSize: 4,
-    materialFile: null,
-    pastedReference: "",
-    questions: [newQuestion()],
-  });
+  const [draft, setDraft] = useState<ActivityDraft>(createInitialActivityDraft);
 
-  const activeIndex = steps.findIndex((item) => item.id === step);
+  const activeIndex = activitySteps.findIndex((item) => item.id === step);
   const hasReference = Boolean(draft.materialFile || draft.pastedReference.trim());
 
   useEffect(() => {
@@ -324,121 +262,31 @@ export function CreateRoomPage() {
     }
   }
 
-  function isStepValid(candidate: WizardStep): boolean {
-    if (candidate === "details") {
-      return draft.title.trim().length >= 3 && draft.durationMinutes >= 5;
-    }
-    if (candidate === "questions") {
-      return (
-        draft.questions.length > 0 &&
-        draft.questions.length <= 8 &&
-        draft.questions.every(
-          (question) =>
-            question.prompt.trim().length >= 5 &&
-            question.coverageUnits.length >= 1 &&
-            question.coverageUnits.length <= 8 &&
-            question.coverageUnits.every((unit) => unit.trim().length >= 3),
-        )
-      );
-    }
-    return true;
-  }
-
   function next() {
-    const currentIndex = steps.findIndex((item) => item.id === step);
-    const nextStep = steps[currentIndex + 1];
-    if (!nextStep || !isStepValid(step)) return;
+    const currentIndex = activitySteps.findIndex((item) => item.id === step);
+    const nextStep = activitySteps[currentIndex + 1];
+    if (!nextStep || !isActivityStepValid(draft, step)) return;
     setStep(nextStep.id);
   }
 
   function previous() {
-    const currentIndex = steps.findIndex((item) => item.id === step);
-    const previousStep = steps[currentIndex - 1];
+    const currentIndex = activitySteps.findIndex((item) => item.id === step);
+    const previousStep = activitySteps[currentIndex - 1];
     if (!previousStep) return;
     setStep(previousStep.id);
   }
 
   async function createActivity(event: FormEvent) {
     event.preventDefault();
-    if (!isStepValid("details") || !isStepValid("questions")) return;
+    if (!isActivityStepValid(draft, "details") || !isActivityStepValid(draft, "questions")) return;
     setCreating(true);
     setSubmitError(null);
-    let roomId = setupRoomId;
 
     try {
-      let savedRoom = roomId ? await api.getRoom(roomId) : null;
-      if (savedRoom && savedRoom.status !== "draft") {
-        navigate(`/host/${roomId}`, { replace: true });
-        return;
-      }
-
-      if (!roomId) {
-        const created = await api.createRoom({
-          title: draft.title.trim(),
-          policy: draft.policy,
-          groupSize: groupSizeFor(draft.preferredGroupSize),
-          durationMinutes: draft.durationMinutes,
-        });
-        roomId = created.roomId;
-        setSetupRoomId(roomId);
-      } else if (savedRoom) {
-        const desiredGroupSize = groupSizeFor(draft.preferredGroupSize);
-        const settingsChanged =
-          savedRoom.title !== draft.title.trim() ||
-          savedRoom.durationMinutes !== draft.durationMinutes ||
-          savedRoom.policy !== draft.policy ||
-          savedRoom.groupSize.minimum !== desiredGroupSize.minimum ||
-          savedRoom.groupSize.preferred !== desiredGroupSize.preferred ||
-          savedRoom.groupSize.maximum !== desiredGroupSize.maximum;
-        if (settingsChanged) {
-          savedRoom = await api.updateRoom(roomId, {
-            title: draft.title.trim(),
-            policy: draft.policy,
-            groupSize: desiredGroupSize,
-            durationMinutes: draft.durationMinutes,
-          });
-        }
-      }
-
-      const existingQuestions = [...(savedRoom?.questions ?? [])].sort((left, right) => left.position - right.position);
-      for (const extra of existingQuestions.slice(draft.questions.length).reverse()) {
-        await api.deleteQuestion(roomId, extra.id);
-      }
-      for (const [position, question] of draft.questions.entries()) {
-        const mutation = questionMutation(question, position);
-        const existing = existingQuestions[position];
-        if (existing) {
-          if (!questionMatches(existing, mutation)) {
-            await api.updateQuestion(roomId, existing.id, mutation);
-          }
-        } else {
-          await api.createQuestion(roomId, mutation);
-        }
-      }
-
-      const referenceFile = skipReference
-        ? null
-        : (draft.materialFile ??
-          (draft.pastedReference.trim()
-            ? new File([draft.pastedReference.trim()], "pasted-reference.txt", { type: "text/plain" })
-            : null));
-      if (referenceFile) {
-        const matchingMaterial = savedRoom?.materials.find((material) => materialMatches(referenceFile, material));
-        for (const material of savedRoom?.materials ?? []) {
-          if (material.id !== matchingMaterial?.id) {
-            await api.deleteReferenceMaterial(roomId, material.id);
-          }
-        }
-        if (!matchingMaterial) await api.uploadReferenceMaterial(roomId, referenceFile);
-      } else {
-        for (const material of savedRoom?.materials ?? []) {
-          await api.deleteReferenceMaterial(roomId, material.id);
-        }
-      }
-
-      await api.openRoom(roomId);
+      const roomId = await setupSessionRef.current.saveAndOpen(draft, { skipReference });
       navigate(`/host/${roomId}`, { replace: true, state: { newlyCreated: true } });
     } catch (error) {
+      setSetupStarted(setupSessionRef.current.hasDraftRoom);
       setSubmitError(errorMessage(error));
     } finally {
       setCreating(false);
@@ -454,7 +302,7 @@ export function CreateRoomPage() {
       <div className={styles.createLayout}>
         <aside className={styles.stepRail} aria-label="Create activity progress">
           <ol>
-            {steps.map((item, index) => {
+            {activitySteps.map((item, index) => {
               const completed = index < activeIndex;
               const current = item.id === step;
               return (
@@ -480,7 +328,7 @@ export function CreateRoomPage() {
             })}
           </ol>
           <p>
-            {setupRoomId
+            {setupStarted
               ? "Your room draft is saved. Changes are reconciled when you retry setup."
               : "Your draft is created only after you review everything."}
           </p>
@@ -844,7 +692,7 @@ export function CreateRoomPage() {
                 type="button"
                 variant="secondary"
                 leadingIcon={<Icon name="plus" size={17} />}
-                onClick={() => updateDraft("questions", [...draft.questions, newQuestion()])}
+                onClick={() => updateDraft("questions", [...draft.questions, newQuestionDraft()])}
                 disabled={draft.questions.length >= 8}
               >
                 Add another question
@@ -968,10 +816,10 @@ export function CreateRoomPage() {
                 <InlineNotice
                   className={styles.reviewErrorNotice}
                   tone="error"
-                  title={setupRoomId ? "Setup not finished" : "Activity not created"}
+                  title={setupStarted ? "Setup not finished" : "Activity not created"}
                 >
                   <span>{submitError}</span>
-                  {setupRoomId && (draft.materialFile || draft.pastedReference.trim()) && !skipReference ? (
+                  {setupStarted && (draft.materialFile || draft.pastedReference.trim()) && !skipReference ? (
                     <Button
                       className={styles.retryWithoutMaterial}
                       type="button"
@@ -1002,7 +850,7 @@ export function CreateRoomPage() {
             )}
             {step === "review" ? (
               <Button type="submit" loading={creating} loadingLabel="Creating activity">
-                {setupRoomId ? "Retry setup" : "Create activity"}
+                {setupStarted ? "Retry setup" : "Create activity"}
               </Button>
             ) : (
               <Button
@@ -1012,7 +860,7 @@ export function CreateRoomPage() {
                   event.preventDefault();
                   next();
                 }}
-                disabled={!isStepValid(step)}
+                disabled={!isActivityStepValid(draft, step)}
               >
                 {step === "material" && !draft.materialFile && !draft.pastedReference.trim()
                   ? "Continue without material"

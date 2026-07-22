@@ -147,6 +147,7 @@ are failed or incomplete evidence, never successful fixtures.
 OpenRouter-generated students may feed challenge or scale runs, but not the gold suite until a person adjudicates them.
 Keep model IDs server-owned and pinned, deny provider data collection, require structured-output-capable routes, and
 trigger generation only through an explicit host action. Never start generation from page load or polling, and never
-save a partial synthetic cohort after a failed student request. A live generalization run may compare generated answers
-with the reviewed expectations afterward, but the generator never receives coverage units, expected labels, or family
-assignments, and its answers do not become gold automatically.
+save an incomplete answer set for a student. Complete students may remain submitted after a later request fails so a
+retry processes only the remaining roster. A live generalization run may compare generated answers with the reviewed
+expectations afterward, but the generator never receives coverage units, expected labels, or family assignments, and its
+answers do not become gold automatically.
